@@ -3,6 +3,11 @@ import { resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { lint } from "markdownlint/sync";
+import {
+  architectureViolations,
+  missingHistoricalMigrations,
+  publicSqlViews,
+} from "./architecture.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const rootFiles = new Set([
@@ -226,6 +231,20 @@ function anchors(text) {
 
 export function check() {
   const errors = [];
+  const sources = walk(root);
+  const views = publicSqlViews(
+    new Map(
+      sources.map((path) => [
+        path.slice(root.length + 1),
+        readFileSync(path, "utf8"),
+      ]),
+    ),
+  );
+  errors.push(
+    ...missingHistoricalMigrations(
+      sources.map((path) => path.slice(root.length + 1)),
+    ),
+  );
   const markdown = lint({
     files: walk(root).filter((path) => path.endsWith(".md")),
     config: { MD013: false },
@@ -240,6 +259,7 @@ export function check() {
     const path = absolute.slice(root.length + 1);
     if (!pathAllowed(path)) errors.push(`Disallowed path: ${path}`);
     const text = readFileSync(absolute, "utf8");
+    errors.push(...architectureViolations(path, text, views));
     if (!path.includes("/locales/") && /\p{Script=Cyrillic}/u.test(text))
       errors.push(`${path}: English required outside locales`);
     if (/\.(?:[cm]?[jt]sx?|html)$/.test(path)) {

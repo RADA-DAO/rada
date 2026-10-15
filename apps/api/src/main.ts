@@ -3,9 +3,9 @@ import { createApp } from "./app.ts";
 import {
   TelegramMembershipProvider,
   unavailableMembership,
-} from "./membership.ts";
-import { PostgresIdentityStore } from "./database.ts";
-import { PostgresRegistryStore } from "./registry.ts";
+} from "../../../modules/identity/index.ts";
+import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
+import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
 
 function required(name: string): string {
   const value = Deno.env.get(name);

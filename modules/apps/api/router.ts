@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import { parseAppManifest } from "../../../packages/platform-sdk/src/app-manifest.ts";
-import type { RegistryStore } from "./registry.ts";
+import type { RegistryStore } from "./store.ts";
 
 const slug = /^[a-z][a-z0-9_.:-]{0,127}$/;
 const uuid =

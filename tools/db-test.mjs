@@ -1,6 +1,7 @@
+import { discoverMigrations, moduleDirectories } from "./migrations.mjs";
 import { spawnSync } from "node:child_process";
 import {
-  cpSync,
+  copyFileSync,
   mkdtempSync,
   appendFileSync,
   rmSync,
@@ -13,9 +14,8 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const migrationNames = readdirSync(join(root, "db/migrations")).filter((name) =>
-  name.endsWith(".sql"),
-);
+const migrations = discoverMigrations();
+const migrationNames = migrations.map(({ name }) => name);
 const nextVersion =
   Math.max(...migrationNames.map((name) => Number(name.slice(0, 4)))) + 1;
 assert.ok(
@@ -33,8 +33,15 @@ function migrate(args = [], success = true) {
   assert.equal(result.status === 0, success, result.stderr);
   return result;
 }
-migrate();
-migrate();
+// Seed the legacy flat-layout ledger before switching to module discovery.
+const legacy = mkdtempSync(join(tmpdir(), "rada-legacy-migrations-"));
+try {
+  for (const migration of migrations)
+    copyFileSync(migration.path, join(legacy, migration.name));
+  migrate([legacy]);
+} finally {
+  rmSync(legacy, { recursive: true, force: true });
+}
 const container = process.env.PG_CONTAINER;
 const args = container ? ["exec", "-i", container, "psql"] : [];
 args.push(
@@ -48,18 +55,42 @@ args.push(
   "-d",
   process.env.PGDATABASE ?? "rada_test",
 );
-for (const name of readdirSync(join(root, "db"))
-  .filter((name) => name.endsWith(".test.sql"))
-  .sort()) {
-  const result = spawnSync(container ? "docker" : "psql", args, {
-    input: readFileSync(join(root, "db", name)),
-    encoding: "utf8",
-  });
-  assert.equal(result.status, 0, `${name}: ${result.stderr}`);
+for (const directory of moduleDirectories()) {
+  for (const name of readdirSync(join(directory, "db"))
+    .filter((name) => name.endsWith(".test.sql"))
+    .sort()) {
+    const result = spawnSync(container ? "docker" : "psql", args, {
+      input: readFileSync(join(directory, "db", name)),
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, `${name}: ${result.stderr}`);
+  }
 }
 const temporary = mkdtempSync(join(tmpdir(), "rada-migration-test-"));
 try {
-  cpSync(join(root, "db/migrations"), temporary, { recursive: true });
+  for (const migration of migrations)
+    copyFileSync(migration.path, join(temporary, migration.name));
+  // A pre-existing flat-layout ledger must remain identical after module discovery.
+  const ledgerQuery =
+    "SELECT name, checksum, applied_at FROM platform_migrations.applied ORDER BY name;";
+  const before = spawnSync(container ? "docker" : "psql", args, {
+    input: ledgerQuery,
+    encoding: "utf8",
+  });
+  assert.equal(before.status, 0, before.stderr);
+  migrate();
+  migrate();
+  migrate([temporary]);
+  const after = spawnSync(container ? "docker" : "psql", args, {
+    input: ledgerQuery,
+    encoding: "utf8",
+  });
+  assert.equal(after.status, 0, after.stderr);
+  assert.equal(
+    after.stdout,
+    before.stdout,
+    "Moving migration sources changed the existing ledger",
+  );
   appendFileSync(
     join(temporary, "0001_identity.sql"),
     "\n-- changed fixture\n",
@@ -72,8 +103,8 @@ try {
     migrate([temporary], false).stderr,
     /Applied migration missing from source/,
   );
-  cpSync(
-    join(root, "db/migrations/0001_identity.sql"),
+  copyFileSync(
+    migrations.find(({ name }) => name === "0001_identity.sql")?.path ?? "",
     join(temporary, "0001_identity.sql"),
   );
   appendFileSync(join(temporary, "0000_fixture.sql"), "SELECT 1;\n");

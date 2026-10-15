@@ -6,6 +6,11 @@ Use standard libpq environment variables (`PGHOST`, `PGPORT`, `PGUSER`,
 The migration connection needs permission to create schemas and roles, and to
 assume the schema owner role. Do not use this credential at runtime.
 
+Sources live in `modules/<owner>/db/migrations/`. The runner discovers module
+directories in deterministic order and applies files in global version order.
+Ledger names and checksums are independent of source paths. An optional flat
+directory argument remains available for isolated negative fixtures.
+
 Name files `NNNN_description.sql`; never edit or remove applied files. Files run
 in one serialized transaction and must not contain transaction control or psql
 commands. The runner rejects checksum changes, removed files and insertion before
