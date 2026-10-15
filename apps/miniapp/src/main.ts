@@ -1,6 +1,6 @@
 import { settingsDialog } from "./settings.ts";
 import { openAppPermissions, permissionLabel } from "./permissions.ts";
-import { mountProfile } from "./profile.ts";
+import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import "../../../packages/ui/src/design-system.css";
@@ -81,8 +81,6 @@ const platform = initializePlatform({
   themeColor: DEFAULT_THEME_BACKGROUND,
   apiOrigin: import.meta.env.VITE_API_ORIGIN,
 });
-// The launcher will receive release records from the registry. Only same-origin
-// shell code may call this adapter; a manifest cannot supply grantedPermissions.
 window.RadaAppHost = Object.freeze({
   async mount(
     release: AppRelease,
@@ -118,6 +116,10 @@ window.RadaAppHost = Object.freeze({
         platform.writeAppConsent(appId, permission, granted),
       ownSubject: async () =>
         (await platform.readOwnProfile())?.subject_id ?? null,
+      readWalletAddress: (appId, signal) =>
+        platform.readAppWalletAddress(appId, signal),
+      readWalletBalances: (appId, signal) =>
+        platform.readAppWalletBalances(appId, signal),
       onNavigateBack: back,
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
@@ -279,7 +281,6 @@ function render() {
   } else if (route === "review") {
     const queue = document.createElement("div");
     content.append(queue, Button(text("shell.back"), { onClick: back }));
-    // Mount after attachment below, keeping locale and navigation disposal together.
     queue.dataset.reviewQueue = "true";
   } else {
     if (reviewAuthorized)
@@ -303,8 +304,11 @@ function render() {
     if (["private", "public"].includes(profile)) {
       const own = document.createElement("div");
       own.dataset.profileCollection = "true";
+      const wallet = document.createElement("div");
+      wallet.dataset.profileWallet = "true";
       content.append(
         own,
+        wallet,
         paragraph(`shell.membership.${membership}`),
         Button(text("shell.appPermissions"), {
           onClick: () => void showAppPermissions(),
@@ -350,17 +354,12 @@ function render() {
       (route === "launcher" ? index === 0 : index === 1) ? "page" : "false",
     );
   screen.replaceChildren(header, content, footer);
-  const ownCollection = content.querySelector<HTMLElement>(
-    "[data-profile-collection]",
-  );
-  if (ownCollection)
-    profileDispose = mountProfile(ownCollection, {
-      locale,
-      selected: selectedFrog,
-      read: (signal) => platform.readOwnFrogs(signal),
-      select: (frogId, signal) => platform.selectProfileFrog(frogId, signal),
-      refresh: () => void loadProfile(),
-    });
+  profileDispose = mountProfilePanel(content, {
+    locale,
+    selected: selectedFrog,
+    platform,
+    refresh: () => void loadProfile(),
+  });
   const queue = content.querySelector<HTMLElement>("[data-review-queue]");
   if (queue)
     reviewDispose = mountReview(queue, {

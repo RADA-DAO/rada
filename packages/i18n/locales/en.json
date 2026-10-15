@@ -135,6 +135,20 @@
     },
     "accessUnavailable": "Review access could not be checked. Try again."
   },
+  "wallet": {
+    "title": "Your wallets",
+    "connect": "Connect wallet",
+    "reconnect": "Reconnect to verify this wallet",
+    "revoke": "Remove wallet link",
+    "empty": "No wallet linked yet.",
+    "unsupported": "This wallet did not provide a proof. Try another wallet.",
+    "unavailable": "Wallet data is unavailable. Try again.",
+    "loading": "Loading wallets…",
+    "linking": "Verifying wallet…",
+    "ton": "TON",
+    "jpegpe": "JPEGPE",
+    "balanceUnknown": "Balance unavailable"
+  },
   "profile": {
     "collection": "Your frogs",
     "emptyCollection": "Your collection is empty.",

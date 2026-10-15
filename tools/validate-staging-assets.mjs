@@ -26,3 +26,25 @@ assert.match(
   /frame-src 'none'/,
 );
 console.log("Worker assets and sandbox response headers passed.");
+
+/** @type {unknown} */
+const manifest = JSON.parse(
+  readFileSync("apps/miniapp/dist/tonconnect-manifest.json", "utf8"),
+);
+assert.ok(
+  manifest !== null &&
+    typeof manifest === "object" &&
+    "iconUrl" in manifest &&
+    typeof manifest.iconUrl === "string" &&
+    "url" in manifest &&
+    typeof manifest.url === "string",
+);
+assert.equal(new URL(manifest.iconUrl).pathname, "/wallet-icon.png");
+assert.equal(
+  new URL(manifest.url).origin,
+  process.env.VITE_TON_CONNECT_APP_ORIGIN ?? "https://staging.example.invalid",
+);
+const icon = readFileSync("apps/miniapp/dist/wallet-icon.png");
+assert.equal(icon.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+assert.equal(icon.readUInt32BE(16), 180);
+assert.equal(icon.readUInt32BE(20), 180);

@@ -13,6 +13,7 @@ credentials for these non-login roles outside migrations:
 | `apps_service`      | Execute registry transitions and read the approved live projection only            |
 | `jpegpe_service`    | Execute own-frog public projection only                                            |
 | `jpegpe_operator`   | Create and transfer frogs through checked functions                                |
+| `wallet_service`    | Own proof challenges and identity-owned wallet link, revoke and consent functions  |
 
 `apps_owner` owns the registry schema and is `NOLOGIN`. The API must use a
 separate login inheriting only `apps_service`; it has no base-table writes or

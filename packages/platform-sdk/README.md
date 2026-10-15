@@ -33,6 +33,10 @@ iframe. Child CSP blocks network and storage access; the shell's `frame-src
 accepts only requests from the current frame and session channel. Children
 never receive Telegram launch data, API credentials or a Telegram user ID.
 Financial, wallet signature and DAO authority requests fail closed in v1.
+Wallet address and balance reads pass through the host only for published app
+permissions and current app-scoped consent. Each read calls the server, which
+rechecks consent and the verified link before serving data. Balance responses
+contain exact integer strings; signature and transaction requests remain denied.
 
 Personal-data permissions use a host-owned consent dialog and authenticated
 `/me/consents` API. The profile shows active grants and lets the person revoke

@@ -3,6 +3,7 @@
 Deno 2.9.7 and Hono compose HTTP middleware and module routers.
 Domain logic lives in [identity](../../modules/identity/README.md),
 [apps](../../modules/apps/README.md) and [JPEGPE](../../modules/jpegpe/README.md).
+The [wallet](../../modules/wallet/README.md) module handles proof challenges and chain reads.
 Dependencies are pinned in `deno.json`, `deno.lock`, and the root npm lockfile
 (the npm lockfile supplies dependency license review).
 
@@ -18,6 +19,11 @@ Supply one canonical platform `TELEGRAM_BOT_TOKEN` and separate
 only the corresponding [database roles](../../db/README.md). Apply migrations
 before starting. Membership is disabled unless `DAO_TELEGRAM_CHAT_ID` is
 configured; no Telegram profile data is persisted.
+Enable wallet endpoints with a `wallet_service` login in `WALLET_SERVICE_DATABASE_URL`
+and the exact HTTPS shell origin in `WALLET_APP_ORIGIN`. These settings must be
+provided together; the origin hostname is the only accepted proof domain.
+The API rejects loopback proof domains. The shell build uses the same origin in
+`VITE_TON_CONNECT_APP_ORIGIN` to emit `tonconnect-manifest.json`.
 The listener defaults to `127.0.0.1:8000`; `API_HOST` can override the bind address.
 Set `API_ALLOWED_ORIGINS` to comma-separated exact HTTP(S) origins for browser
 clients. An empty value disables cross-origin reads. Credentials are not enabled.
