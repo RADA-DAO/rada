@@ -1,6 +1,8 @@
 # API
 
-Deno 2.9.7 and Hono provide platform authentication and own identity reads.
+Deno 2.9.7 and Hono compose HTTP middleware and module routers.
+Domain logic lives in [identity](../../modules/identity/README.md),
+[apps](../../modules/apps/README.md) and [JPEGPE](../../modules/jpegpe/README.md).
 Dependencies are pinned in `deno.json`, `deno.lock`, and the root npm lockfile
 (the npm lockfile supplies dependency license review).
 

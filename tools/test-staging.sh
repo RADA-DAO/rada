@@ -34,5 +34,5 @@ for (const id of [101, 102, 103]) {
 assert((await fetch("http://127.0.0.1:8000/me")).status === 401);
 console.log("Container health, signed synthetic identity and rejection passed.");
 '
-compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 < db/identity.test.sql
+compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 < modules/identity/db/identity.test.sql
 compose run --rm migrate

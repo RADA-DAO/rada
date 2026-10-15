@@ -1,3 +1,4 @@
+import { resolveTelegramSubject } from "../../identity/index.ts";
 import pg from "pg";
 import type { AppManifest } from "../../../packages/platform-sdk/src/app-manifest.ts";
 
@@ -48,11 +49,7 @@ export class PostgresRegistryStore implements RegistryStore {
   ) {}
 
   private async subject(telegramId: string): Promise<string> {
-    const result = await this.auth.query<{ subject_id: string }>(
-      "SELECT identity.resolve_telegram($1::bigint) AS subject_id",
-      [telegramId],
-    );
-    return result.rows[0].subject_id;
+    return resolveTelegramSubject(this.auth, telegramId);
   }
 
   private async own<T>(

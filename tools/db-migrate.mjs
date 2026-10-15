@@ -1,32 +1,8 @@
-import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { resolve } from "node:path";
+import { discoverMigrations } from "./migrations.mjs";
 import { spawnSync } from "node:child_process";
 
-const directory =
-  process.argv[2] ??
-  fileURLToPath(new URL("../db/migrations", import.meta.url));
-const names = readdirSync(directory)
-  .filter((name) => name.endsWith(".sql"))
-  .sort();
-if (
-  !names.length ||
-  names.some((name) => !/^\d{4}_[a-z0-9_]+\.sql$/.test(name)) ||
-  new Set(names.map((name) => name.slice(0, 4))).size !== names.length
-) {
-  throw new Error(
-    "Migrations require unique four-digit versions and SQL files",
-  );
-}
-const migrations = names.map((name) => {
-  const sql = readFileSync(resolve(directory, name), "utf8");
-  return {
-    name,
-    sql,
-    checksum: createHash("sha256").update(sql).digest("hex"),
-  };
-});
+const migrations = discoverMigrations(process.argv[2]);
+const names = migrations.map(({ name }) => name);
 // One connection, transaction and lock cover validation, DDL and the ledger.
 const sql = `BEGIN;
 SELECT pg_advisory_xact_lock(726232441);

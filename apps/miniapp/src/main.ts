@@ -1,3 +1,4 @@
+import { openAppPermissions, permissionLabel } from "./permissions.ts";
 import { mountReview } from "./review.ts";
 import "../../../packages/ui/src/design-system.css";
 import "./shell.css";
@@ -28,18 +29,6 @@ import {
   type AppRelease,
 } from "../../../packages/platform-sdk/src/app-host.ts";
 
-declare global {
-  interface Window {
-    RadaAppHost?: {
-      mount(
-        release: AppRelease,
-        container: HTMLElement,
-        artifactOrigin: string,
-      ): Promise<() => void>;
-    };
-  }
-}
-
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: "launcher" | "profile" | "review" = "launcher";
 let reviewAuthorized = false;
@@ -61,18 +50,6 @@ function closeActiveApp() {
   pendingAppMount = undefined;
   activeAppDispose?.();
   activeAppDispose = undefined;
-}
-const permissionKeys = {
-  "telegram.username.read": "shell.permissions.telegramUsername",
-  "wallet.address.read": "shell.permissions.walletAddress",
-  "wallet.balances.read": "shell.permissions.walletBalances",
-  "jpegpe.collection.read": "shell.permissions.frogCollection",
-  "notifications.send": "shell.permissions.notifications",
-} as const satisfies Record<string, MessageKey>;
-function permissionLabel(capability: string): string {
-  return capability in permissionKeys
-    ? text(permissionKeys[capability as keyof typeof permissionKeys])
-    : "";
 }
 const root = document.querySelector<HTMLElement>("#app")!;
 root.className = "screen-wrap";
@@ -121,7 +98,7 @@ window.RadaAppHost = Object.freeze({
       artifactOrigin,
       locale,
       consentCopy(permission, appName) {
-        const label = permissionLabel(permission);
+        const label = permissionLabel(permission, text);
         return {
           title: text("shell.consentTitle"),
           description: t(locale, "shell.consentDescription", {
@@ -217,61 +194,18 @@ function openSettings() {
   dialog.showModal();
   platform.setBackVisible(true);
 }
-async function openAppPermissions() {
-  const title = text("shell.appPermissions");
-  const content = document.createElement("div");
-  content.append(paragraph("common.loading"));
-  const dialog = Sheet({
-    title,
-    closeLabel: text("common.close"),
-    children: [content],
-  });
-  dialog.addEventListener(
-    "close",
-    () => {
-      dialog.remove();
+function showAppPermissions() {
+  return openAppPermissions({
+    text,
+    platform,
+    onOpen: (dialog) => {
+      sheet = dialog;
+    },
+    onClose: (dialog) => {
       if (sheet === dialog) sheet = undefined;
       platform.setBackVisible(route !== "launcher");
     },
-    { once: true },
-  );
-  sheet = dialog;
-  document.body.append(dialog);
-  dialog.showModal();
-  platform.setBackVisible(true);
-  async function refresh() {
-    try {
-      const items = await platform.readAppConsents();
-      if (!dialog.open) return;
-      content.replaceChildren();
-      if (!items.length) content.append(paragraph("shell.noAppPermissions"));
-      for (const item of items) {
-        const label = permissionLabel(item.capability);
-        if (!label) continue;
-        const row = document.createElement("p");
-        row.textContent = `${item.app_id}: ${label} `;
-        row.append(
-          Button(text("shell.revokePermission"), {
-            onClick: () => {
-              void platform
-                .writeAppConsent(item.app_id, item.capability, false)
-                .then(refresh)
-                .catch(() => {
-                  content.replaceChildren(
-                    paragraph("shell.unavailableDescription"),
-                  );
-                });
-            },
-          }),
-        );
-        content.append(row);
-      }
-    } catch {
-      if (dialog.open)
-        content.replaceChildren(paragraph("shell.unavailableDescription"));
-    }
-  }
-  await refresh();
+  });
 }
 async function loadProfile() {
   const generation = ++profileGeneration;
@@ -384,7 +318,7 @@ function render() {
         paragraph("shell.privateDescription"),
         paragraph(`shell.membership.${membership}`),
         Button(text("shell.appPermissions"), {
-          onClick: () => void openAppPermissions(),
+          onClick: () => void showAppPermissions(),
         }),
       );
     if (profile === "public") {
@@ -394,7 +328,7 @@ function render() {
         name,
         paragraph(`shell.membership.${membership}`),
         Button(text("shell.appPermissions"), {
-          onClick: () => void openAppPermissions(),
+          onClick: () => void showAppPermissions(),
         }),
       );
     }

@@ -1,4 +1,6 @@
 import pg from "pg";
+import { readOwnPublicFrog, type PublicFrog } from "../../jpegpe/index.ts";
+import { resolveTelegramSubject } from "./subject.ts";
 import type { MembershipStatus } from "./membership.ts";
 
 export type Me = {
@@ -7,12 +9,7 @@ export type Me = {
     | { visibility: "private"; public: null }
     | {
         visibility: "public";
-        public: {
-          frog_id: string;
-          username: string;
-          background_color: string | null;
-          accent_color: string | null;
-        };
+        public: PublicFrog;
       };
   membership: { status: MembershipStatus };
 };
@@ -35,12 +32,9 @@ export class PostgresIdentityStore implements IdentityStore {
     private service: pg.Pool,
   ) {}
   private async subject(verifiedTelegramId: string): Promise<string> {
-    const result = await this.auth.query<{ subject_id: string }>(
-      "SELECT identity.resolve_telegram($1::bigint) AS subject_id",
-      [verifiedTelegramId],
-    );
-    return result.rows[0].subject_id;
+    return resolveTelegramSubject(this.auth, verifiedTelegramId);
   }
+
   async consents(verifiedTelegramId: string) {
     const subjectId = await this.subject(verifiedTelegramId);
     const client = await this.service.connect();
@@ -112,20 +106,13 @@ export class PostgresIdentityStore implements IdentityStore {
       if (own.rows.length !== 1 || own.rows[0].subject_id !== subjectId)
         throw new Error("Identity unavailable");
       const frog = own.rows[0].selected_frog_id
-        ? await client.query<{
-            frog_id: string;
-            username: string;
-            background_color: string | null;
-            accent_color: string | null;
-          }>("SELECT * FROM jpegpe.own_public_frog($1::uuid)", [
-            own.rows[0].selected_frog_id,
-          ])
+        ? await readOwnPublicFrog(client, own.rows[0].selected_frog_id)
         : null;
       await client.query("COMMIT");
       return {
         subject_id: subjectId,
-        profile: frog?.rows[0]
-          ? { visibility: "public", public: frog.rows[0] }
+        profile: frog
+          ? { visibility: "public", public: frog }
           : { visibility: "private", public: null },
         membership: { status: "unavailable" },
       };

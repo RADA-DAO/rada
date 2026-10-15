@@ -1,4 +1,4 @@
-import { verifyTelegramInitData } from "./auth.ts";
+import { verifyTelegramInitData } from "../../../modules/identity/index.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
 const now = 2_000_000_000;
 Deno.test(

@@ -4,6 +4,6 @@
 /modules/identity/ @4ezzy
 /packages/platform-sdk/ @4ezzy
 /apps/api/ @4ezzy
-/db/migrations/ @4ezzy
+/modules/ @4ezzy
 /infra/ @4ezzy
 /.github/ @4ezzy

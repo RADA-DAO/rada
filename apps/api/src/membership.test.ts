@@ -3,7 +3,7 @@ import {
   TelegramMembershipProvider,
   MEMBERSHIP_CACHE_TTL_MS,
   MEMBERSHIP_CACHE_MAX_SIZE,
-} from "./membership.ts";
+} from "../../../modules/identity/index.ts";
 function reply(status: string, extra = {}) {
   return Response.json({
     ok: true,

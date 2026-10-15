@@ -1,7 +1,7 @@
 import pg from "pg";
 import { createApp } from "./app.ts";
-import { PostgresIdentityStore } from "./database.ts";
-import { PostgresRegistryStore } from "./registry.ts";
+import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
+import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
 
 Deno.test(
