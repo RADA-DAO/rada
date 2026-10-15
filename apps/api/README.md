@@ -62,9 +62,13 @@ personal-data access still requires live app-scoped user consent at the service
 that handles the data. The host must verify artifact bytes against SHA-256.
 
 The subject is the authenticated person's stable UUID. Request parameters cannot
-select a different identity. Profiles remain private until JPEGPE supplies verified
-current ownership and a live public projection. A selected frog UUID alone does
-not enable publication. Telegram fields are never returned.
+select a different identity. If that person has selected a currently owned frog,
+`profile` instead contains `{"visibility":"public","public":{"frog_id":"…",
+"username":"…","background_color":"#123456","accent_color":"#ABCDEF"}}`.
+Colours may be null. Ownership is rechecked on each read, so a transferred frog
+immediately makes the former owner's profile private. Telegram fields, proofs and
+other private identifiers are never returned. Selection is currently available
+through the identity-owned database function, not a client API route.
 
 Membership is checked in the configured closed DAO Telegram chat, using the
 same canonical bot token as authentication. `membership.status` is `member`,

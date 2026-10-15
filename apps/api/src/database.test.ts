@@ -42,10 +42,8 @@ Deno.test(
       auth = new pg.Pool({ connectionString: url.toString(), max: 1 });
       url.username = "api_fixture_service";
       service = new pg.Pool({ connectionString: url.toString(), max: 1 });
-      const app = createApp(
-        FIXTURE_TOKEN,
-        new PostgresIdentityStore(auth, service),
-      );
+      const store = new PostgresIdentityStore(auth, service);
+      const app = createApp(FIXTURE_TOKEN, store);
       async function me(id: number, query = "") {
         const response = await app.request("/me" + query, {
           headers: {
@@ -62,9 +60,16 @@ Deno.test(
         (await me(101, "?subject_id=" + second.subject_id)).subject_id ===
           first.subject_id,
       );
+      const foreignFrogId = crypto.randomUUID();
+      const foreignName = `Foreign_${foreignFrogId.replaceAll("-", "").slice(0, 12)}`;
+      await admin.query("SELECT jpegpe.create_frog($1::uuid, $2, $3::uuid)", [
+        foreignFrogId,
+        foreignName,
+        second.subject_id,
+      ]);
       await admin.query(
-        "UPDATE identity.subjects SET selected_frog_id = gen_random_uuid() WHERE subject_id = $1",
-        [first.subject_id],
+        "UPDATE identity.subjects SET selected_frog_id = $1::uuid WHERE subject_id = $2::uuid",
+        [foreignFrogId, first.subject_id],
       );
       const own = await me(101);
       assert(
@@ -74,6 +79,27 @@ Deno.test(
         own.membership.status === "unavailable" &&
           Object.keys(own).length === 3,
       );
+      const frogId = crypto.randomUUID();
+      const frogName = `Fixture_${frogId.replaceAll("-", "").slice(0, 12)}`;
+      await admin.query(
+        "SELECT jpegpe.create_frog($1::uuid, $2, $3::uuid, $4, $5)",
+        [frogId, frogName, first.subject_id, "#123456", "#ABCDEF"],
+      );
+      assert(await store.selectFrog("101", frogId));
+      const publicProfile = await me(101);
+      assert(publicProfile.profile.visibility === "public");
+      assert(publicProfile.profile.public.frog_id === frogId);
+      assert(publicProfile.profile.public.username === frogName);
+      assert(publicProfile.profile.public.background_color === "#123456");
+      assert(Object.keys(publicProfile.profile.public).length === 4);
+      assert(!(await store.selectFrog("102", frogId)));
+      await admin.query(
+        "SELECT jpegpe.transfer_frog($1::uuid, $2::uuid, $3::uuid)",
+        [frogId, first.subject_id, second.subject_id],
+      );
+      assert((await me(101)).profile.visibility === "private");
+      assert(await store.selectFrog("102", frogId));
+      assert((await me(102)).profile.visibility === "public");
       const consentAppId = `fixture.api.${crypto.randomUUID()}`;
       const authHeader = async (id: number) => ({
         authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,

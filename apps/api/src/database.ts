@@ -3,7 +3,17 @@ import type { MembershipStatus } from "./membership.ts";
 
 export type Me = {
   subject_id: string;
-  profile: { visibility: "private"; public: null };
+  profile:
+    | { visibility: "private"; public: null }
+    | {
+        visibility: "public";
+        public: {
+          frog_id: string;
+          username: string;
+          background_color: string | null;
+          accent_color: string | null;
+        };
+      };
   membership: { status: MembershipStatus };
 };
 export interface IdentityStore {
@@ -95,18 +105,54 @@ export class PostgresIdentityStore implements IdentityStore {
       await client.query("SELECT set_config('rada.subject_id', $1, true)", [
         subjectId,
       ]);
-      const own = await client.query<{ subject_id: string }>(
-        "SELECT subject_id FROM identity.subjects",
-      );
+      const own = await client.query<{
+        subject_id: string;
+        selected_frog_id: string | null;
+      }>("SELECT subject_id, selected_frog_id FROM identity.subjects");
       if (own.rows.length !== 1 || own.rows[0].subject_id !== subjectId)
         throw new Error("Identity unavailable");
+      const frog = own.rows[0].selected_frog_id
+        ? await client.query<{
+            frog_id: string;
+            username: string;
+            background_color: string | null;
+            accent_color: string | null;
+          }>("SELECT * FROM jpegpe.own_public_frog($1::uuid)", [
+            own.rows[0].selected_frog_id,
+          ])
+        : null;
       await client.query("COMMIT");
-      // JPEGPE ownership and live public projection are not available yet.
       return {
         subject_id: subjectId,
-        profile: { visibility: "private", public: null },
+        profile: frog?.rows[0]
+          ? { visibility: "public", public: frog.rows[0] }
+          : { visibility: "private", public: null },
         membership: { status: "unavailable" },
       };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async selectFrog(
+    verifiedTelegramId: string,
+    frogId: string | null,
+  ): Promise<boolean> {
+    const subjectId = await this.subject(verifiedTelegramId);
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        subjectId,
+      ]);
+      const result = await client.query<{ selected: boolean }>(
+        "SELECT identity.select_frog($1::uuid) AS selected",
+        [frogId],
+      );
+      await client.query("COMMIT");
+      return result.rows[0].selected;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
