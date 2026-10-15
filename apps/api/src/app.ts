@@ -2,11 +2,17 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { verifyTelegramInitData } from "./auth.ts";
 import type { IdentityStore } from "./database.ts";
+import {
+  unavailableMembership,
+  type MembershipProvider,
+  type MembershipStatus,
+} from "./membership.ts";
 
 export function createApp(
   token: string,
   store: IdentityStore,
   allowedOrigins: string[] = [],
+  membership: MembershipProvider = unavailableMembership,
   syntheticOnly = false,
 ) {
   if (!token) throw new Error("Canonical bot token required");
@@ -36,7 +42,14 @@ export function createApp(
     );
     if (!telegramId || (syntheticOnly && !["101", "102"].includes(telegramId)))
       return c.json({ error: "unauthorized" }, 401);
-    return c.json(await store.me(telegramId));
+    const own = await store.me(telegramId);
+    let status: MembershipStatus = "unavailable";
+    try {
+      if (!syntheticOnly) status = await membership.status(telegramId);
+    } catch {
+      /* Preserve own identity during provider failure. */
+    }
+    return c.json({ ...own, membership: { status } });
   });
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   // Never log credentials, raw initData, database errors or Telegram profile data.

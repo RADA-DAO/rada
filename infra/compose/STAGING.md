@@ -76,6 +76,14 @@ Real test-bot sessions are rejected before database access, so native manual
 checks are guest-only pending a separate privacy decision. Restrict staging bot
 access and ensure these reserved fixture identifiers are never assigned to testers.
 
+Membership is always `unavailable` in this synthetic mode, even if a private chat
+ID is configured. No Telegram membership request leaves the isolated API network.
+In a future non-synthetic runtime, live checks require `DAO_TELEGRAM_CHAT_ID` in
+the server environment, the same canonical bot as authentication, bot administrator
+rights in that closed chat and outbound HTTPS to Telegram. Never put the chat ID
+or bot token in frontend configuration. Changing staging privacy or network policy
+requires a separate decision before enabling real-user checks.
+
 ## Rollback
 
 Set `STAGING_DEPLOY_ENABLED=false` first. Stop only this project's API and tunnel,
