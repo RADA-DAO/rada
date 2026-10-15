@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { verifyTelegramInitData } from "./auth.ts";
 import type { IdentityStore } from "./database.ts";
+import type { RegistryStore } from "./registry.ts";
+import { registerRegistryRoutes } from "./registry-routes.ts";
 import {
   unavailableMembership,
   type MembershipProvider,
@@ -14,6 +16,8 @@ export function createApp(
   allowedOrigins: string[] = [],
   membership: MembershipProvider = unavailableMembership,
   syntheticOnly = false,
+  registry?: RegistryStore,
+  artifactOrigin?: string,
 ) {
   if (!token) throw new Error("Canonical bot token required");
   const app = new Hono();
@@ -26,7 +30,7 @@ export function createApp(
     cors({
       origin: (origin) =>
         allowedOrigins.includes(origin) ? origin : undefined,
-      allowMethods: ["GET", "PUT"],
+      allowMethods: ["GET", "PUT", "POST"],
       allowHeaders: ["Authorization", "Content-Type"],
       credentials: false,
     }),
@@ -52,6 +56,8 @@ export function createApp(
     );
     return id && (!syntheticOnly || ["101", "102"].includes(id)) ? id : null;
   }
+  if (registry && artifactOrigin)
+    registerRegistryRoutes(app, registry, artifactOrigin, authenticated);
   app.get("/me/consents", async (c) => {
     const id = await authenticated(c, false);
     if (!id) return c.json({ error: "unauthorized" }, 401);

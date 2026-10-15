@@ -10,6 +10,19 @@ credentials for these non-login roles outside migrations:
 | `identity_auth`     | Execute `identity.resolve_telegram(bigint)` after verified Telegram authentication |
 | `identity_service`  | Read own identity, Telegram link, roles and consents; insert/update own consents   |
 | `identity_operator` | Read, insert and delete explicit role grants                                       |
+| `apps_service`      | Execute registry transitions and read the approved live projection only            |
+
+`apps_owner` owns the registry schema and is `NOLOGIN`. The API must use a
+separate login inheriting only `apps_service`; it has no base-table writes or
+ability to mint `identity.role_grants`. A trusted identity operator grants
+`apps.reviewer` to subject UUIDs. The registry reads that grant through a narrow
+identity-owned function on every review, publish, rollback and withdrawal.
+Registry versions retain immutable manifest, hash and artifact metadata. Review
+events are append-only; app state changes lock the app row in one transaction.
+The public projection contains only the approved live version and omits private
+author subject UUIDs. Manifest requests and user consent do not create platform
+authority. Financial and DAO authority capabilities are excluded from release
+grants until their services implement separate authorization.
 
 `resolve_telegram` returns the same UUID for repeated verified Telegram IDs;
 IDs are unique positive `bigint`. Pass a decimal string through drivers to avoid
