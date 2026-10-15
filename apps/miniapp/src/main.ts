@@ -41,8 +41,10 @@ declare global {
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: "launcher" | "profile" = "launcher";
-let profile: "guest" | "loading" | "private" | "expired" | "unavailable" =
+let profile:
+  "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
+let profileFrogName: string | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let sheet: HTMLDialogElement | undefined;
 let activeAppDispose: (() => void) | undefined;
@@ -267,11 +269,13 @@ async function openAppPermissions() {
 }
 async function loadProfile() {
   profile = "loading";
+  profileFrogName = undefined;
   membership = "unavailable";
   render();
   try {
     const ownProfile = await platform.readOwnProfile();
-    profile = ownProfile ? "private" : "guest";
+    profile = ownProfile?.profile.visibility ?? "guest";
+    profileFrogName = ownProfile?.profile.public?.username.toUpperCase() ?? "";
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
     membership = "unavailable";
@@ -329,6 +333,17 @@ function render() {
           onClick: () => void openAppPermissions(),
         }),
       );
+    if (profile === "public") {
+      const name = document.createElement("strong");
+      name.textContent = profileFrogName ?? "";
+      content.append(
+        name,
+        paragraph(`shell.membership.${membership}`),
+        Button(text("shell.appPermissions"), {
+          onClick: () => void openAppPermissions(),
+        }),
+      );
+    }
     if (profile === "guest")
       content.append(paragraph("shell.guestDescription"));
     if (profile === "expired" || profile === "unavailable")

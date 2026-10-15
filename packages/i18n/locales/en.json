@@ -31,6 +31,7 @@
     "guestDescription": "Open RADA from Telegram to access your private profile.",
     "loading": "Opening your profile…",
     "private": "Private profile",
+    "public": "Public profile",
     "privateDescription": "Your profile is visible only to you. Public profiles will be available after verified frog ownership is connected.",
     "membership": {
       "member": "DAO member",

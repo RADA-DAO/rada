@@ -526,7 +526,7 @@ test("keyboard overlay and layout resize preserve field and dismiss without subm
   await expect(field).not.toBeFocused();
   await expect(field).toHaveValue("123");
 });
-test("real API and PostgreSQL render only the own private profile", async ({
+test("real API and PostgreSQL follow selected frog ownership", async ({
   page,
 }) => {
   test.skip(
@@ -550,6 +550,48 @@ test("real API and PostgreSQL render only the own private profile", async ({
       "SELECT subject_id FROM identity.telegram_accounts WHERE telegram_user_id = 101",
     );
     expect(result.rows[0].subject_id).toBe(me.subject_id);
+    const frogId = crypto.randomUUID();
+    const username = `Fixture_${frogId.replaceAll("-", "").slice(0, 12)}`;
+    await db.query(
+      "SELECT jpegpe.create_frog($1::uuid, $2, $3::uuid, $4, $5)",
+      [frogId, username, me.subject_id, "#123456", "#ABCDEF"],
+    );
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        me.subject_id,
+      ]);
+      expect(
+        (
+          await client.query(
+            "SELECT identity.select_frog($1::uuid) AS selected",
+            [frogId],
+          )
+        ).rows[0].selected,
+      ).toBe(true);
+      await client.query("COMMIT");
+    } finally {
+      client.release();
+    }
+    await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await expect(
+      page.getByText("Public profile", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(username.toUpperCase(), { exact: true }),
+    ).toBeVisible();
+    const recipient = (
+      await db.query("SELECT identity.resolve_telegram(102) AS subject_id")
+    ).rows[0].subject_id;
+    await db.query(
+      "SELECT jpegpe.transfer_frog($1::uuid, $2::uuid, $3::uuid)",
+      [frogId, me.subject_id, recipient],
+    );
+    await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await expect(
+      page.getByText("Private profile", { exact: true }),
+    ).toBeVisible();
   } finally {
     await db.end();
   }
@@ -561,6 +603,9 @@ test("profile projects each validated membership status and refreshes on click",
 }) => {
   await host(page, signed());
   let status: unknown = "member";
+  let profilePayload: unknown = { visibility: "private", public: null };
+  let responseExtras: Record<string, unknown> = {};
+  let membershipExtras: Record<string, unknown> = {};
   let requests = 0;
   await page.route("**/me", (route) => {
     requests++;
@@ -569,8 +614,9 @@ test("profile projects each validated membership status and refreshes on click",
       contentType: "application/json",
       body: JSON.stringify({
         subject_id: "fixture-subject",
-        profile: { visibility: "private", public: null },
-        membership: { status },
+        profile: profilePayload,
+        membership: { status, ...membershipExtras },
+        ...responseExtras,
       }),
     });
   });
@@ -609,6 +655,50 @@ test("profile projects each validated membership status and refreshes on click",
   await page
     .getByRole("button", { name: ukLocale.shell.apps, exact: true })
     .click();
+  profilePayload = {
+    visibility: "public",
+    public: {
+      frog_id: "00000000-0000-4000-8000-000000000001",
+      username: "Invalid name",
+      background_color: "#123456",
+      accent_color: null,
+    },
+  };
+  await page
+    .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+    .click();
+  await expect(
+    page.getByText(ukLocale.shell.unavailable, { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+    .click();
+  profilePayload = { visibility: "private", public: null };
+  for (const scope of ["profile", "response", "membership"] as const) {
+    if (scope === "profile")
+      profilePayload = {
+        visibility: "private",
+        public: null,
+        telegram_user_id: "private-fixture",
+      };
+    if (scope === "response")
+      responseExtras = { telegram_user_id: "private-fixture" };
+    if (scope === "membership")
+      membershipExtras = { telegram_user_id: "private-fixture" };
+    await page
+      .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+      .click();
+    await expect(
+      page.getByText(ukLocale.shell.unavailable, { exact: true }),
+    ).toBeVisible();
+    expect(await page.content()).not.toContain("private-fixture");
+    await page
+      .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+      .click();
+    profilePayload = { visibility: "private", public: null };
+    responseExtras = {};
+    membershipExtras = {};
+  }
   for (const malformed of ["unexpected", ["member"]]) {
     status = malformed;
     await page

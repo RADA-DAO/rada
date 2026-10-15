@@ -11,6 +11,8 @@ credentials for these non-login roles outside migrations:
 | `identity_service`  | Read own identity, Telegram link, roles and consents; insert/update own consents   |
 | `identity_operator` | Read, insert and delete explicit role grants                                       |
 | `apps_service`      | Execute registry transitions and read the approved live projection only            |
+| `jpegpe_service`    | Execute own-frog public projection only                                            |
+| `jpegpe_operator`   | Create and transfer frogs through checked functions                                |
 
 `apps_owner` owns the registry schema and is `NOLOGIN`. The API must use a
 separate login inheriting only `apps_service`; it has no base-table writes or
@@ -45,11 +47,14 @@ no rows. The context is an isolation aid, not an authentication mechanism.
   Revocation sets `revoked_at`; re-consent updates `granted_at` and clears it only
   after a new platform-controlled confirmation. Consent never grants DAO authority.
 
-`selected_frog_id` reserves a UUID reference without a foreign key until JPEGPE
-owns the frog schema. All runtime roles are denied writes to this column. A future
-JPEGPE integration must verify current ownership, invalidate selection on transfer,
-and provide live public name/theme data before enabling selection or public profile
-queries. Until then profiles stay private; there is no public identity listing.
+`selected_frog_id` has a frog foreign key and is written only by
+`identity.select_frog(uuid)`, which locks
+and verifies current JPEGPE ownership. A transfer atomically clears the former
+owner's selection. `jpegpe.own_public_frog(uuid)` rechecks current ownership on
+each read and returns only frog UUID, username and stored authored colours.
+JPEGPE usernames are unique ignoring ASCII case and may change; frog UUIDs are
+the stable keys. Ownership events are append-only. There is no public identity
+listing, and neither service role has direct access to the other module's tables.
 Telegram data must not appear in public profile responses. Other private data
 requires an active app-scoped consent checked by the platform on every read.
 
