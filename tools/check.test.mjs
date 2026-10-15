@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { pathAllowed, conventional, uiViolations } from "./check.mjs";
 import "../packages/ui/scripts/test-theme-compiler.ts";
 import "../packages/ui/scripts/test-ui-behavior.ts";
+import "../packages/i18n/scripts/test-keys.ts";
 
 test("i18n keys, interpolation, locale parity, and plural categories", () => {
   execFileSync(process.execPath, ["packages/i18n/scripts/test-i18n.mjs"]);

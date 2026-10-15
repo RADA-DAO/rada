@@ -2,7 +2,9 @@ import en from "../locales/en.json" with { type: "json" };
 import uk from "../locales/uk.json" with { type: "json" };
 
 export type Locale = "en" | "uk";
-type PluralForms = Record<string, string>;
+type PluralForms = { other: string } & Partial<
+  Record<Intl.LDMLPluralRule, string>
+>;
 type MessagePath<T, Prefix extends string = ""> = {
   [Key in keyof T & string]: T[Key] extends string
     ? `${Prefix}${Key}`
@@ -21,7 +23,7 @@ function resolve(locale: Locale, key: MessageKey, values: Values): string {
   const path = key.split(".");
   let message: unknown = dictionaries[locale];
   for (const part of path) message = (message as Record<string, unknown>)[part];
-  if (message && typeof message === "object") {
+  if (message && typeof message === "object" && "other" in message) {
     const count = Number(values.count ?? 0);
     const category = new Intl.PluralRules(locale).select(count);
     const forms = message as Record<string, string>;
