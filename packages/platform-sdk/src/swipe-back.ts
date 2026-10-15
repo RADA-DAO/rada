@@ -44,8 +44,10 @@ export function captureSwipeBackPage(
         if (!scroll.length) return;
         const nodes = [element, ...element.querySelectorAll<HTMLElement>("*")];
         for (const { index, top, left } of scroll) {
-          nodes[index].scrollTop = top;
-          nodes[index].scrollLeft = left;
+          const node = nodes[index];
+          if (!node) continue;
+          node.scrollTop = top;
+          node.scrollLeft = left;
         }
       },
     };
@@ -87,7 +89,7 @@ export function installSwipeBack(
     onActiveChange?(active: boolean): void;
   },
 ) {
-  const doc = screen.ownerDocument ?? document;
+  const doc = screen.ownerDocument;
   // Transform the viewport, not its scroller. A transform on .screen changes
   // the containing block of fixed docks and jumps them by screen.scrollTop.
   const motion = screen.parentElement?.classList.contains("screen-wrap")
@@ -113,7 +115,7 @@ export function installSwipeBack(
   const active = () => Boolean(gesture || settling);
   const release = () => {
     const id = gesture?.id;
-    if (id !== undefined && screen.hasPointerCapture?.(id))
+    if (id !== undefined && screen.hasPointerCapture(id))
       screen.releasePointerCapture(id);
   };
   function reset() {
@@ -121,7 +123,7 @@ export function installSwipeBack(
     const id = gesture?.id;
     gesture = null;
     settling = false;
-    if (id !== undefined && screen.hasPointerCapture?.(id))
+    if (id !== undefined && screen.hasPointerCapture(id))
       screen.releasePointerCapture(id);
     clearTimeout(timer);
     cancelAnimationFrame(frame);
@@ -137,13 +139,16 @@ export function installSwipeBack(
     if (wasActive) options.onActiveChange?.(false);
   }
   function paint(dx: number, width: number) {
-    motion.style.setProperty("--back-x", `${dx}px`);
+    motion.style.setProperty("--back-x", `${String(dx)}px`);
     // Clip the preview to the revealed strip: translucent frog surfaces never overlap.
     preview?.style.setProperty(
       "clip-path",
-      `inset(0 ${Math.max(0, width - dx)}px 0 0)`,
+      `inset(0 ${String(Math.max(0, width - dx))}px 0 0)`,
     );
-    preview?.style.setProperty("--back-preview-x", `${(dx - width) * 0.22}px`);
+    preview?.style.setProperty(
+      "--back-preview-x",
+      `${String((dx - width) * 0.22)}px`,
+    );
   }
   function settle(commit: boolean, velocity = 0) {
     const g = gesture;
@@ -162,8 +167,8 @@ export function installSwipeBack(
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
         .matches,
     });
-    motion.style.setProperty("--back-duration", `${duration}ms`);
-    preview?.style.setProperty("--back-duration", `${duration}ms`);
+    motion.style.setProperty("--back-duration", `${String(duration)}ms`);
+    preview?.style.setProperty("--back-duration", `${String(duration)}ms`);
     motion.classList.remove("rada-back-dragging");
     motion.classList.add("rada-back-settling");
     preview?.classList.add("rada-back-settling");
@@ -185,7 +190,7 @@ export function installSwipeBack(
     timer = setTimeout(finish, duration + 100);
   }
   function down(event: PointerEvent) {
-    if (event.isPrimary === false) {
+    if (!event.isPrimary) {
       settle(false);
       return;
     }

@@ -54,7 +54,8 @@ function closeActiveApp() {
   activeAppDispose?.();
   activeAppDispose = undefined;
 }
-const root = document.querySelector<HTMLElement>("#app")!;
+const root = document.querySelector<HTMLElement>("#app");
+if (!root) throw new Error("Missing application root");
 root.className = "screen-wrap";
 const screen = document.createElement("main");
 screen.className = "screen";
@@ -79,7 +80,9 @@ const platform = initializePlatform({
   dismissLabel: () => text("shell.dismissKeyboard"),
   onBack: back,
   themeColor: DEFAULT_THEME_BACKGROUND,
-  apiOrigin: import.meta.env.VITE_API_ORIGIN,
+  ...(typeof (import.meta.env.VITE_API_ORIGIN as unknown) === "string"
+    ? { apiOrigin: import.meta.env.VITE_API_ORIGIN as string }
+    : {}),
 });
 window.RadaAppHost = Object.freeze({
   async mount(
@@ -150,7 +153,9 @@ const swipe = installSwipeBack(screen, {
     pageBackNavigation(screen).canSwipe(),
   back,
   preview: () => pageBackNavigation(screen).preview(),
-  onActiveChange: (active) => setPageBackActive(screen, active),
+  onActiveChange: (active) => {
+    setPageBackActive(screen, active);
+  },
 });
 function paragraph(key: MessageKey) {
   const node = document.createElement("p");
@@ -188,6 +193,7 @@ function showAppPermissions() {
     },
   });
 }
+const onProfileRoute = () => route === "profile";
 async function loadProfile() {
   const generation = ++profileGeneration;
   reviewAuthorized = false;
@@ -198,7 +204,7 @@ async function loadProfile() {
   render();
   try {
     const ownProfile = await platform.readOwnProfile();
-    if (generation !== profileGeneration || route !== "profile") return;
+    if (generation !== profileGeneration || !onProfileRoute()) return;
     profile = ownProfile?.profile.visibility ?? "guest";
     selectedFrog = ownProfile?.profile.public ?? null;
     applyTheme(
@@ -210,21 +216,21 @@ async function loadProfile() {
     );
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
-    if (generation !== profileGeneration || route !== "profile") return;
+    if (generation !== profileGeneration || !onProfileRoute()) return;
     membership = "unavailable";
     profile =
       error instanceof Error && error.message === "expired"
         ? "expired"
         : "unavailable";
   }
-  if (generation !== profileGeneration || route !== "profile") return;
+  if (generation !== profileGeneration || !onProfileRoute()) return;
   if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
     try {
       await platform.readReviewQueue();
-      if (generation !== profileGeneration || route !== "profile") return;
+      if (generation !== profileGeneration || !onProfileRoute()) return;
       reviewAuthorized = true;
     } catch (error) {
-      if (generation !== profileGeneration || route !== "profile") return;
+      if (generation !== profileGeneration || !onProfileRoute()) return;
       reviewProbeFailed = !(
         error instanceof Error &&
         ["forbidden", "expired"].includes(error.message)
@@ -243,14 +249,15 @@ function render() {
   document.title = text("shell.brand");
   configurePageBack(screen, {
     key: route,
-    parent: route !== "launcher" ? "launcher" : undefined,
-    back:
-      route !== "launcher"
-        ? () => {
+    ...(route !== "launcher"
+      ? {
+          parent: "launcher",
+          back: () => {
             route = "launcher";
             render();
-          }
-        : undefined,
+          },
+        }
+      : {}),
     canSwipe: () => !sheet?.open,
   });
   const header = document.createElement("header");

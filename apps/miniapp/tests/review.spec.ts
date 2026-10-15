@@ -79,9 +79,12 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
   test.skip(!process.env.E2E_DATABASE_URL, "Requires disposable PostgreSQL");
   const db = new pg.Pool({ connectionString: process.env.E2E_DATABASE_URL });
   const reviewer = (
-    await db.query("SELECT identity.resolve_telegram(102) AS id")
-  ).rows[0].id;
-  const appId = `fixture.review.${info.project.name}.${Date.now()}`;
+    await db.query<{ id: string }>(
+      "SELECT identity.resolve_telegram(102) AS id",
+    )
+  ).rows[0]?.id;
+  if (!reviewer) throw new Error("Reviewer fixture missing");
+  const appId = `fixture.review.${info.project.name}.${String(Date.now())}`;
   const api = "http://127.0.0.1:8000";
   const reviewerHeaders = { Authorization: `tma ${signed()}` };
   const authorHeaders = { Authorization: `tma ${signed(101)}` };
@@ -95,7 +98,7 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
       data: { manifest, sha256 },
     });
     expect(first.status()).toBe(201);
-    const submitted = await first.json();
+    const submitted = (await first.json()) as { versionId: string };
     const denied = await request.get(`${api}/apps/review-queue`, {
       headers: authorHeaders,
     });
@@ -152,7 +155,8 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
     ).toBe(true);
     const actionsClearFooter = () =>
       row.locator(".review-actions").evaluate((actions) => {
-        const footer = document.querySelector(".screen > nav")!;
+        const footer = document.querySelector(".screen > nav");
+        if (!footer) throw new Error("Footer missing");
         return (
           footer.getBoundingClientRect().top >=
           actions.getBoundingClientRect().bottom
@@ -170,7 +174,7 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
       data: { manifest, sha256 },
     });
     expect(second.status()).toBe(201);
-    const next = await second.json();
+    const next = (await second.json()) as { versionId: string };
     await page.getByRole("button", { name: "Profile", exact: true }).click();
     await page.getByRole("button", { name: "App review", exact: true }).click();
     await row

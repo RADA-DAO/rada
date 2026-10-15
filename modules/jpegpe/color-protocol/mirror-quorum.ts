@@ -4,7 +4,6 @@ import {
   fetchBeacon,
   roundAt,
   roundTime,
-  type ChainInfo,
   type RandomnessBeacon,
 } from "drand-client";
 import { QUICKNET_INFO } from "./chain-info.ts";
@@ -86,10 +85,9 @@ async function withRelayTimeout<T>(operation: Promise<T>): Promise<T> {
     return await Promise.race([
       operation,
       new Promise<T>((_resolve, reject) => {
-        timer = setTimeout(
-          () => reject(new Error("quicknet_relay_timeout")),
-          QUICKNET_RELAY_TIMEOUT_MS,
-        );
+        timer = setTimeout(() => {
+          reject(new Error("quicknet_relay_timeout"));
+        }, QUICKNET_RELAY_TIMEOUT_MS);
       }),
     ]);
   } finally {
@@ -121,11 +119,9 @@ export async function fetchVerifiedQuicknetBeacon(
   const beacons = settled.flatMap((result) =>
     result.status === "fulfilled" ? [result.value] : [],
   );
-  for (let first = 0; first < beacons.length; first += 1) {
-    const matches = beacons.filter((beacon) =>
-      sameBeacon(beacons[first], beacon),
-    );
-    if (matches.length >= 2) return beacons[first];
+  for (const first of beacons) {
+    const matches = beacons.filter((beacon) => sameBeacon(first, beacon));
+    if (matches.length >= 2) return first;
   }
   throw new Error(
     beacons.length ? "quicknet_relay_mismatch" : "quicknet_unavailable",
@@ -133,11 +129,11 @@ export async function fetchVerifiedQuicknetBeacon(
 }
 
 export function quicknetRoundAt(timestampMs: number): number {
-  return roundAt(timestampMs, QUICKNET_INFO as ChainInfo);
+  return roundAt(timestampMs, QUICKNET_INFO);
 }
 
 export function quicknetRoundTime(round: number): number {
-  return roundTime(QUICKNET_INFO as ChainInfo, round);
+  return roundTime(QUICKNET_INFO, round);
 }
 
 export async function buildVerifiedColorProof(input: {

@@ -4,6 +4,12 @@
     "pg": "npm:pg@8.23.1",
     "@ton/ton": "npm:@ton/ton@16.3.0"
   },
-  "compilerOptions": { "strict": true, "types": ["npm:@types/pg@8.23.1"] },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "types": ["npm:@types/pg@8.23.1"]
+  },
   "lock": "deno.lock"
 }

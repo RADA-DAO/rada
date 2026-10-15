@@ -223,9 +223,11 @@ function hexBytes(
   name: string,
 ): Uint8Array {
   const normalized = value.toLowerCase();
-  if (!new RegExp(`^[0-9a-f]{${expectedBytes * 2}}$`).test(normalized)) {
+  if (
+    !new RegExp(`^[0-9a-f]{${String(expectedBytes * 2)}}$`).test(normalized)
+  ) {
     throw new Error(
-      `${name} must contain exactly ${expectedBytes} bytes as lowercase/uppercase HEX`,
+      `${name} must contain exactly ${String(expectedBytes)} bytes as lowercase/uppercase HEX`,
     );
   }
   const bytes = new Uint8Array(expectedBytes);

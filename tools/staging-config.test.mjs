@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("Caddy entrypoint accepts only a plain DNS hostname before executing", () => {
+await test("Caddy entrypoint accepts only a plain DNS hostname before executing", () => {
   /** @param {string} hostname */
   const validate = (hostname) =>
     spawnSync(
@@ -47,7 +47,7 @@ test("Caddy entrypoint accepts only a plain DNS hostname before executing", () =
   }
 });
 
-test("migration seeds only explicit synthetic mode and rejects conflicts before writes", () => {
+await test("migration seeds only explicit synthetic mode and rejects conflicts before writes", () => {
   const bin = mkdtempSync(join(tmpdir(), "rada-migrate-fixture-"));
   try {
     writeFileSync(join(bin, "deno"), '#!/bin/sh\nprintf "migration\\n"\n', {
@@ -62,7 +62,7 @@ test("migration seeds only explicit synthetic mode and rejects conflicts before 
         encoding: "utf8",
         env: {
           ...process.env,
-          PATH: `${bin}:${process.env.PATH}`,
+          PATH: `${bin}:${process.env.PATH ?? ""}`,
           STAGING_AUTH_MODE: mode,
           STAGING_SYNTHETIC_ONLY: synthetic,
         },
@@ -80,6 +80,7 @@ test("migration seeds only explicit synthetic mode and rejects conflicts before 
       ["synthetic", "false"],
       ["unknown", "false"],
     ]) {
+      assert.ok(mode !== undefined && synthetic !== undefined);
       const result = migrate(mode, synthetic);
       assert.equal(result.status, 2);
       assert.equal(result.stdout, "");

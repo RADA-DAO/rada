@@ -11,7 +11,7 @@ const valid = {
   permissions: ["identity.self.read", "wallet.address.read"],
   minPlatformVersion: "1.0.0",
 };
-test("manifest rejects unknown, coercible and future declarations", () => {
+await test("manifest rejects unknown, coercible and future declarations", () => {
   assert.deepEqual(parseAppManifest(valid).permissions, valid.permissions);
   for (const change of [
     { trustLevel: ["official"] },
@@ -24,7 +24,7 @@ test("manifest rejects unknown, coercible and future declarations", () => {
   ])
     assert.throws(() => parseAppManifest({ ...valid, ...change }));
 });
-test("artifact bytes require exact SHA-256", async () => {
+await test("artifact bytes require exact SHA-256", async () => {
   const bytes = new TextEncoder().encode("<h1>safe</h1>");
   const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
     .map((n) => n.toString(16).padStart(2, "0"))
@@ -42,7 +42,7 @@ test("artifact bytes require exact SHA-256", async () => {
     /artifact_too_large/,
   );
 });
-test("host rejects forged release grants before artifact fetch", async () => {
+await test("host rejects forged release grants before artifact fetch", async () => {
   const base = {
     appId: "example",
     manifest: valid,
@@ -66,7 +66,7 @@ test("host rejects forged release grants before artifact fetch", async () => {
     );
 });
 
-test("review queue validates immutable releases and strips private metadata", async () => {
+await test("review queue validates immutable releases and strips private metadata", async () => {
   const { parseReviewQueue } = await import("./review-registry.ts");
   const row = {
     appId: "example.app",
@@ -79,6 +79,7 @@ test("review queue validates immutable releases and strips private metadata", as
     createdAt: "fixture",
   };
   const projected = parseReviewQueue({ versions: [row] })[0];
+  assert.ok(projected);
   assert.equal(projected.artifactSha256, row.sha256);
   assert.equal("authorId" in projected, false);
   assert.equal("createdAt" in projected, false);

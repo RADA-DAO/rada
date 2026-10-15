@@ -42,7 +42,7 @@ export class PostgresIdentityStore implements IdentityStore {
     private auth: pg.Pool,
     private service: pg.Pool,
   ) {}
-  private async subject(verifiedTelegramId: string): Promise<string> {
+  private subject(verifiedTelegramId: string): Promise<string> {
     return resolveTelegramSubject(this.auth, verifiedTelegramId);
   }
 
@@ -114,10 +114,11 @@ export class PostgresIdentityStore implements IdentityStore {
         subject_id: string;
         selected_frog_id: string | null;
       }>("SELECT subject_id, selected_frog_id FROM identity.subjects");
-      if (own.rows.length !== 1 || own.rows[0].subject_id !== subjectId)
+      const ownRow = own.rows[0];
+      if (own.rows.length !== 1 || !ownRow || ownRow.subject_id !== subjectId)
         throw new Error("Identity unavailable");
-      const frog = own.rows[0].selected_frog_id
-        ? await readOwnPublicFrog(client, own.rows[0].selected_frog_id)
+      const frog = ownRow.selected_frog_id
+        ? await readOwnPublicFrog(client, ownRow.selected_frog_id)
         : null;
       await client.query("COMMIT");
       return {
@@ -168,6 +169,7 @@ export class PostgresIdentityStore implements IdentityStore {
         [frogId],
       );
       await client.query("COMMIT");
+      if (!result.rows[0]) throw new Error("Identity unavailable");
       return result.rows[0].selected;
     } catch (error) {
       await client.query("ROLLBACK");

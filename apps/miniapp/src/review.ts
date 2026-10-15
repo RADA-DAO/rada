@@ -82,7 +82,7 @@ export function mountReview(
         const heading = document.createElement("h2");
         heading.textContent = version.manifest.name;
         const meta = document.createElement("p");
-        meta.textContent = `${version.appId} · ${version.versionNo} · ${version.manifest.author}`;
+        meta.textContent = `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`;
         const requested = document.createElement("ul");
         for (const permission of version.manifest.permissions) {
           const li = document.createElement("li");
@@ -107,11 +107,16 @@ export function mountReview(
         const previewButton = Button(text("review.preview"), {
           onClick: () => {
             if (busy) return;
+            const appHost = window.RadaAppHost;
+            if (!appHost) {
+              errorState(new Error("unavailable"));
+              return;
+            }
             closePreview();
             preview.replaceChildren(para("common.loading"));
             const previewId = ++generation;
-            void window
-              .RadaAppHost!.mount(
+            void appHost
+              .mount(
                 {
                   appId: version.appId,
                   manifest: version.manifest,
@@ -171,7 +176,7 @@ export function mountReview(
                   .then(() => {
                     if (current(actionId)) return load();
                   })
-                  .catch((error) => {
+                  .catch((error: unknown) => {
                     if (current(actionId)) errorState(error);
                   })
                   .finally(() => {

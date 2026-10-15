@@ -92,7 +92,7 @@ test.beforeEach(async ({ page }) => {
 test("verified opaque app requests consent through host and self-only API", async ({
   page,
 }, testInfo) => {
-  const appId = `fixture.${testInfo.project.name}.${Date.now()}`;
+  const appId = `fixture.${testInfo.project.name}.${String(Date.now())}`;
   const token = signed();
   await host(page, token);
   await page.goto("/");
@@ -113,6 +113,8 @@ test("verified opaque app requests consent through host and self-only API", asyn
     async ({ hash, appId }) => {
       const holder = document.createElement("div");
       document.body.append(holder);
+      const appHost = window.RadaAppHost;
+      if (!appHost) throw new Error("App host missing");
       const fixture = window as unknown as {
         RadaAppHost: {
           mount(
@@ -207,7 +209,9 @@ test("opaque app cannot fetch, navigate externally or self-grant declared author
     async ({ hash }) => {
       const holder = document.createElement("div");
       document.body.append(holder);
-      await window.RadaAppHost!.mount(
+      const appHost = window.RadaAppHost;
+      if (!appHost) throw new Error("App host missing");
+      await appHost.mount(
         {
           appId: "fixture.hostile",
           artifactUrl: "http://127.0.0.1:4173/hostile-app.html",
@@ -267,8 +271,10 @@ test("closing an app cancels its unanswered permission dialog", async ({
     async ({ hash, appId }) => {
       const holder = document.createElement("div");
       document.body.append(holder);
+      const appHost = window.RadaAppHost;
+      if (!appHost) throw new Error("App host missing");
       (window as Window & { fixtureDispose?: () => void }).fixtureDispose =
-        await window.RadaAppHost!.mount(
+        await appHost.mount(
           {
             appId,
             artifactUrl: "http://127.0.0.1:4173/dispose-app.html",
@@ -296,9 +302,9 @@ test("closing an app cancels its unanswered permission dialog", async ({
   await expect(
     page.frameLocator("iframe[sandbox='allow-scripts']").locator("body"),
   ).toHaveAttribute("data-second", "rate_limited");
-  await page.evaluate(() =>
-    (window as unknown as { fixtureDispose: () => void }).fixtureDispose(),
-  );
+  await page.evaluate(() => {
+    (window as unknown as { fixtureDispose: () => void }).fixtureDispose();
+  });
   await expect(
     page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
   ).toHaveCount(0);
@@ -326,8 +332,10 @@ test("timed-out bridge calls release capacity even when identity fetch hangs", a
   await page.evaluate(async (hash) => {
     const holder = document.createElement("div");
     document.body.append(holder);
+    const appHost = window.RadaAppHost;
+    if (!appHost) throw new Error("App host missing");
     (window as Window & { fixtureDispose?: () => void }).fixtureDispose =
-      await window.RadaAppHost!.mount(
+      await appHost.mount(
         {
           appId: "fixture.timeout",
           artifactUrl: "http://127.0.0.1:4173/timeout-app.html",
@@ -353,9 +361,9 @@ test("timed-out bridge calls release capacity even when identity fetch hangs", a
     "data-after-timeout",
     "capability_denied",
   );
-  await page.evaluate(() =>
-    (window as unknown as { fixtureDispose: () => void }).fixtureDispose(),
-  );
+  await page.evaluate(() => {
+    (window as unknown as { fixtureDispose: () => void }).fixtureDispose();
+  });
   await Promise.all(
     held.map((route) =>
       route
@@ -393,8 +401,10 @@ test("a replaced artifact fetch cannot remove the current app", async ({
     holder.id = "fixture-holder";
     document.body.append(holder);
     const fixture = window as Window & { slowOutcome?: Promise<string> };
-    fixture.slowOutcome = window
-      .RadaAppHost!.mount(
+    const appHost = window.RadaAppHost;
+    if (!appHost || !hashes[0]) throw new Error("App fixture unavailable");
+    fixture.slowOutcome = appHost
+      .mount(
         {
           appId: "fixture.slow",
           artifactUrl: "http://127.0.0.1:4173/slow-app.html",
@@ -419,7 +429,11 @@ test("a replaced artifact fetch cannot remove the current app", async ({
   }, hashes);
   await expect.poll(() => Boolean(slowRoute)).toBe(true);
   await page.evaluate(async (hashes) => {
-    await window.RadaAppHost!.mount(
+    const appHost = window.RadaAppHost;
+    const holder = document.querySelector<HTMLElement>("#fixture-holder");
+    if (!appHost || !holder || !hashes[1])
+      throw new Error("App fixture unavailable");
+    await appHost.mount(
       {
         appId: "fixture.current",
         artifactUrl: "http://127.0.0.1:4173/current-app.html",
@@ -434,11 +448,12 @@ test("a replaced artifact fetch cannot remove the current app", async ({
         },
         grantedPermissions: [],
       },
-      document.querySelector<HTMLElement>("#fixture-holder")!,
+      holder,
       "http://127.0.0.1:4173",
     );
   }, hashes);
-  await slowRoute!
+  if (!slowRoute) throw new Error("Slow fixture route missing");
+  await slowRoute
     .fulfill({ contentType: "text/html", body: slow })
     .catch(() => {});
   expect(
@@ -465,9 +480,9 @@ test("guest navigation, settings focus, locale and native Back", async ({
   await expect(page.getByText("Guest profile", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.evaluate(() =>
-    (window as unknown as { fixtureHost: { back(): void } }).fixtureHost.back(),
-  );
+  await page.evaluate(() => {
+    (window as unknown as { fixtureHost: { back(): void } }).fixtureHost.back();
+  });
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Settings", exact: true }),
@@ -478,9 +493,9 @@ test("guest navigation, settings focus, locale and native Back", async ({
   await page
     .getByRole("button", { name: t("uk", "common.close"), exact: true })
     .click();
-  await page.evaluate(() =>
-    (window as unknown as { fixtureHost: { back(): void } }).fixtureHost.back(),
-  );
+  await page.evaluate(() => {
+    (window as unknown as { fixtureHost: { back(): void } }).fixtureHost.back();
+  });
   await expect(
     page.getByRole("heading", { name: t("uk", "shell.apps"), exact: true }),
   ).toBeVisible();
@@ -501,11 +516,11 @@ test("keyboard overlay and layout resize preserve field and dismiss without subm
   });
   const field = page.locator("#fixture-field");
   await field.fill("123");
-  await page.evaluate(() =>
+  await page.evaluate(() => {
     (
       window as unknown as { fixtureHost: { resize(height: number): void } }
-    ).fixtureHost.resize(390),
-  );
+    ).fixtureHost.resize(390);
+  });
   await expect(page.locator("html")).toHaveAttribute(
     "data-app-viewport-reduced",
     "true",
@@ -520,11 +535,11 @@ test("keyboard overlay and layout resize preserve field and dismiss without subm
     .click();
   await expect(field).not.toBeFocused();
   await page.setViewportSize({ width: 390, height: 440 });
-  await page.evaluate(() =>
+  await page.evaluate(() => {
     (
       window as unknown as { fixtureHost: { resize(height: number): void } }
-    ).fixtureHost.resize(440),
-  );
+    ).fixtureHost.resize(440);
+  });
   await field.focus();
   await field.press("Enter");
   await expect(field).not.toBeFocused();
@@ -543,17 +558,20 @@ test("real API and PostgreSQL follow selected frog ownership", async ({
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
-  const me = await response.json();
+  const me = (await response.json()) as {
+    subject_id: string;
+    profile: unknown;
+  };
   expect(me.profile).toEqual({ visibility: "private", public: null });
   await expect(
     page.getByText("Private profile", { exact: true }),
   ).toBeVisible();
   const db = new pg.Pool({ connectionString: process.env.E2E_DATABASE_URL });
   try {
-    const result = await db.query(
+    const result = await db.query<{ subject_id: string }>(
       "SELECT subject_id FROM identity.telegram_accounts WHERE telegram_user_id = 101",
     );
-    expect(result.rows[0].subject_id).toBe(me.subject_id);
+    expect(result.rows[0]?.subject_id).toBe(me.subject_id);
     const frogId = crypto.randomUUID();
     const username = `Fixture_${frogId.replaceAll("-", "").slice(0, 12)}`;
     await db.query(
@@ -568,11 +586,11 @@ test("real API and PostgreSQL follow selected frog ownership", async ({
       ]);
       expect(
         (
-          await client.query(
+          await client.query<{ selected: boolean }>(
             "SELECT identity.select_frog($1::uuid) AS selected",
             [frogId],
           )
-        ).rows[0].selected,
+        ).rows[0]?.selected,
       ).toBe(true);
       await client.query("COMMIT");
     } finally {
@@ -588,8 +606,11 @@ test("real API and PostgreSQL follow selected frog ownership", async ({
         .getByText(username.toUpperCase(), { exact: true }),
     ).toBeVisible();
     const recipient = (
-      await db.query("SELECT identity.resolve_telegram(102) AS subject_id")
-    ).rows[0].subject_id;
+      await db.query<{ subject_id: string }>(
+        "SELECT identity.resolve_telegram(102) AS subject_id",
+      )
+    ).rows[0]?.subject_id;
+    if (!recipient) throw new Error("Recipient fixture missing");
     await db.query(
       "SELECT jpegpe.transfer_frog($1::uuid, $2::uuid, $3::uuid)",
       [frogId, me.subject_id, recipient],
@@ -741,7 +762,8 @@ test("swipe and visible Back share the launcher destination", async ({
   await host(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
-  const bounds = (await page.locator(".screen").boundingBox())!;
+  const bounds = await page.locator(".screen").boundingBox();
+  if (!bounds) throw new Error("Screen bounds unavailable");
   await page.mouse.move(bounds.x + 24, 240);
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width * 0.85, 245, { steps: 12 });
@@ -761,7 +783,12 @@ test("unavailable response can recover with manual retry", async ({ page }) => {
     const originalFetch = window.fetch.bind(window);
     let interrupted = false;
     window.fetch = (input, init) => {
-      if (!interrupted && String(input).endsWith("/me")) {
+      if (
+        !interrupted &&
+        (input instanceof Request ? input.url : input.toString()).endsWith(
+          "/me",
+        )
+      ) {
         interrupted = true;
         return Promise.reject(
           new TypeError("Synthetic connection interruption"),
@@ -770,9 +797,7 @@ test("unavailable response can recover with manual retry", async ({ page }) => {
       return originalFetch(input, init);
     };
   });
-  let attempts = 0;
   await page.route("**/me", (route) => {
-    attempts++;
     return route.fulfill({
       status: 200,
       contentType: "application/json",

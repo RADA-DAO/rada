@@ -49,7 +49,7 @@ const text = (value: unknown, limit: number) =>
   value.trim() === value &&
   value.length > 0 &&
   value.length <= limit &&
-  !/[\u0000-\u001f\u007f<>]/.test(value);
+  !/[\p{Cc}<>]/u.test(value);
 export function parseAppManifest(value: unknown): AppManifest {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("invalid_manifest");
@@ -75,9 +75,12 @@ export function parseAppManifest(value: unknown): AppManifest {
     !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(input.minPlatformVersion)
   )
     throw new Error("invalid_manifest");
-  const [major, minor, patch] = input.minPlatformVersion.split(".").map(Number);
-  const [hostMajor, hostMinor, hostPatch] =
-    PLATFORM_VERSION.split(".").map(Number);
+  const [major, minor, patch] = input.minPlatformVersion
+    .split(".")
+    .map(Number) as [number, number, number];
+  const [hostMajor, hostMinor, hostPatch] = PLATFORM_VERSION.split(".").map(
+    Number,
+  ) as [number, number, number];
   if (
     major > hostMajor ||
     (major === hostMajor &&

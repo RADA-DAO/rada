@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { t } from "../src/index.ts";
 
-const en = JSON.parse(
-  await readFile(new URL("../locales/en.json", import.meta.url)),
-);
-const uk = JSON.parse(
-  await readFile(new URL("../locales/uk.json", import.meta.url)),
-);
+import en from "../locales/en.json" with { type: "json" };
+import uk from "../locales/uk.json" with { type: "json" };
+
+/** @param {Record<string, unknown>} value @param {string} prefix @param {Record<string, unknown>} result */
 function flatten(value, prefix = "", result = {}) {
   for (const [key, child] of Object.entries(value)) {
     const path = prefix ? `${prefix}.${key}` : key;
@@ -19,7 +16,8 @@ function flatten(value, prefix = "", result = {}) {
       Object.values(child).every((form) => typeof form === "string")
     )
       result[path] = child;
-    else if (child && typeof child === "object") flatten(child, path, result);
+    else if (child && typeof child === "object")
+      flatten(/** @type {Record<string, unknown>} */ (child), path, result);
   }
   return result;
 }
@@ -28,7 +26,9 @@ assert.deepEqual(
   Object.keys(flatten(uk)).sort(),
 );
 assert.ok(Object.keys(flatten(en)).includes("common.close"));
-const incomplete = structuredClone(uk);
+/** @type {Partial<typeof uk.common>} */
+const incompleteCommon = structuredClone(uk.common);
+const incomplete = { ...uk, common: incompleteCommon };
 delete incomplete.common.close;
 assert.notDeepEqual(
   Object.keys(flatten(en)).sort(),

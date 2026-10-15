@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { discoverMigrations } from "./migrations.mjs";
 
-test("module discovery preserves global ledger order and source checksums", () => {
+await test("module discovery preserves global ledger order and source checksums", () => {
   const migrations = discoverMigrations();
   assert.deepEqual(
     migrations.slice(0, 3).map(({ name }) => name),
@@ -32,7 +32,7 @@ test("module discovery preserves global ledger order and source checksums", () =
   }
 });
 
-test("flat fixture discovery sorts versions and rejects duplicate or malformed names", () => {
+await test("flat fixture discovery sorts versions and rejects duplicate or malformed names", () => {
   const directory = mkdtempSync(join(tmpdir(), "rada-migrations-unit-"));
   try {
     writeFileSync(join(directory, "0002_second.sql"), "SELECT 2;\n");

@@ -6,7 +6,7 @@ function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
   if (left.length !== right.length) return false;
   let mismatch = 0;
   for (let index = 0; index < left.length; index++)
-    mismatch |= left[index] ^ right[index];
+    mismatch |= (left[index] ?? 0) ^ (right[index] ?? 0);
   return mismatch === 0;
 }
 

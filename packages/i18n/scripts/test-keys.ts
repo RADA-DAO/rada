@@ -8,4 +8,4 @@ assert.equal(t("en", plural, { count: 2 }), "2 items");
 
 // @ts-expect-error A namespace is not a message key.
 const namespace: MessageKey = "common";
-void namespace;
+assert.equal(typeof namespace, "string");

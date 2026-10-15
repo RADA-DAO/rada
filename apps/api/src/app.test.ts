@@ -1,28 +1,28 @@
 import { createApp } from "./app.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
 const consentMethods = {
-  ownFrogs: async () => [],
-  selectFrog: async () => false,
-  consents: async () => [],
-  setConsent: async (
+  ownFrogs: () => Promise.resolve([]),
+  selectFrog: () => Promise.resolve(false),
+  consents: () => Promise.resolve([]),
+  setConsent: (
     _id: string,
     _app: string,
     _capability: string,
     granted: boolean,
-  ) => granted,
+  ) => Promise.resolve(granted),
 };
 Deno.test("health, auth failures and self-only private response", async () => {
   let calls = 0;
   const app = createApp(FIXTURE_TOKEN, {
     ...consentMethods,
-    me: async (id) => {
+    me: (id) => {
       calls++;
       assert(id === "101");
-      return {
+      return Promise.resolve({
         subject_id: "00000000-0000-4000-8000-000000000001",
         profile: { visibility: "private", public: null },
         membership: { status: "unavailable" },
-      };
+      });
     },
   });
   assert((await app.request("/health")).status === 200);
@@ -96,18 +96,19 @@ Deno.test(
   async () => {
     const store = {
       ...consentMethods,
-      me: async () => ({
-        subject_id: "00000000-0000-4000-8000-000000000001",
-        profile: { visibility: "private" as const, public: null },
-        membership: { status: "unavailable" as const },
-      }),
+      me: () =>
+        Promise.resolve({
+          subject_id: "00000000-0000-4000-8000-000000000001",
+          profile: { visibility: "private" as const, public: null },
+          membership: { status: "unavailable" as const },
+        }),
     };
     let called = false;
     const provider = {
-      status: async (id: string) => {
+      status: (id: string) => {
         called = true;
         assert(id === "101");
-        return "member" as const;
+        return Promise.resolve("member" as const);
       },
     };
     const app = createApp(FIXTURE_TOKEN, store, [], provider);
@@ -148,20 +149,20 @@ Deno.test(
       FIXTURE_TOKEN,
       {
         ...consentMethods,
-        me: async () => {
+        me: () => {
           calls++;
-          return {
+          return Promise.resolve({
             subject_id: "fixture",
             profile: { visibility: "private", public: null },
             membership: { status: "unavailable" },
-          };
+          });
         },
       },
       [],
       {
-        status: async () => {
+        status: () => {
           membershipCalls++;
-          return "member";
+          return Promise.resolve("member");
         },
       },
       true,
@@ -186,16 +187,18 @@ Deno.test(
     const writes: string[] = [];
     const app = createApp(FIXTURE_TOKEN, {
       ...consentMethods,
-      me: async () => {
-        throw Error("unused");
+      me: () => {
+        return Promise.reject(Error("unused"));
       },
-      consents: async (id) => {
+      consents: (id) => {
         assert(id === "101");
-        return [{ app_id: "example", capability: "wallet.address.read" }];
+        return Promise.resolve([
+          { app_id: "example", capability: "wallet.address.read" },
+        ]);
       },
-      setConsent: async (id, appId, capability, granted) => {
+      setConsent: (id, appId, capability, granted) => {
         writes.push(`${id}:${appId}:${capability}:${granted}`);
-        return granted;
+        return Promise.resolve(granted);
       },
     });
     const fresh = `tma ${await signed()}`;
@@ -203,12 +206,14 @@ Deno.test(
       headers: { authorization: fresh },
     });
     assert(read.status === 200 && (await read.json()).consents.length === 1);
-    const put = async (body: unknown, authorization = fresh) =>
-      app.request("/me/consents", {
-        method: "PUT",
-        headers: { authorization, "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    const put = (body: unknown, authorization = fresh) =>
+      Promise.resolve(
+        app.request("/me/consents", {
+          method: "PUT",
+          headers: { authorization, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      );
     for (const body of [
       { appId: "example", capability: ["wallet.address.read"], granted: true },
       { appId: "example", capability: "money.transfer", granted: true },
@@ -277,12 +282,12 @@ Deno.test(
     const writes: (string | null)[] = [];
     const app = createApp(FIXTURE_TOKEN, {
       ...consentMethods,
-      me: async () => {
-        throw Error("unused");
+      me: () => {
+        return Promise.reject(Error("unused"));
       },
-      ownFrogs: async (id) => {
+      ownFrogs: (id) => {
         assert(id === "101");
-        return [
+        return Promise.resolve([
           {
             frog_id: own,
             username: "Fixture",
@@ -290,12 +295,12 @@ Deno.test(
             accent_color: null,
             artwork_path: null,
           },
-        ];
+        ]);
       },
-      selectFrog: async (id, frogId) => {
+      selectFrog: (id, frogId) => {
         assert(id === "101");
         writes.push(frogId);
-        return frogId === null || frogId === own;
+        return Promise.resolve(frogId === null || frogId === own);
       },
     });
     const fresh = `tma ${await signed()}`;
@@ -420,56 +425,56 @@ Deno.test(
       STAGING_ALLOWED_TELEGRAM_IDS: "101,102",
     });
     const registry = {
-      published: async () => {
+      published: () => {
         dataCalls++;
-        return [];
+        return Promise.resolve([]);
       },
-      queue: async () => {
+      queue: () => {
         dataCalls++;
-        return [];
+        return Promise.resolve([]);
       },
-      submit: async () => {
-        throw Error("unexpected");
+      submit: () => {
+        return Promise.reject(Error("unexpected"));
       },
-      review: async () => {
-        throw Error("unexpected");
+      review: () => {
+        return Promise.reject(Error("unexpected"));
       },
-      publish: async () => {
-        throw Error("unexpected");
+      publish: () => {
+        return Promise.reject(Error("unexpected"));
       },
-      rollback: async () => {
-        throw Error("unexpected");
+      rollback: () => {
+        return Promise.reject(Error("unexpected"));
       },
-      withdraw: async () => {
-        throw Error("unexpected");
+      withdraw: () => {
+        return Promise.reject(Error("unexpected"));
       },
     };
     const app = createApp(
       FIXTURE_TOKEN,
       {
         ...consentMethods,
-        me: async () => {
+        me: () => {
           dataCalls++;
-          return {
+          return Promise.resolve({
             subject_id: "fixture",
             profile: { visibility: "private", public: null },
             membership: { status: "unavailable" },
-          };
+          });
         },
-        consents: async () => {
+        consents: () => {
           dataCalls++;
-          return [];
+          return Promise.resolve([]);
         },
-        setConsent: async () => {
+        setConsent: () => {
           dataCalls++;
-          return false;
+          return Promise.resolve(false);
         },
       },
       ["https://staging.example.invalid"],
       {
-        status: async () => {
+        status: () => {
           providerCalls++;
-          return "member";
+          return Promise.resolve("member");
         },
       },
       policy,
@@ -492,7 +497,7 @@ Deno.test(
         ["/apps/review-queue", "GET"],
         ["/apps/example/versions", "POST"],
         ["/apps/example/withdraw", "POST"],
-      ])
+      ] as Array<[string, string]>)
         assert(
           (await app.request(path, { method, headers: { authorization } }))
             .status === 401,
@@ -537,8 +542,8 @@ Deno.test(
       FIXTURE_TOKEN,
       {
         ...consentMethods,
-        me: async () => {
-          throw Error("unused");
+        me: () => {
+          return Promise.reject(Error("unused"));
         },
       },
       [],

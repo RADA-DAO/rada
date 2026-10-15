@@ -29,7 +29,7 @@ Deno.test(
     ];
     for (const [status, extra, expected] of cases) {
       const provider = new TelegramMembershipProvider(FIXTURE_TOKEN, "-101", {
-        fetch: async (url, options) => {
+        fetch: (url, options) => {
           assert(
             String(url) ===
               `https://api.telegram.org/bot${FIXTURE_TOKEN}/getChatMember`,
@@ -37,7 +37,7 @@ Deno.test(
           assert(options?.method === "POST" && options.redirect === "error");
           const body = JSON.parse(String(options.body));
           assert(body.chat_id === "-101" && body.user_id === 101);
-          return reply(status, extra);
+          return Promise.resolve(reply(status, extra));
         },
       });
       assert((await provider.status("101")) === expected);
@@ -52,9 +52,9 @@ Deno.test(
     let status = "member";
     const dependencies = {
       now: () => now,
-      fetch: async () => {
+      fetch: () => {
         calls++;
-        return reply(status);
+        return Promise.resolve(reply(status));
       },
     };
     const provider = new TelegramMembershipProvider(
@@ -74,7 +74,7 @@ Deno.test(
       [FIXTURE_TOKEN, "-102"],
       ["other-synthetic-token", "-101"],
       [FIXTURE_TOKEN, "-101"],
-    ]) {
+    ] as Array<[string, string]>) {
       assert(
         (await new TelegramMembershipProvider(token, chat, dependencies).status(
           "101",
@@ -87,10 +87,10 @@ Deno.test(
 Deno.test("bounded cache evicts oldest identity", async () => {
   let calls = 0;
   const provider = new TelegramMembershipProvider(FIXTURE_TOKEN, "-101", {
-    fetch: async (_url, options) => {
+    fetch: (_url, options) => {
       calls++;
       const { user_id } = JSON.parse(String(options?.body));
-      return reply("member", { user: { id: user_id } });
+      return Promise.resolve(reply("member", { user: { id: user_id } }));
     },
   });
   for (let id = 1; id <= MEMBERSHIP_CACHE_MAX_SIZE + 1; id++)
@@ -102,20 +102,21 @@ Deno.test(
   "errors, malformed JSON and timeout fail closed without caching unavailable",
   async () => {
     const failures: (() => Promise<Response>)[] = [
-      async () => new Response("failure", { status: 429 }),
-      async () => Response.json({ ok: false, description: "sensitive" }),
-      async () => Response.json(null),
-      async () => new Response("{malformed"),
-      async () => {
-        throw new Error("sensitive token URL");
+      () => Promise.resolve(new Response("failure", { status: 429 })),
+      () =>
+        Promise.resolve(Response.json({ ok: false, description: "sensitive" })),
+      () => Promise.resolve(Response.json(null)),
+      () => Promise.resolve(new Response("{malformed")),
+      () => {
+        return Promise.reject(new Error("sensitive token URL"));
       },
     ];
     for (const failure of failures) {
       let calls = 0;
       const provider = new TelegramMembershipProvider(FIXTURE_TOKEN, "-101", {
-        fetch: async () => {
+        fetch: () => {
           calls++;
-          return calls === 1 ? failure() : reply("member");
+          return Promise.resolve(calls === 1 ? failure() : reply("member"));
         },
       });
       assert((await provider.status("101")) === "unavailable");
@@ -143,8 +144,12 @@ Deno.test(
     let outage = false;
     const provider = new TelegramMembershipProvider(FIXTURE_TOKEN, "-101", {
       now: () => now,
-      fetch: async () =>
-        outage ? new Response("unavailable", { status: 503 }) : reply("member"),
+      fetch: () =>
+        Promise.resolve(
+          outage
+            ? new Response("unavailable", { status: 503 })
+            : reply("member"),
+        ),
     });
     assert((await provider.status("101")) === "member");
     now = MEMBERSHIP_CACHE_TTL_MS;

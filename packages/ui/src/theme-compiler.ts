@@ -7,13 +7,8 @@
  * or "improves" a collectible colour.
  */
 
-export type ThemePalette = {
-  chrome: string;
-  tone: "light" | "dark";
-  tokens: Record<string, string>;
-};
-
 type RGB = { r: number; g: number; b: number };
+const rgbChannels = ({ r, g, b }: RGB): string => [r, g, b].join(" ");
 type OKLCH = { l: number; c: number; h: number };
 
 export const DEFAULT_THEME_BACKGROUND = "#243B34";
@@ -135,18 +130,18 @@ function oklchToHex(color: OKLCH): string {
 
 function colorWithAlpha(hex: string, alpha: number): string {
   const rgb = hexToRgb(hex);
-  return `rgb(${rgb.r} ${rgb.g} ${rgb.b} / ${clamp(alpha, 0, 1).toFixed(3)})`;
+  return `rgb(${rgbChannels(rgb)} / ${clamp(alpha, 0, 1).toFixed(3)})`;
 }
 
 export function relativeLuminance(hex: string): number {
   const { r, g, b } = hexToRgb(normalizedHexColor(hex));
-  const channels = [r, g, b].map((value) => {
+  const [red, green, blue] = [r, g, b].map((value) => {
     const channel = value / 255;
     return channel <= 0.04045
       ? channel / 12.92
       : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  }) as [number, number, number];
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
 export function contrastRatio(first: string, second: string): number {
@@ -185,7 +180,7 @@ export function semanticAccentFallback(
 export function compileTheme(
   backgroundColor: string,
   accentColor?: string | null,
-): ThemePalette {
+) {
   const authoredBackground = normalizedHexColor(backgroundColor);
   const authoredAccent =
     accentColor && /^#[0-9a-f]{6}$/i.test(accentColor)
@@ -273,7 +268,7 @@ export function compileTheme(
   if (contrastRatio(surfacePigment, ink) < 4.5)
     ink = readableInk(surfacePigment);
   const inkRgb = hexToRgb(ink);
-  const muted = `rgb(${inkRgb.r} ${inkRgb.g} ${inkRgb.b} / ${tone === "dark" ? ".68" : ".62"})`;
+  const muted = `rgb(${rgbChannels(inkRgb)} / ${tone === "dark" ? ".68" : ".62"})`;
 
   const accentOklch = rgbToOklch(hexToRgb(authoredAccent));
   const accentRgb = hexToRgb(authoredAccent);
@@ -345,13 +340,13 @@ export function compileTheme(
       "--accent-2": accentHighlight,
       "--accent-3": accentShade,
       "--accent-sun": authoredAccent,
-      "--accent-rgb": `${accentRgb.r} ${accentRgb.g} ${accentRgb.b}`,
+      "--accent-rgb": rgbChannels(accentRgb),
       "--ink": ink,
-      "--ink-rgb": `${inkRgb.r} ${inkRgb.g} ${inkRgb.b}`,
+      "--ink-rgb": rgbChannels(inkRgb),
       "--muted": muted,
       "--text-primary": ink,
       "--text-muted": muted,
-      "--shadow-rgb": `${shadow.r} ${shadow.g} ${shadow.b}`,
+      "--shadow-rgb": rgbChannels(shadow),
       "--surface-pigment": surfacePigment,
       "--surface-highlight": surfaceHighlight,
       "--surface-shadow": surfaceShadow,
@@ -385,3 +380,5 @@ export function compileTheme(
     },
   };
 }
+
+export type ThemePalette = ReturnType<typeof compileTheme>;

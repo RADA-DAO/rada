@@ -48,7 +48,7 @@ export class PostgresRegistryStore implements RegistryStore {
     private service: pg.Pool,
   ) {}
 
-  private async subject(telegramId: string): Promise<string> {
+  private subject(telegramId: string): Promise<string> {
     return resolveTelegramSubject(this.auth, telegramId);
   }
 
@@ -66,6 +66,7 @@ export class PostgresRegistryStore implements RegistryStore {
       ]);
       const result = await client.query<{ result: T }>(query, values);
       await client.query("COMMIT");
+      if (!result.rows[0]) throw new Error("App query returned no result");
       return result.rows[0].result;
     } catch (error) {
       await client.query("ROLLBACK");
@@ -129,6 +130,8 @@ export class PostgresRegistryStore implements RegistryStore {
     const result = await this.service.query<{ result: unknown[] }>(
       "SELECT apps.published() AS result",
     );
+    if (!result.rows[0])
+      throw new Error("Published apps query returned no result");
     return result.rows[0].result;
   }
 }

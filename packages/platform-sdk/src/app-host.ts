@@ -43,6 +43,14 @@ export type AppHostOptions = {
 const maxArtifactBytes = 1024 * 1024;
 const allowedRequestId = (value: unknown): value is string =>
   typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);
+const isAppPermission = (value: unknown): value is AppPermission =>
+  typeof value === "string" &&
+  (APP_PERMISSIONS as readonly string[]).includes(value);
+const isConsentPermission = (
+  value: unknown,
+): value is (typeof CONSENT_PERMISSIONS)[number] =>
+  typeof value === "string" &&
+  (CONSENT_PERMISSIONS as readonly string[]).includes(value);
 export async function verifyAppArtifact(
   response: Response,
   expectedHash: string,
@@ -51,12 +59,14 @@ export async function verifyAppArtifact(
     throw new Error("artifact_unavailable");
   const size = Number(response.headers.get("content-length"));
   if (size > maxArtifactBytes) throw new Error("artifact_too_large");
-  if (!response.body) throw new Error("artifact_unavailable");
-  const reader = response.body.getReader();
+  const body: unknown = response.body;
+  if (!(body instanceof ReadableStream))
+    throw new Error("artifact_unavailable");
+  const reader = (body as ReadableStream<Uint8Array>).getReader();
   const chunks: Uint8Array[] = [];
   let length = 0;
   try {
-    while (true) {
+    for (;;) {
       const item = await reader.read();
       if (item.done) break;
       length += item.value.length;
@@ -106,7 +116,9 @@ function consentWindow(
       closeLabel: copy.deny,
       children: [description, allow],
     });
-    const abort = () => dialog.close();
+    const abort = () => {
+      dialog.close();
+    };
     signal.addEventListener("abort", abort, { once: true });
     dialog.addEventListener(
       "close",
@@ -155,23 +167,21 @@ export async function mountAppHost(
   options: AppHostOptions,
 ): Promise<() => void> {
   const { release } = options;
-  if (!release || typeof release !== "object")
+  const rawRelease: unknown = release;
+  if (!rawRelease || typeof rawRelease !== "object")
     throw new Error("invalid_release");
+  const rawGrants: unknown = release.grantedPermissions;
   const manifest = parseAppManifest(release.manifest);
   if (!/^[a-z][a-z0-9_.:-]{0,127}$/.test(release.appId))
     throw new Error("invalid_release");
   if (
-    typeof release.artifactUrl !== "string" ||
-    typeof options.artifactOrigin !== "string" ||
-    typeof release.artifactSha256 !== "string" ||
+    typeof (release.artifactUrl as unknown) !== "string" ||
+    typeof (options.artifactOrigin as unknown) !== "string" ||
+    typeof (release.artifactSha256 as unknown) !== "string" ||
     !/^[a-f0-9]{64}$/.test(release.artifactSha256) ||
-    !Array.isArray(release.grantedPermissions) ||
+    !Array.isArray(rawGrants) ||
     release.grantedPermissions.length > APP_PERMISSIONS.length ||
-    release.grantedPermissions.some(
-      (permission) =>
-        typeof permission !== "string" ||
-        !APP_PERMISSIONS.includes(permission as AppPermission),
-    ) ||
+    rawGrants.some((permission: unknown) => !isAppPermission(permission)) ||
     new Set(release.grantedPermissions).size !==
       release.grantedPermissions.length
   )
@@ -223,6 +233,8 @@ export async function mountAppHost(
   const times: number[] = [];
   let disposed = false;
   let active = true;
+  const isDisposed = () => disposed;
+  const isActive = () => active;
   let promptOwner: string | null = null;
   const reply = (
     requestId: string,
@@ -265,7 +277,7 @@ export async function mountAppHost(
     if (!allowedRequestId(message.requestId)) return;
     const id = message.requestId;
     const now = Date.now();
-    while (times.length && times[0] < now - 60_000) times.shift();
+    while (times[0] !== undefined && times[0] < now - 60_000) times.shift();
     if (pending.has(id) || pending.size >= 4 || times.length >= 30) {
       reply(id, "rada.member.error", { error: "rate_limited" });
       return;
@@ -273,8 +285,11 @@ export async function mountAppHost(
     times.push(now);
     pending.add(id);
     const controller = new AbortController();
+    const isAborted = () => controller.signal.aborted;
     controllers.set(id, controller);
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 10000);
     const run = async () => {
       if (message.type === "rada.member.context.get")
         return { locale: options.locale };
@@ -307,26 +322,20 @@ export async function mountAppHost(
           payload && typeof payload === "object" && !Array.isArray(payload)
             ? (payload as Record<string, unknown>).permission
             : null;
-        if (
-          typeof permission !== "string" ||
-          !CONSENT_PERMISSIONS.includes(
-            permission as (typeof CONSENT_PERMISSIONS)[number],
-          ) ||
-          !granted.has(permission as AppPermission)
-        )
+        if (!isConsentPermission(permission) || !granted.has(permission))
           throw new Error("capability_denied");
         if (promptOwner) throw new Error("rate_limited");
         promptOwner = id;
         try {
           if (await options.readConsent(release.appId, permission))
             return { granted: true };
-          if (controller.signal.aborted || disposed || !active)
+          if (isAborted() || isDisposed() || !isActive())
             throw new Error("timeout");
           const accepted = await consentWindow(
             options.consentCopy(permission, manifest.name),
             controller.signal,
           );
-          if (controller.signal.aborted || disposed || !active)
+          if (isAborted() || isDisposed() || !isActive())
             throw new Error("timeout");
           if (!accepted) return { granted: false };
           return {
@@ -354,8 +363,10 @@ export async function mountAppHost(
       );
     });
     void Promise.race([run(), aborted])
-      .then((result) => reply(id, "rada.member.result", { result }))
-      .catch((error: unknown) =>
+      .then((result) => {
+        reply(id, "rada.member.result", { result });
+      })
+      .catch((error: unknown) => {
         reply(id, "rada.member.error", {
           error:
             error instanceof Error &&
@@ -364,8 +375,8 @@ export async function mountAppHost(
             )
               ? error.message
               : "request_failed",
-        }),
-      )
+        });
+      })
       .finally(() => {
         clearTimeout(timeout);
         pending.delete(id);

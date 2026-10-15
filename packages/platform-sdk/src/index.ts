@@ -77,7 +77,7 @@ export function initializePlatform(options: {
         Math.max(0, host?.contentSafeAreaInset?.[side] ?? 0);
       document.documentElement.style.setProperty(
         `--app-safe-${side}`,
-        `${inset}px`,
+        `${String(inset)}px`,
       );
     }
     document.documentElement.style.setProperty(
@@ -120,7 +120,12 @@ export function initializePlatform(options: {
       if (!headers) throw new Error("expired");
       const response = await fetch(
         `${apiOrigin?.origin ?? "/api"}/apps/review-queue`,
-        { headers, credentials: "omit", cache: "no-store", signal },
+        {
+          headers,
+          credentials: "omit",
+          cache: "no-store",
+          signal: signal ?? null,
+        },
       );
       if (!response.ok)
         throw new Error(
@@ -158,7 +163,7 @@ export function initializePlatform(options: {
           body: JSON.stringify({ reason: reason.trim() }),
           credentials: "omit",
           cache: "no-store",
-          signal,
+          signal: signal ?? null,
         },
       );
       if (!response.ok)

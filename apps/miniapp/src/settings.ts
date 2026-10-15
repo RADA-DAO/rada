@@ -19,7 +19,9 @@ export function settingsDialog(
     select.append(option);
   }
   select.value = locale;
-  select.onchange = () => change(select.value as Locale);
+  select.onchange = () => {
+    change(select.value as Locale);
+  };
   label.append(select);
   const dialog = Sheet({
     title: t(locale, "shell.settings"),

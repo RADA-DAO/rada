@@ -8,7 +8,7 @@ import {
   publicSqlViews,
 } from "./architecture.mjs";
 
-test("code size gate covers executable files and only exempts test/generated paths", () => {
+await test("code size gate covers executable files and only exempts test/generated paths", () => {
   const lines = "statement;\n".repeat(401);
   assert.equal(
     codeSizeViolations("modules/apps/api/store.ts", lines).length,
@@ -33,7 +33,7 @@ test("code size gate covers executable files and only exempts test/generated pat
   );
 });
 
-test("foreign views require an owned definition exported by the module index", () => {
+await test("foreign views require an owned definition exported by the module index", () => {
   const sources = new Map([
     [
       "modules/identity/index.ts",
@@ -69,7 +69,7 @@ test("foreign views require an owned definition exported by the module index", (
   assert.throws(() => publicSqlViews(sources), /belong to their module/);
 });
 
-test("cross-module imports require public index for static, re-export and dynamic paths", () => {
+await test("cross-module imports require public index for static, re-export and dynamic paths", () => {
   for (const source of [
     'import { x } from "../../jpegpe/api/store.ts";',
     'export { x } from "../../jpegpe/api/store.ts";',
@@ -106,7 +106,7 @@ test("cross-module imports require public index for static, re-export and dynami
   );
 });
 
-test("SQL boundary rejects foreign table queries including quoted names and embedded SQL", () => {
+await test("SQL boundary rejects foreign table queries including quoted names and embedded SQL", () => {
   assert.ok(
     moduleSqlViolations(
       "apps/api/src/app.ts",

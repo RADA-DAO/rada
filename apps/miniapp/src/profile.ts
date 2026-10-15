@@ -18,6 +18,7 @@ export function mountProfile(
 ): () => void {
   const controller = new AbortController();
   let disposed = false;
+  const isDisposed = () => disposed;
   let pending = false;
   const text = (key: Parameters<typeof t>[1]) => t(options.locale, key);
   const status = document.createElement("div");
@@ -34,9 +35,9 @@ export function mountProfile(
     status.textContent = text("profile.saving");
     try {
       await options.select(frogId, controller.signal);
-      if (!disposed) options.refresh();
+      if (!isDisposed()) options.refresh();
     } catch (error) {
-      if (disposed) return;
+      if (isDisposed()) return;
       status.replaceChildren(
         ErrorState({
           message: text(
@@ -47,12 +48,14 @@ export function mountProfile(
                 : "shell.unavailableDescription",
           ),
           retryLabel: text("common.retry"),
-          onRetry: options.refresh,
+          onRetry: () => {
+            options.refresh();
+          },
         }),
       );
     } finally {
       pending = false;
-      if (!disposed)
+      if (!isDisposed())
         for (const button of container.querySelectorAll("button"))
           button.disabled =
             button.dataset.selectFrog === options.selected?.frog_id;
@@ -124,7 +127,9 @@ export function mountProfile(
           ErrorState({
             message: text("shell.unavailableDescription"),
             retryLabel: text("common.retry"),
-            onRetry: options.refresh,
+            onRetry: () => {
+              options.refresh();
+            },
           }),
         );
     });

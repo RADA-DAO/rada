@@ -13,10 +13,15 @@ const db = new pg.Pool({ connectionString: databaseUrl });
 /** @type {import("node:child_process").ChildProcess | undefined} */
 let api;
 try {
-  const version = await db.query("SHOW server_version_num");
+  const version =
+    /** @type {import("pg").QueryResult<{server_version_num: string}>} */ (
+      await db.query("SHOW server_version_num")
+    );
+  const serverVersion = version.rows[0];
+  if (!serverVersion) throw new Error("PostgreSQL version unavailable");
   if (
-    Number(version.rows[0].server_version_num) < 170000 ||
-    Number(version.rows[0].server_version_num) >= 180000
+    Number(serverVersion.server_version_num) < 170000 ||
+    Number(serverVersion.server_version_num) >= 180000
   )
     throw new Error("PostgreSQL 17 required");
   const migrations = spawnSync(process.execPath, ["tools/db-migrate.mjs"], {
@@ -97,7 +102,9 @@ try {
     },
   );
   process.exitCode = await new Promise((resolve) =>
-    test.on("exit", (code) => resolve(code ?? 1)),
+    test.on("exit", (code) => {
+      resolve(code ?? 1);
+    }),
   );
 } finally {
   if (api) {
