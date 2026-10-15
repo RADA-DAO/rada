@@ -1,8 +1,18 @@
 import { createApp } from "./app.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
+const consentMethods = {
+  consents: async () => [],
+  setConsent: async (
+    _id: string,
+    _app: string,
+    _capability: string,
+    granted: boolean,
+  ) => granted,
+};
 Deno.test("health, auth failures and self-only private response", async () => {
   let calls = 0;
   const app = createApp(FIXTURE_TOKEN, {
+    ...consentMethods,
     me: async (id) => {
       calls++;
       assert(id === "101");
@@ -34,6 +44,7 @@ Deno.test("health, auth failures and self-only private response", async () => {
   );
   assert(!JSON.stringify(body).includes("synthetic"));
   const broken = createApp(FIXTURE_TOKEN, {
+    ...consentMethods,
     me: () => {
       throw new Error("sensitive error");
     },
@@ -51,6 +62,7 @@ Deno.test(
     const app = createApp(
       FIXTURE_TOKEN,
       {
+        ...consentMethods,
         me: () => {
           throw new Error("Unused");
         },
@@ -81,6 +93,7 @@ Deno.test(
   "membership uses verified identity and provider failure preserves private profile",
   async () => {
     const store = {
+      ...consentMethods,
       me: async () => ({
         subject_id: "00000000-0000-4000-8000-000000000001",
         profile: { visibility: "private" as const, public: null },
@@ -132,6 +145,7 @@ Deno.test(
     const app = createApp(
       FIXTURE_TOKEN,
       {
+        ...consentMethods,
         me: async () => {
           calls++;
           return {
@@ -161,5 +175,93 @@ Deno.test(
         assert((await response.json()).membership.status === "unavailable");
     }
     assert(calls === 2 && membershipCalls === 0);
+  },
+);
+
+Deno.test(
+  "consent API validates shape and privileged age before self write",
+  async () => {
+    const writes: string[] = [];
+    const app = createApp(FIXTURE_TOKEN, {
+      me: async () => {
+        throw Error("unused");
+      },
+      consents: async (id) => {
+        assert(id === "101");
+        return [{ app_id: "example", capability: "wallet.address.read" }];
+      },
+      setConsent: async (id, appId, capability, granted) => {
+        writes.push(`${id}:${appId}:${capability}:${granted}`);
+        return granted;
+      },
+    });
+    const fresh = `tma ${await signed()}`;
+    const read = await app.request("/me/consents", {
+      headers: { authorization: fresh },
+    });
+    assert(read.status === 200 && (await read.json()).consents.length === 1);
+    const put = async (body: unknown, authorization = fresh) =>
+      app.request("/me/consents", {
+        method: "PUT",
+        headers: { authorization, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    for (const body of [
+      { appId: "example", capability: ["wallet.address.read"], granted: true },
+      { appId: "example", capability: "money.transfer", granted: true },
+      { appId: "example", capability: "wallet.address.read", granted: "true" },
+      {
+        appId: "example",
+        capability: "wallet.address.read",
+        granted: true,
+        subjectId: "other",
+      },
+    ])
+      assert((await put(body)).status === 400);
+    let cancelled = false;
+    const oversized = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(700));
+        controller.enqueue(new Uint8Array(700));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const oversizedResponse = await app.request(
+      new Request("http://localhost/me/consents", {
+        method: "PUT",
+        headers: { authorization: fresh, "content-type": "application/json" },
+        body: oversized,
+      }),
+    );
+    assert(
+      oversizedResponse.status === 413 && cancelled && writes.join("") === "",
+    );
+    assert(
+      (
+        await put(
+          {
+            appId: "example",
+            capability: "wallet.address.read",
+            granted: true,
+          },
+          `tma ${await signed({ auth_date: String(Math.floor(Date.now() / 1000) - 3700) })}`,
+        )
+      ).status === 401,
+    );
+    assert(
+      (
+        await put({
+          appId: "example",
+          capability: "wallet.address.read",
+          granted: true,
+        })
+      ).status === 200,
+    );
+    assert(
+      writes.length === 1 &&
+        writes[0] === "101:example:wallet.address.read:true",
+    );
   },
 );

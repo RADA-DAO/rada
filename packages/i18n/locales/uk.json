@@ -42,6 +42,20 @@
     "expired": "Сесія завершилась",
     "expiredDescription": "Відкрий RADA з Telegram ще раз і повтори спробу.",
     "unavailable": "Профіль недоступний",
-    "unavailableDescription": "Перевір з’єднання та повтори спробу."
+    "unavailableDescription": "Перевір з’єднання та повтори спробу.",
+    "appPermissions": "Дозволи апок",
+    "noAppPermissions": "Жодній апці не надано дозволів.",
+    "revokePermission": "Відкликати",
+    "consentTitle": "RADA · Дозволити цій апці?",
+    "consentDescription": "Апка {{app}} просить доступ до {{permission}}.",
+    "consentAllow": "Дозволити",
+    "consentDeny": "Не дозволяти",
+    "permissions": {
+      "telegramUsername": "твого Telegram-імені",
+      "walletAddress": "адреси твого гаманця",
+      "walletBalances": "балансів твоїх токенів",
+      "frogCollection": "твоєї колекції жабок",
+      "notifications": "сповіщень"
+    }
   }
 }

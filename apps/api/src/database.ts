@@ -8,6 +8,15 @@ export type Me = {
 };
 export interface IdentityStore {
   me(verifiedTelegramId: string): Promise<Me>;
+  consents(
+    verifiedTelegramId: string,
+  ): Promise<{ app_id: string; capability: string }[]>;
+  setConsent(
+    verifiedTelegramId: string,
+    appId: string,
+    capability: string,
+    grant: boolean,
+  ): Promise<boolean>;
 }
 
 export class PostgresIdentityStore implements IdentityStore {
@@ -15,13 +24,71 @@ export class PostgresIdentityStore implements IdentityStore {
     private auth: pg.Pool,
     private service: pg.Pool,
   ) {}
-  async me(verifiedTelegramId: string): Promise<Me> {
-    // The auth login has EXECUTE only; the read login cannot create identities.
-    const resolved = await this.auth.query<{ subject_id: string }>(
+  private async subject(verifiedTelegramId: string): Promise<string> {
+    const result = await this.auth.query<{ subject_id: string }>(
       "SELECT identity.resolve_telegram($1::bigint) AS subject_id",
       [verifiedTelegramId],
     );
-    const subjectId = resolved.rows[0].subject_id;
+    return result.rows[0].subject_id;
+  }
+  async consents(verifiedTelegramId: string) {
+    const subjectId = await this.subject(verifiedTelegramId);
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        subjectId,
+      ]);
+      const result = await client.query<{ app_id: string; capability: string }>(
+        "SELECT app_id, capability FROM identity.consents WHERE revoked_at IS NULL ORDER BY app_id, capability",
+      );
+      await client.query("COMMIT");
+      return result.rows;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async setConsent(
+    verifiedTelegramId: string,
+    appId: string,
+    capability: string,
+    grant: boolean,
+  ) {
+    const subjectId = await this.subject(verifiedTelegramId);
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        subjectId,
+      ]);
+      if (grant) {
+        await client.query(
+          `INSERT INTO identity.consents(subject_id, app_id, capability) VALUES ($1, $2, $3)
+           ON CONFLICT (subject_id, app_id, capability) DO UPDATE
+           SET granted_at = now(), revoked_at = NULL`,
+          [subjectId, appId, capability],
+        );
+      } else {
+        await client.query(
+          "UPDATE identity.consents SET revoked_at = now() WHERE subject_id = $1 AND app_id = $2 AND capability = $3 AND revoked_at IS NULL",
+          [subjectId, appId, capability],
+        );
+      }
+      await client.query("COMMIT");
+      return grant;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async me(verifiedTelegramId: string): Promise<Me> {
+    // The auth login has EXECUTE only; the read login cannot create identities.
+    const subjectId = await this.subject(verifiedTelegramId);
     const client = await this.service.connect();
     try {
       await client.query("BEGIN");

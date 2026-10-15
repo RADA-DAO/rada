@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createHmac } from "node:crypto";
 import pg from "pg";
+import { createHash } from "node:crypto";
 import { t } from "../../../packages/i18n/src/index.ts";
 import enLocale from "../../../packages/i18n/locales/en.json" with { type: "json" };
 import ukLocale from "../../../packages/i18n/locales/uk.json" with { type: "json" };
@@ -84,6 +85,369 @@ test.beforeEach(async ({ page }) => {
       throw new Error(message.text());
   });
 });
+test("verified opaque app requests consent through host and self-only API", async ({
+  page,
+}, testInfo) => {
+  const appId = `fixture.${testInfo.project.name}.${Date.now()}`;
+  const token = signed();
+  await host(page, token);
+  await page.goto("/");
+  const artifact = `<main id="artifact">Sandbox app<button id="child-back">Back</button></main><script>
+    document.body.dataset.origin = location.origin;
+    document.querySelector('#child-back').onclick = () => rada.member.back();
+    rada.member.request('rada.member.context.get').then(value => { document.body.dataset.locale = value.locale; });
+    rada.member.request('rada.member.permission.request', { permission: 'wallet.address.read' })
+      .then(value => { document.body.dataset.granted = String(value.granted); });
+    rada.member.request('rada.member.money.transfer', { amount: 1 })
+      .catch(error => { document.body.dataset.money = error.message; });
+  </script>`;
+  const hash = createHash("sha256").update(artifact).digest("hex");
+  await page.route("**/fixture-app.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: artifact }),
+  );
+  await page.evaluate(
+    async ({ hash, appId }) => {
+      const holder = document.createElement("div");
+      document.body.append(holder);
+      const fixture = window as unknown as {
+        RadaAppHost: {
+          mount(
+            release: unknown,
+            holder: HTMLElement,
+            origin: string,
+          ): Promise<() => void>;
+        };
+        fixtureDispose?: () => void;
+      };
+      fixture.fixtureDispose = await fixture.RadaAppHost.mount(
+        {
+          appId,
+          artifactUrl: "http://127.0.0.1:4173/fixture-app.html",
+          artifactSha256: hash,
+          manifest: {
+            name: "Fixture",
+            author: "Fixture",
+            trustLevel: "official",
+            designRoute: "free-style",
+            permissions: [
+              "wallet.address.read",
+              "money.transfer",
+              "navigation",
+            ],
+            minPlatformVersion: "1.0.0",
+          },
+          grantedPermissions: [
+            "wallet.address.read",
+            "money.transfer",
+            "navigation",
+          ],
+        },
+        holder,
+        "http://127.0.0.1:4173",
+      );
+    },
+    { hash, appId },
+  );
+  const frame = page.frameLocator("iframe[sandbox='allow-scripts']");
+  await expect(
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Allow", exact: true }).click();
+  await expect(frame.locator("body")).toHaveAttribute("data-granted", "true");
+  await expect(frame.locator("body")).toHaveAttribute(
+    "data-money",
+    "capability_denied",
+  );
+  await expect(frame.locator("body")).toHaveAttribute("data-origin", "null");
+  await expect(frame.locator("body")).toHaveAttribute("data-locale", "en");
+  const database = new pg.Pool({
+    connectionString: process.env.E2E_DATABASE_URL,
+  });
+  try {
+    const result = await database.query(
+      "SELECT app_id, capability FROM identity.consents WHERE app_id = $1 AND revoked_at IS NULL",
+      [appId],
+    );
+    expect(result.rows).toEqual([
+      { app_id: appId, capability: "wallet.address.read" },
+    ]);
+  } finally {
+    await database.end();
+  }
+  await frame.locator("#child-back").click();
+  await expect(page.locator("iframe[sandbox='allow-scripts']")).toHaveCount(0);
+});
+test("opaque app cannot fetch, navigate externally or self-grant declared authority", async ({
+  page,
+}) => {
+  await host(page);
+  await page.goto("/");
+  // Expected CSP violations are part of this negative test.
+  page.removeAllListeners("console");
+  let networkHits = 0;
+  await page.route("**/blocked-*", (route) => {
+    networkHits++;
+    return route.fulfill({ body: "unexpected" });
+  });
+  const artifact = `<main id="hostile">Contained<button id="navigate">Navigate</button></main><script>
+    try { parent.document; document.body.dataset.parent = 'open'; } catch { document.body.dataset.parent = 'blocked'; }
+    fetch('http://127.0.0.1:4173/blocked-fetch').then(() => document.body.dataset.fetch = 'open').catch(() => document.body.dataset.fetch = 'blocked');
+    rada.member.request('rada.member.identity.self').then(() => document.body.dataset.grant = 'open').catch(error => document.body.dataset.grant = error.message);
+    document.querySelector('#navigate').onclick = () => { location.href = 'http://127.0.0.1:4173/blocked-navigation'; };
+  </script>`;
+  const hash = createHash("sha256").update(artifact).digest("hex");
+  await page.route("**/hostile-app.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: artifact }),
+  );
+  await page.evaluate(
+    async ({ hash }) => {
+      const holder = document.createElement("div");
+      document.body.append(holder);
+      await window.RadaAppHost!.mount(
+        {
+          appId: "fixture.hostile",
+          artifactUrl: "http://127.0.0.1:4173/hostile-app.html",
+          artifactSha256: hash,
+          manifest: {
+            name: "Fixture",
+            author: "Fixture",
+            trustLevel: "official",
+            designRoute: "free-style",
+            permissions: ["identity.self.read"],
+            minPlatformVersion: "1.0.0",
+          },
+          grantedPermissions: [],
+        },
+        holder,
+        "http://127.0.0.1:4173",
+      );
+    },
+    { hash },
+  );
+  const frame = page.frameLocator("iframe[sandbox='allow-scripts']");
+  await expect(frame.locator("#hostile")).toBeVisible();
+  await expect(frame.locator("body")).toHaveAttribute("data-parent", "blocked");
+  await expect(frame.locator("body")).toHaveAttribute("data-fetch", "blocked");
+  await expect(frame.locator("body")).toHaveAttribute(
+    "data-grant",
+    "capability_denied",
+  );
+  await frame.locator("#navigate").click();
+  await page.waitForTimeout(200);
+  expect(networkHits).toBe(0);
+  await expect(
+    page.getByRole("heading", { name: "Apps", exact: true }),
+  ).toBeVisible();
+});
+
+test("closing an app cancels its unanswered permission dialog", async ({
+  page,
+}, testInfo) => {
+  await host(page, signed());
+  await page.goto("/");
+  let writes = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().endsWith("/me/consents"))
+      writes++;
+  });
+  const artifact = `<script>
+    rada.member.request('rada.member.permission.request', { permission: 'wallet.address.read' }).catch(() => {});
+    rada.member.request('rada.member.permission.request', { permission: 'wallet.address.read' })
+      .catch(error => { document.body.dataset.second = error.message; });
+  </script>`;
+  const hash = createHash("sha256").update(artifact).digest("hex");
+  await page.route("**/dispose-app.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: artifact }),
+  );
+  await page.evaluate(
+    async ({ hash, appId }) => {
+      const holder = document.createElement("div");
+      document.body.append(holder);
+      (window as Window & { fixtureDispose?: () => void }).fixtureDispose =
+        await window.RadaAppHost!.mount(
+          {
+            appId,
+            artifactUrl: "http://127.0.0.1:4173/dispose-app.html",
+            artifactSha256: hash,
+            manifest: {
+              name: "Fixture",
+              author: "Fixture",
+              trustLevel: "community",
+              designRoute: "standard",
+              permissions: ["wallet.address.read"],
+              minPlatformVersion: "1.0.0",
+            },
+            grantedPermissions: ["wallet.address.read"],
+          },
+          holder,
+          "http://127.0.0.1:4173",
+        );
+    },
+    { hash, appId: `fixture.dispose.${testInfo.project.name}` },
+  );
+  await expect(
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(
+    page.frameLocator("iframe[sandbox='allow-scripts']").locator("body"),
+  ).toHaveAttribute("data-second", "rate_limited");
+  await page.evaluate(() =>
+    (window as unknown as { fixtureDispose: () => void }).fixtureDispose(),
+  );
+  await expect(
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
+  ).toHaveCount(0);
+  expect(writes).toBe(0);
+});
+test("timed-out bridge calls release capacity even when identity fetch hangs", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await host(page, signed());
+  await page.goto("/");
+  const held: import("@playwright/test").Route[] = [];
+  await page.route("**/me", (route) => {
+    held.push(route);
+  });
+  const artifact = `<script>
+    Promise.allSettled(Array.from({ length: 4 }, () => rada.member.request('rada.member.identity.self')))
+      .then(() => setTimeout(() => rada.member.request('rada.member.money.transfer')
+        .catch(error => { document.body.dataset.afterTimeout = error.message; }), 500));
+  </script>`;
+  const hash = createHash("sha256").update(artifact).digest("hex");
+  await page.route("**/timeout-app.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: artifact }),
+  );
+  await page.evaluate(async (hash) => {
+    const holder = document.createElement("div");
+    document.body.append(holder);
+    (window as Window & { fixtureDispose?: () => void }).fixtureDispose =
+      await window.RadaAppHost!.mount(
+        {
+          appId: "fixture.timeout",
+          artifactUrl: "http://127.0.0.1:4173/timeout-app.html",
+          artifactSha256: hash,
+          manifest: {
+            name: "Fixture",
+            author: "Fixture",
+            trustLevel: "community",
+            designRoute: "standard",
+            permissions: ["identity.self.read"],
+            minPlatformVersion: "1.0.0",
+          },
+          grantedPermissions: ["identity.self.read"],
+        },
+        holder,
+        "http://127.0.0.1:4173",
+      );
+  }, hash);
+  await expect.poll(() => held.length).toBe(4);
+  await page.clock.fastForward(10100);
+  await page.clock.runFor(600);
+  await expect(page.frameLocator("iframe").locator("body")).toHaveAttribute(
+    "data-after-timeout",
+    "capability_denied",
+  );
+  await page.evaluate(() =>
+    (window as unknown as { fixtureDispose: () => void }).fixtureDispose(),
+  );
+  await Promise.all(
+    held.map((route) =>
+      route
+        .fulfill({
+          json: {
+            subject_id: "00000000-0000-4000-8000-000000000101",
+            profile: { visibility: "private", public: null },
+            membership: { status: "unavailable" },
+          },
+        })
+        .catch(() => {}),
+    ),
+  );
+});
+
+test("a replaced artifact fetch cannot remove the current app", async ({
+  page,
+}) => {
+  await host(page);
+  await page.goto("/");
+  let slowRoute: import("@playwright/test").Route | undefined;
+  const slow = '<main id="stale-artifact">Stale</main>';
+  const current = '<main id="current-artifact">Current</main>';
+  await page.route("**/slow-app.html", (route) => {
+    slowRoute = route;
+  });
+  await page.route("**/current-app.html", (route) =>
+    route.fulfill({ contentType: "text/html", body: current }),
+  );
+  const hashes = [slow, current].map((body) =>
+    createHash("sha256").update(body).digest("hex"),
+  );
+  await page.evaluate((hashes) => {
+    const holder = document.createElement("div");
+    holder.id = "fixture-holder";
+    document.body.append(holder);
+    const fixture = window as Window & { slowOutcome?: Promise<string> };
+    fixture.slowOutcome = window
+      .RadaAppHost!.mount(
+        {
+          appId: "fixture.slow",
+          artifactUrl: "http://127.0.0.1:4173/slow-app.html",
+          artifactSha256: hashes[0],
+          manifest: {
+            name: "Fixture",
+            author: "Fixture",
+            trustLevel: "community",
+            designRoute: "standard",
+            permissions: [],
+            minPlatformVersion: "1.0.0",
+          },
+          grantedPermissions: [],
+        },
+        holder,
+        "http://127.0.0.1:4173",
+      )
+      .then(
+        () => "mounted",
+        () => "cancelled",
+      );
+  }, hashes);
+  await expect.poll(() => Boolean(slowRoute)).toBe(true);
+  await page.evaluate(async (hashes) => {
+    await window.RadaAppHost!.mount(
+      {
+        appId: "fixture.current",
+        artifactUrl: "http://127.0.0.1:4173/current-app.html",
+        artifactSha256: hashes[1],
+        manifest: {
+          name: "Fixture",
+          author: "Fixture",
+          trustLevel: "community",
+          designRoute: "standard",
+          permissions: [],
+          minPlatformVersion: "1.0.0",
+        },
+        grantedPermissions: [],
+      },
+      document.querySelector<HTMLElement>("#fixture-holder")!,
+      "http://127.0.0.1:4173",
+    );
+  }, hashes);
+  await slowRoute!
+    .fulfill({ contentType: "text/html", body: slow })
+    .catch(() => {});
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { slowOutcome: Promise<string> }).slowOutcome,
+    ),
+  ).toBe("cancelled");
+  await expect(page.locator("iframe")).toHaveCount(1);
+  await expect(
+    page.frameLocator("iframe").locator("#current-artifact"),
+  ).toBeVisible();
+});
+
 test("guest navigation, settings focus, locale and native Back", async ({
   page,
 }) => {

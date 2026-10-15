@@ -22,6 +22,22 @@ import {
   setPageBackActive,
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
+import {
+  mountAppHost,
+  type AppRelease,
+} from "../../../packages/platform-sdk/src/app-host.ts";
+
+declare global {
+  interface Window {
+    RadaAppHost?: {
+      mount(
+        release: AppRelease,
+        container: HTMLElement,
+        artifactOrigin: string,
+      ): Promise<() => void>;
+    };
+  }
+}
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: "launcher" | "profile" = "launcher";
@@ -29,6 +45,28 @@ let profile: "guest" | "loading" | "private" | "expired" | "unavailable" =
   "guest";
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let sheet: HTMLDialogElement | undefined;
+let activeAppDispose: (() => void) | undefined;
+let pendingAppMount: AbortController | undefined;
+let appHostGeneration = 0;
+function closeActiveApp() {
+  appHostGeneration++;
+  pendingAppMount?.abort();
+  pendingAppMount = undefined;
+  activeAppDispose?.();
+  activeAppDispose = undefined;
+}
+const permissionKeys = {
+  "telegram.username.read": "shell.permissions.telegramUsername",
+  "wallet.address.read": "shell.permissions.walletAddress",
+  "wallet.balances.read": "shell.permissions.walletBalances",
+  "jpegpe.collection.read": "shell.permissions.frogCollection",
+  "notifications.send": "shell.permissions.notifications",
+} as const satisfies Record<string, MessageKey>;
+function permissionLabel(capability: string): string {
+  return capability in permissionKeys
+    ? text(permissionKeys[capability as keyof typeof permissionKeys])
+    : "";
+}
 const root = document.querySelector<HTMLElement>("#app")!;
 root.className = "screen-wrap";
 const screen = document.createElement("main");
@@ -36,6 +74,12 @@ screen.className = "screen";
 root.append(screen);
 const text = (key: MessageKey) => t(locale, key);
 const back = () => {
+  if (activeAppDispose || pendingAppMount) {
+    closeActiveApp();
+    route = "launcher";
+    render();
+    return;
+  }
   if (sheet?.open) {
     sheet.close();
     return;
@@ -48,6 +92,65 @@ const platform = initializePlatform({
   onBack: back,
   themeColor: DEFAULT_THEME_BACKGROUND,
   apiOrigin: import.meta.env.VITE_API_ORIGIN,
+});
+// The launcher will receive release records from the registry. Only same-origin
+// shell code may call this adapter; a manifest cannot supply grantedPermissions.
+window.RadaAppHost = Object.freeze({
+  async mount(
+    release: AppRelease,
+    container: HTMLElement,
+    artifactOrigin: string,
+  ) {
+    closeActiveApp();
+    const generation = appHostGeneration;
+    const controller = new AbortController();
+    pendingAppMount = controller;
+    platform.setBackVisible(true);
+    const dispose = await mountAppHost({
+      signal: controller.signal,
+      release,
+      container,
+      artifactOrigin,
+      locale,
+      consentCopy(permission, appName) {
+        const label = permissionLabel(permission);
+        return {
+          title: text("shell.consentTitle"),
+          description: t(locale, "shell.consentDescription", {
+            app: appName,
+            permission: label,
+          }),
+          allow: text("shell.consentAllow"),
+          deny: text("shell.consentDeny"),
+        };
+      },
+      readConsent: (appId, permission) =>
+        platform.readAppConsent(appId, permission),
+      writeConsent: (appId, permission, granted) =>
+        platform.writeAppConsent(appId, permission, granted),
+      ownSubject: async () =>
+        (await platform.readOwnProfile())?.subject_id ?? null,
+      onNavigateBack: back,
+    }).catch((error: unknown) => {
+      if (pendingAppMount === controller) {
+        pendingAppMount = undefined;
+        platform.setBackVisible(route === "profile");
+      }
+      throw error;
+    });
+    if (generation !== appHostGeneration) {
+      dispose();
+      throw new Error("app_replaced");
+    }
+    activeAppDispose = dispose;
+    pendingAppMount = undefined;
+    platform.setBackVisible(true);
+    return () => {
+      if (activeAppDispose !== dispose) return;
+      closeActiveApp();
+      platform.setBackVisible(route === "profile");
+    };
+  },
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installSwipeBack(screen, {
@@ -105,6 +208,62 @@ function openSettings() {
   document.body.append(dialog);
   dialog.showModal();
   platform.setBackVisible(true);
+}
+async function openAppPermissions() {
+  const title = text("shell.appPermissions");
+  const content = document.createElement("div");
+  content.append(paragraph("common.loading"));
+  const dialog = Sheet({
+    title,
+    closeLabel: text("common.close"),
+    children: [content],
+  });
+  dialog.addEventListener(
+    "close",
+    () => {
+      dialog.remove();
+      if (sheet === dialog) sheet = undefined;
+      platform.setBackVisible(route === "profile");
+    },
+    { once: true },
+  );
+  sheet = dialog;
+  document.body.append(dialog);
+  dialog.showModal();
+  platform.setBackVisible(true);
+  async function refresh() {
+    try {
+      const items = await platform.readAppConsents();
+      if (!dialog.open) return;
+      content.replaceChildren();
+      if (!items.length) content.append(paragraph("shell.noAppPermissions"));
+      for (const item of items) {
+        const label = permissionLabel(item.capability);
+        if (!label) continue;
+        const row = document.createElement("p");
+        row.textContent = `${item.app_id}: ${label} `;
+        row.append(
+          Button(text("shell.revokePermission"), {
+            onClick: () => {
+              void platform
+                .writeAppConsent(item.app_id, item.capability, false)
+                .then(refresh)
+                .catch(() => {
+                  content.replaceChildren(
+                    paragraph("shell.unavailableDescription"),
+                  );
+                });
+            },
+          }),
+        );
+        content.append(row);
+      }
+    } catch {
+      if (dialog.open)
+        content.replaceChildren(paragraph("shell.unavailableDescription"));
+    }
+  }
+  await refresh();
 }
 async function loadProfile() {
   profile = "loading";
@@ -166,6 +325,9 @@ function render() {
       content.append(
         paragraph("shell.privateDescription"),
         paragraph(`shell.membership.${membership}`),
+        Button(text("shell.appPermissions"), {
+          onClick: () => void openAppPermissions(),
+        }),
       );
     if (profile === "guest")
       content.append(paragraph("shell.guestDescription"));
@@ -213,6 +375,7 @@ window.addEventListener(
   "pagehide",
   (event) => {
     if (event.persisted) return;
+    closeActiveApp();
     swipe.dispose();
     platform.dispose();
   },

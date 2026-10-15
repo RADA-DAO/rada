@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "lint": "prettier --check . && node --check tools/check.mjs && node tools/check.mjs",
     "typecheck": "tsc",
-    "test:unit": "node --test tools/check.test.mjs",
+    "test:unit": "node --test tools/check.test.mjs packages/platform-sdk/src/app-manifest.test.ts",
     "check": "npm run lint && npm run typecheck && npm run test:unit && npm run check:api",
     "commits": "node tools/commits.mjs",
     "e2e": "node tools/e2e.mjs",
