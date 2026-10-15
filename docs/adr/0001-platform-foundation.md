@@ -27,7 +27,8 @@ facing text is supplied through localization resources.
 
 Use a staged verification path: local development with synthetic fixtures, CI,
 staging, then production. Staging contains synthetic data only. Production
-promotion requires verification of the release artifact and its data changes.
+promotion requires human approval and verification of the release artifact and
+its data changes.
 
 Treat legacy data explicitly as one of three outcomes: transfer into an active
 module, retain as a restricted read-only archive, or leave with the legacy
