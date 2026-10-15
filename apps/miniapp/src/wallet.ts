@@ -6,6 +6,7 @@ import type {
   WalletBalances,
   WalletProof,
 } from "../../../packages/platform-sdk/src/index.ts";
+import { displayAmount } from "./amount.ts";
 
 type WalletPlatform = {
   readOwnWallets(signal?: AbortSignal): Promise<LinkedWallet[]>;
@@ -50,14 +51,23 @@ export function mountWallet(
       for (const wallet of wallets) {
         const row = document.createElement("section");
         const address = document.createElement("p");
-        address.textContent = wallet.address;
+        address.className = "wallet-address";
+        address.title = wallet.address;
+        address.textContent = `${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}`;
         const value = balances.find(
           (item) => item.address === wallet.address,
         )?.balances;
         const balance = document.createElement("p");
-        balance.textContent = `${text("wallet.ton")}: ${value?.gram?.formatted ?? text("wallet.balanceUnknown")} · ${text("wallet.jpegpe")}: ${value?.jpegpe?.formatted ?? text("wallet.balanceUnknown")}`;
+        const tonDigits =
+          value?.gram && BigInt(value.gram.raw) >= 1000n * 10n ** 9n ? 2 : 4;
+        const ton = displayAmount(value?.gram ?? null, locale, 2, tonDigits);
+        const jpegpe = displayAmount(value?.jpegpe ?? null, locale, 2);
+        balance.textContent = `${text("wallet.ton")}: ${ton ?? text("wallet.balanceUnknown")} · ${text("wallet.jpegpe")}: ${jpegpe ?? text("wallet.balanceUnknown")}`;
         row.append(
           address,
+          Button(text("wallet.copyAddress"), {
+            onClick: () => void copyAddress(wallet.address),
+          }),
           balance,
           Button(text("wallet.revoke"), {
             onClick: () => void revoke(wallet.address),
@@ -83,6 +93,14 @@ export function mountWallet(
       busy = false;
     }
   }
+  async function copyAddress(address: string) {
+    try {
+      await navigator.clipboard.writeText(address);
+      if (!isDisposed()) status.textContent = text("wallet.addressCopied");
+    } catch {
+      if (!isDisposed()) status.textContent = text("wallet.copyUnavailable");
+    }
+  }
   // TON Connect restores a remembered session asynchronously. Waiting for it keeps a
   // restored, proof-less session from racing a fresh proof request.
   async function ensureConnector(): Promise<TonConnectUI | undefined> {
@@ -102,7 +120,10 @@ export function mountWallet(
     busy = true;
     status.textContent = text("wallet.linking");
     try {
-      if (location.protocol !== "https:" && location.hostname !== "localhost")
+      if (
+        location.protocol !== "https:" &&
+        !["localhost", "127.0.0.1"].includes(location.hostname)
+      )
         throw new Error("unavailable");
       challenge = await platform.issueWalletChallenge(controller.signal);
       if (isDisposed()) return;

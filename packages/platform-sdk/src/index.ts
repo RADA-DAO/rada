@@ -133,7 +133,9 @@ export function initializePlatform(options: {
             ? "expired"
             : response.status === 403
               ? "forbidden"
-              : "unavailable",
+              : response.status === 404
+                ? "not_available"
+                : "unavailable",
         );
       const value: unknown = await response.json();
       return parseReviewQueue(value);

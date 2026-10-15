@@ -22,7 +22,6 @@
     "english": "English",
     "ukrainian": "Ukrainian",
     "navigation": "Navigation",
-    "back": "Back to apps",
     "done": "Done",
     "dismissKeyboard": "Hide keyboard",
     "emptyTitle": "Your community space",
@@ -32,11 +31,11 @@
     "loading": "Opening your profile…",
     "private": "Private profile",
     "public": "Public profile",
-    "privateDescription": "Your profile is visible only to you. Public profiles will be available after verified frog ownership is connected.",
+    "privateDescription": "Only you can see your profile. It becomes public when you choose a frog you own.",
     "membership": {
       "member": "DAO member",
-      "not_member": "Not a DAO member",
-      "unavailable": "Membership status cannot be verified right now."
+      "not_member": "DAO membership is not active yet.",
+      "unavailable": "DAO membership status is not available yet."
     },
     "expired": "Session expired",
     "expiredDescription": "Reopen RADA from Telegram, then try again.",
@@ -138,6 +137,9 @@
   "wallet": {
     "title": "Your wallets",
     "connect": "Connect wallet",
+    "copyAddress": "Copy full address",
+    "addressCopied": "Address copied",
+    "copyUnavailable": "Could not copy address. Try again.",
     "reconnect": "Reconnect to verify this wallet",
     "revoke": "Remove wallet link",
     "empty": "No wallet linked yet.",

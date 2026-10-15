@@ -144,3 +144,6 @@ textarea {
   background: var(--surface-raised);
   border: 1px solid var(--glass-edge);
 }
+.wallet-address {
+  overflow-wrap: anywhere;
+}

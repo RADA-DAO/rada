@@ -756,9 +756,7 @@ test("expired authentication has a manual retry", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
-test("swipe and visible Back share the launcher destination", async ({
-  page,
-}) => {
+test("swipe and Apps tab share the launcher destination", async ({ page }) => {
   await host(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
@@ -772,7 +770,7 @@ test("swipe and visible Back share the launcher destination", async ({
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Profile", exact: true }).click();
-  await page.getByRole("button", { name: "Back to apps" }).click();
+  await page.getByRole("button", { name: "Apps", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
