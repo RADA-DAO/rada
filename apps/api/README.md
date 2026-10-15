@@ -48,3 +48,7 @@ integration test, apply migrations to an isolated disposable database, set
 `API_TEST_DATABASE_URL` to its administrator connection URL, and run
 `npm run test:api:db`. The test provisions and removes fixture-only login roles.
 It creates synthetic identities and must never target production.
+
+Staging sets `STAGING_SYNTHETIC_ONLY=true` to reject all verified Telegram IDs
+except reserved synthetic fixtures 101/102 before persistence. This does not
+bypass signature verification. See the [staging runbook](../../infra/compose/STAGING.md).

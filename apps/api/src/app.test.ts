@@ -77,3 +77,34 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "staging rejects non-fixture identities before persistence",
+  async () => {
+    let calls = 0;
+    const app = createApp(
+      FIXTURE_TOKEN,
+      {
+        me: async () => {
+          calls++;
+          return {
+            subject_id: "fixture",
+            profile: { visibility: "private", public: null },
+            membership: { status: "unavailable" },
+          };
+        },
+      },
+      [],
+      true,
+    );
+    for (const id of [101, 102, 103]) {
+      const response = await app.request("/me", {
+        headers: {
+          authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,
+        },
+      });
+      assert(response.status === (id === 103 ? 401 : 200));
+    }
+    assert(calls === 2);
+  },
+);

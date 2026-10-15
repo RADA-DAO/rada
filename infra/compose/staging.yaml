@@ -1,0 +1,86 @@
+name: rada-staging
+services:
+  postgres:
+    image: postgres:17.11-bookworm@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826
+    environment:
+      POSTGRES_DB: rada_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set migration administrator password}
+    volumes:
+      - staging-data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d rada_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    profiles: [tools]
+    build:
+      context: ../..
+      dockerfile: infra/compose/migrate.Dockerfile
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGDATABASE: rada_staging
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set migration administrator password}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:?Set separate auth login password}
+      SERVICE_PASSWORD: ${SERVICE_PASSWORD:?Set separate service login password}
+    networks: [database]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      API_HOST: 0.0.0.0
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:?Set exact Pages HTTPS origin}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set separate staging bot token}
+      IDENTITY_AUTH_DATABASE_URL: postgresql://staging_auth:${AUTH_PASSWORD:?Set auth password}@postgres:5432/rada_staging
+      IDENTITY_SERVICE_DATABASE_URL: postgresql://staging_service:${SERVICE_PASSWORD:?Set service password}@postgres:5432/rada_staging
+      STAGING_SYNTHETIC_ONLY: "true"
+    healthcheck:
+      test:
+        [
+          CMD,
+          deno,
+          eval,
+          'const r = await fetch("http://127.0.0.1:8000/health"); if (!r.ok) Deno.exit(1);',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks: [database, origin]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+    command: [tunnel, --no-autoupdate, run]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set named staging tunnel token}
+    networks: [origin, egress]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  database:
+    internal: true
+  origin:
+    internal: true
+  egress:
+volumes:
+  staging-data:

@@ -7,6 +7,7 @@ export function createApp(
   token: string,
   store: IdentityStore,
   allowedOrigins: string[] = [],
+  syntheticOnly = false,
 ) {
   if (!token) throw new Error("Canonical bot token required");
   const app = new Hono();
@@ -33,7 +34,8 @@ export function createApp(
       authorization.slice(4),
       token,
     );
-    if (!telegramId) return c.json({ error: "unauthorized" }, 401);
+    if (!telegramId || (syntheticOnly && !["101", "102"].includes(telegramId)))
+      return c.json({ error: "unauthorized" }, 401);
     return c.json(await store.me(telegramId));
   });
   app.notFound((c) => c.json({ error: "not_found" }, 404));

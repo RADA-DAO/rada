@@ -28,6 +28,7 @@ if (import.meta.main) {
     required("TELEGRAM_BOT_TOKEN"),
     new PostgresIdentityStore(auth, service),
     allowedOrigins,
+    Deno.env.get("STAGING_SYNTHETIC_ONLY") === "true",
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },
