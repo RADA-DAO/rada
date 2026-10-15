@@ -1,3 +1,4 @@
+import { Button, Sheet } from "../../ui/src/index.ts";
 import {
   APP_PERMISSIONS,
   CONSENT_PERMISSIONS,
@@ -89,25 +90,20 @@ function consentWindow(
       resolve(false);
       return;
     }
-    const dialog = document.createElement("dialog");
-    dialog.className = "rada-sheet";
-    const title = document.createElement("h2");
-    title.id = "rada-app-consent-title";
-    dialog.setAttribute("aria-labelledby", title.id);
-    title.textContent = copy.title;
+    let result = false;
     const description = document.createElement("p");
     description.textContent = copy.description;
-    const allow = document.createElement("button");
-    allow.textContent = copy.allow;
-    const deny = document.createElement("button");
-    deny.textContent = copy.deny;
-    dialog.append(title, description, allow, deny);
-    let result = false;
-    allow.onclick = () => {
-      result = true;
-      dialog.close();
-    };
-    deny.onclick = () => dialog.close();
+    const allow = Button(copy.allow, {
+      onClick: () => {
+        result = true;
+        dialog.close();
+      },
+    });
+    const dialog = Sheet({
+      title: copy.title,
+      closeLabel: copy.deny,
+      children: [description, allow],
+    });
     const abort = () => dialog.close();
     signal.addEventListener("abort", abort, { once: true });
     dialog.addEventListener(

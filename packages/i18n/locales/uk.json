@@ -46,7 +46,7 @@
     "appPermissions": "Дозволи апок",
     "noAppPermissions": "Жодній апці не надано дозволів.",
     "revokePermission": "Відкликати",
-    "consentTitle": "Дозволити цій апці?",
+    "consentTitle": "RADA · Дозволити цій апці?",
     "consentDescription": "Апка {{app}} просить доступ до {{permission}}.",
     "consentAllow": "Дозволити",
     "consentDeny": "Не дозволяти",

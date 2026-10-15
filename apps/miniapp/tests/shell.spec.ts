@@ -150,7 +150,7 @@ test("verified opaque app requests consent through host and self-only API", asyn
   );
   const frame = page.frameLocator("iframe[sandbox='allow-scripts']");
   await expect(
-    page.getByRole("dialog", { name: "Allow this app?" }),
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Allow", exact: true }).click();
   await expect(frame.locator("body")).toHaveAttribute("data-granted", "true");
@@ -286,7 +286,7 @@ test("closing an app cancels its unanswered permission dialog", async ({
     { hash, appId: `fixture.dispose.${testInfo.project.name}` },
   );
   await expect(
-    page.getByRole("dialog", { name: "Allow this app?" }),
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(
@@ -296,7 +296,7 @@ test("closing an app cancels its unanswered permission dialog", async ({
     (window as unknown as { fixtureDispose: () => void }).fixtureDispose(),
   );
   await expect(
-    page.getByRole("dialog", { name: "Allow this app?" }),
+    page.getByRole("dialog", { name: enLocale.shell.consentTitle }),
   ).toHaveCount(0);
   expect(writes).toBe(0);
 });
