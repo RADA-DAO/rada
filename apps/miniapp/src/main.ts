@@ -27,6 +27,7 @@ let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: "launcher" | "profile" = "launcher";
 let profile: "guest" | "loading" | "private" | "expired" | "unavailable" =
   "guest";
+let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let sheet: HTMLDialogElement | undefined;
 const root = document.querySelector<HTMLElement>("#app")!;
 root.className = "screen-wrap";
@@ -107,10 +108,14 @@ function openSettings() {
 }
 async function loadProfile() {
   profile = "loading";
+  membership = "unavailable";
   render();
   try {
-    profile = (await platform.readOwnProfile()) ? "private" : "guest";
+    const ownProfile = await platform.readOwnProfile();
+    profile = ownProfile ? "private" : "guest";
+    membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
+    membership = "unavailable";
     profile =
       error instanceof Error && error.message === "expired"
         ? "expired"
@@ -160,7 +165,7 @@ function render() {
     if (profile === "private")
       content.append(
         paragraph("shell.privateDescription"),
-        paragraph("shell.membershipUnavailable"),
+        paragraph(`shell.membership.${membership}`),
       );
     if (profile === "guest")
       content.append(paragraph("shell.guestDescription"));
@@ -191,8 +196,7 @@ function render() {
       onClick: () => {
         route = "profile";
         render();
-        if (profile === "guest" && platform.authenticatedLaunch)
-          void loadProfile();
+        if (platform.authenticatedLaunch) void loadProfile();
       },
     }),
   );

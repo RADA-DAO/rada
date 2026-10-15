@@ -32,7 +32,11 @@
     "loading": "Opening your profile…",
     "private": "Private profile",
     "privateDescription": "Your profile is visible only to you. Public profiles will be available after verified frog ownership is connected.",
-    "membershipUnavailable": "DAO membership is not available yet.",
+    "membership": {
+      "member": "DAO member",
+      "not_member": "Not a DAO member",
+      "unavailable": "Membership status cannot be verified right now."
+    },
     "expired": "Session expired",
     "expiredDescription": "Reopen RADA from Telegram, then try again.",
     "unavailable": "Profile unavailable",

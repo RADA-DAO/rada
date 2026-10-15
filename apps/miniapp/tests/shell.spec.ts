@@ -2,6 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 import { createHmac } from "node:crypto";
 import pg from "pg";
 import { t } from "../../../packages/i18n/src/index.ts";
+import enLocale from "../../../packages/i18n/locales/en.json" with { type: "json" };
+import ukLocale from "../../../packages/i18n/locales/uk.json" with { type: "json" };
 function signed(age = 0) {
   const data = new URLSearchParams({
     auth_date: String(Math.floor(Date.now() / 1000) - age),
@@ -189,6 +191,75 @@ test("real API and PostgreSQL render only the own private profile", async ({
   }
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
   expect(await page.content()).not.toContain("synthetic-fixture-bot-token");
+});
+test("profile projects each validated membership status and refreshes on click", async ({
+  page,
+}) => {
+  await host(page, signed());
+  let status: unknown = "member";
+  let requests = 0;
+  await page.route("**/me", (route) => {
+    requests++;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        subject_id: "fixture-subject",
+        profile: { visibility: "private", public: null },
+        membership: { status },
+      }),
+    });
+  });
+  await page.goto("/");
+  const profile = page.getByRole("button", { name: "Profile", exact: true });
+  const projected = [
+    ["member", enLocale.shell.membership.member],
+    ["not_member", enLocale.shell.membership.not_member],
+    ["unavailable", enLocale.shell.membership.unavailable],
+  ] as const;
+  for (const [value, label] of projected) {
+    status = value;
+    await profile.click();
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+    if (value !== "unavailable")
+      await expect(
+        page.getByText(enLocale.shell.private, { exact: true }),
+      ).toBeVisible();
+    await page
+      .getByRole("button", { name: enLocale.shell.apps, exact: true })
+      .click();
+  }
+  expect(requests).toBe(3);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("combobox").selectOption("uk");
+  await page
+    .getByRole("button", { name: t("uk", "common.close"), exact: true })
+    .click();
+  status = "member";
+  await page
+    .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+    .click();
+  await expect(
+    page.getByText(ukLocale.shell.membership.member, { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+    .click();
+  for (const malformed of ["unexpected", ["member"]]) {
+    status = malformed;
+    await page
+      .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+      .click();
+    await expect(
+      page.getByText(ukLocale.shell.unavailable, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(enLocale.shell.membership.member, { exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+      .click();
+  }
 });
 test("expired authentication has a manual retry", async ({ page }) => {
   test.skip(
