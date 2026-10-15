@@ -1,0 +1,69 @@
+name: Staging
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: staging
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: >-
+      vars.STAGING_DEPLOY_ENABLED == 'true' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    environment: staging
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Validate public build configuration
+        env:
+          API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
+          PAGES_PROJECT: ${{ vars.STAGING_PAGES_PROJECT }}
+        run: |
+          node --input-type=module -e 'const o=process.env.API_ORIGIN; if(!o || new URL(o).origin!==o || !o.startsWith("https://") || !/^[a-z0-9-]+$/.test(process.env.PAGES_PROJECT??"")) process.exit(1);'
+      - run: npm run build:miniapp
+        env:
+          VITE_API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
+      - name: Install staging SSH identity
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy exact checked revision
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -eu
+          git archive --format=tar.gz --output=/tmp/staging.tar.gz "$RELEASE_SHA"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p /srv/rada-staging/releases/$RELEASE_SHA"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes /tmp/staging.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/srv/rada-staging/releases/$RELEASE_SHA/source.tar.gz"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "cd /srv/rada-staging/releases/$RELEASE_SHA && tar -xzf source.tar.gz && sh infra/compose/deploy-staging.sh $RELEASE_SHA"
+      - name: Publish staging shell
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.151.0"
+          command: pages deploy apps/miniapp/dist --project-name=${{ vars.STAGING_PAGES_PROJECT }} --branch=main --commit-hash=${{ github.event.workflow_run.head_sha }}
+      - name: Remove runner credentials
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519 ~/.ssh/known_hosts /tmp/staging.tar.gz

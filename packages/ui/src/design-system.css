@@ -1,0 +1,88 @@
+:root {
+  --theme-base: #243b34;
+  --accent-solid: #f4f4f0;
+  --theme-ring: #f4f4f0;
+  --water-top: #354942;
+  --water-mid: #243b34;
+  --water-bottom: #1a312a;
+  --environment-top: #354942;
+  --environment-mid: #243b34;
+  --environment-bottom: #1a312a;
+  --accent: #f4f4f0;
+  --accent-2: #dededb;
+  --accent-3: #7a7a78;
+  --accent-sun: #f4f4f0;
+  --accent-rgb: 244 244 240;
+  --ink: #f5fcf9;
+  --ink-rgb: 245 252 249;
+  --muted: rgb(245 252 249 / 0.68);
+  --text-primary: #f5fcf9;
+  --text-muted: rgb(245 252 249 / 0.68);
+  --shadow-rgb: 22 39 34;
+  --surface-pigment: #3d4d48;
+  --surface-highlight: #4a5853;
+  --surface-shadow: #162722;
+  --surface-base: #3d4d48;
+  --surface-raised: #4a5853;
+  --surface-soft: #384540;
+  --glass-fill: #3d4d48;
+  --glass-fill-strong: #4a5853;
+  --glass-fill-soft: #384540;
+  --glass-edge: rgb(255 255 255 / 0.2);
+  --glass-edge-bottom: rgb(22 39 34 / 0.46);
+  --glass-glint: rgb(255 255 255 / 0.12);
+  --accent-soft: rgb(244 244 240 / 0.24);
+  --accent-strong: #ebebe9;
+  --accent-indicator: #f4f4f0;
+  --accent-ink: #000000;
+  --accent-ring: #f4f4f0;
+  --control-primary-bg: #f4f4f0;
+  --control-primary-ink: #000000;
+  --control-primary-border: rgb(244 244 240 / 0.76);
+  --control-secondary-bg: #4a5853;
+  --control-secondary-ink: #f5fcf9;
+  --control-secondary-border: rgb(255 255 255 / 0.2);
+  --control-selected-bg: rgb(244 244 240 / 0.24);
+  --control-selected-ink: #f5fcf9;
+  --control-disabled-bg: #384540;
+  --control-disabled-ink: rgb(245 252 249 / 0.68);
+}
+
+.rada-button {
+  color: var(--control-secondary-ink);
+  background: var(--control-secondary-bg);
+  border: 1px solid var(--control-secondary-border);
+}
+.rada-button:focus-visible {
+  outline: 2px solid var(--theme-ring);
+  outline-offset: 2px;
+}
+.rada-button:disabled {
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-bg);
+}
+.rada-card,
+.rada-sheet,
+.rada-empty-state,
+.rada-error-state {
+  color: var(--text-primary);
+  background: var(--surface-base);
+}
+.rada-card {
+  border-radius: 1rem;
+  padding: 1rem;
+}
+.rada-sheet {
+  border: 1px solid var(--glass-edge);
+  border-radius: 1rem;
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,1 +1,45 @@
-{}
+{
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "close": "Close",
+    "dismiss": "Dismiss"
+  },
+  "state": {
+    "empty": "Nothing here yet",
+    "error": "Something went wrong",
+    "items": {
+      "one": "{{count}} item",
+      "other": "{{count}} items"
+    }
+  },
+  "shell": {
+    "brand": "RADA",
+    "apps": "Apps",
+    "profile": "Profile",
+    "settings": "Settings",
+    "language": "Language",
+    "english": "English",
+    "ukrainian": "Ukrainian",
+    "navigation": "Navigation",
+    "back": "Back to apps",
+    "done": "Done",
+    "dismissKeyboard": "Hide keyboard",
+    "emptyTitle": "Your community space",
+    "emptyDescription": "Community apps will appear here.",
+    "guest": "Guest profile",
+    "guestDescription": "Open RADA from Telegram to access your private profile.",
+    "loading": "Opening your profile…",
+    "private": "Private profile",
+    "privateDescription": "Your profile is visible only to you. Public profiles will be available after verified frog ownership is connected.",
+    "membership": {
+      "member": "DAO member",
+      "not_member": "Not a DAO member",
+      "unavailable": "Membership status cannot be verified right now."
+    },
+    "expired": "Session expired",
+    "expiredDescription": "Reopen RADA from Telegram, then try again.",
+    "unavailable": "Profile unavailable",
+    "unavailableDescription": "Check your connection and try again."
+  }
+}

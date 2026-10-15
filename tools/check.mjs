@@ -56,7 +56,9 @@ export function uiViolations(path, text) {
   if (path.includes("/locales/")) return [];
   const issues = [];
   if (/\p{Script=Cyrillic}/u.test(text)) issues.push("non-English source");
-  const ui = /\.(tsx|jsx|html)$/.test(path) || /\/(ui|miniapp)\//.test(path);
+  const ui =
+    /\.(tsx|jsx|html)$/.test(path) ||
+    (/\/(ui|miniapp)\//.test(path) && !/\/(scripts|test|tests)\//.test(path));
   if (!ui) return issues;
   if (path.endsWith(".html")) {
     if (
@@ -73,6 +75,95 @@ export function uiViolations(path, text) {
     true,
     ts.ScriptKind.TSX,
   );
+  const textBindings = new Set();
+  /** @param {import('typescript').Node} node */
+  function collectTextBindings(node) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      (ts.isStringLiteralLike(node.initializer) ||
+        (ts.isAsExpression(node.initializer) &&
+          ts.isStringLiteralLike(node.initializer.expression)))
+    )
+      textBindings.add(node.name.text);
+    ts.forEachChild(node, collectTextBindings);
+  }
+  collectTextBindings(source);
+  /** @param {import('typescript').Node} node */
+  function visibleValue(node) {
+    const parent = node.parent;
+    if (
+      (ts.isJsxAttribute(parent) &&
+        /^(aria-label|aria-description|alt|title|placeholder)$/.test(
+          parent.name.getText(source),
+        )) ||
+      (ts.isJsxExpression(parent) &&
+        ((ts.isJsxAttribute(parent.parent) &&
+          /^(aria-label|aria-description|alt|title|placeholder)$/.test(
+            parent.parent.name.getText(source),
+          )) ||
+          ts.isJsxElement(parent.parent) ||
+          ts.isJsxSelfClosingElement(parent.parent)))
+    )
+      return true;
+    if (
+      ts.isBinaryExpression(parent) &&
+      parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      /\.(textContent|innerText|title|placeholder|ariaLabel|ariaDescription|alt)$/.test(
+        parent.left.getText(source),
+      )
+    )
+      return true;
+    if (
+      ts.isCallExpression(parent) &&
+      parent.expression.getText(source).endsWith("setAttribute") &&
+      parent.arguments[1] === node &&
+      /^(aria-label|aria-description|alt|title|placeholder)$/.test(
+        parent.arguments[0]?.getText(source).replace(/["']/g, "") ?? "",
+      )
+    )
+      return true;
+    if (
+      ts.isPropertyAssignment(parent) &&
+      parent.initializer === node &&
+      ts.isObjectLiteralExpression(parent.parent) &&
+      ts.isCallExpression(parent.parent.parent) &&
+      ["Sheet", "EmptyState", "ErrorState", "Card"].includes(
+        parent.parent.parent.expression.getText(source).split(".").at(-1) ?? "",
+      ) &&
+      /^(title|label|message|closeLabel|retryLabel)$/.test(
+        parent.name.getText(source).replace(/["']/g, ""),
+      )
+    )
+      return true;
+    if (ts.isCallExpression(parent)) {
+      const component =
+        parent.expression.getText(source).split(".").at(-1) ?? "";
+      if (
+        ["Button", "EmptyState", "ErrorState", "Sheet"].includes(component) &&
+        parent.arguments[0] === node
+      )
+        return true;
+      if (
+        ["Sheet", "EmptyState", "ErrorState", "Card"].includes(component) &&
+        parent.arguments.some(
+          (argument) =>
+            ts.isObjectLiteralExpression(argument) &&
+            argument.properties.some(
+              (property) =>
+                ts.isPropertyAssignment(property) &&
+                property.initializer === node &&
+                /^(title|label|message|closeLabel|retryLabel)$/.test(
+                  property.name.getText(source).replace(/["']/g, ""),
+                ),
+            ),
+        )
+      )
+        return true;
+    }
+    return false;
+  }
   /** @param {import('typescript').Node} node */
   function visit(node) {
     if (ts.isJsxText(node) && node.text.trim()) issues.push("literal JSX text");
@@ -86,14 +177,18 @@ export function uiViolations(path, text) {
         ts.isCallExpression(node.parent) &&
         node.parent.expression.getText(source) === "t" &&
         node.parent.arguments[0] === node;
-      const syntax =
-        ts.isJsxAttribute(node.parent) &&
-        /^(className|id|type|role|data-|aria-hidden)/.test(
-          node.parent.name.getText(source),
-        );
-      if (!translation && !syntax)
+      const variableInitializer =
+        ts.isVariableDeclaration(node.parent) &&
+        node.parent.initializer === node;
+      if (!translation && !variableInitializer && visibleValue(node))
         issues.push("UI literal requires review or translation key");
     }
+    if (
+      ts.isIdentifier(node) &&
+      textBindings.has(node.text) &&
+      visibleValue(node)
+    )
+      issues.push("UI text variable requires review or translation key");
     ts.forEachChild(node, visit);
   }
   visit(source);
@@ -103,7 +198,17 @@ export function uiViolations(path, text) {
 /** @param {string} directory @returns {string[]} */
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if ([".git", "node_modules", ".env"].includes(entry.name)) return [];
+    if (
+      [
+        ".git",
+        "node_modules",
+        ".env",
+        "dist",
+        "playwright-report",
+        "test-results",
+      ].includes(entry.name)
+    )
+      return [];
     const path = resolve(directory, entry.name);
     return entry.isDirectory() ? walk(path) : [path];
   });

@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { pathAllowed, conventional, uiViolations } from "./check.mjs";
+import "../packages/ui/scripts/test-theme-compiler.ts";
+import "../packages/ui/scripts/test-ui-behavior.ts";
+import "../packages/i18n/scripts/test-keys.ts";
+
+test("i18n keys, interpolation, locale parity, and plural categories", () => {
+  execFileSync(process.execPath, ["packages/i18n/scripts/test-i18n.mjs"]);
+});
 
 test("hygiene rejects accidental notes and unsupported locations", () => {
   assert.equal(pathAllowed("docs/architecture/README.md"), true);
@@ -24,11 +32,54 @@ test("UI gate catches text and allows translation keys and locale data", () => {
       .length,
   );
   assert.ok(
-    uiViolations("apps/miniapp/view.tsx", 'const label = "Hello";').length,
+    uiViolations("apps/miniapp/view.tsx", 'node.textContent = "Hello";').length,
+  );
+  assert.ok(
+    uiViolations(
+      "apps/miniapp/view.tsx",
+      'node.setAttribute("aria-label", "Save");',
+    ).length,
+  );
+  assert.ok(
+    uiViolations(
+      "apps/miniapp/view.tsx",
+      'const label = "Hello"; node.textContent = label;',
+    ).length,
+  );
+  assert.ok(uiViolations("apps/miniapp/view.tsx", 'Button("Hello");').length);
+  assert.ok(
+    uiViolations(
+      "apps/miniapp/view.tsx",
+      'const label = "Hello"; <Button aria-label={label} />',
+    ).length,
+  );
+  assert.ok(
+    uiViolations("apps/miniapp/view.tsx", 'Sheet({ title: "Hello" });').length,
   );
   assert.deepEqual(
     uiViolations("apps/miniapp/view.tsx", '<p>{t("profile.name")}</p>'),
     [],
   );
   assert.deepEqual(uiViolations("packages/i18n/locales/uk.json", "{}"), []);
+  assert.deepEqual(
+    uiViolations(
+      "packages/ui/src/view.ts",
+      'document.createElement("button"); const color = "#ffffff"; const mode = "submit";',
+    ),
+    [],
+  );
+  assert.deepEqual(
+    uiViolations(
+      "apps/miniapp/view.tsx",
+      '<div className={"card"} data-mode={"compact"} role={"status"} />',
+    ),
+    [],
+  );
+  assert.deepEqual(
+    uiViolations(
+      "packages/ui/src/view.ts",
+      'Sheet({ "title": t("state.empty") });',
+    ),
+    [],
+  );
 });

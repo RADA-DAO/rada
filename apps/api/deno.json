@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "hono": "npm:hono@4.13.13",
+    "pg": "npm:pg@8.23.1"
+  },
+  "compilerOptions": { "strict": true, "types": ["npm:@types/pg@8.23.1"] },
+  "lock": "deno.lock"
+}
