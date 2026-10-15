@@ -6,6 +6,26 @@ permissions:
   contents: read
 jobs:
   checks:
+    if: always()
+    needs: [quality, database, dependency-review, e2e]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every verification gate
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          DATABASE: ${{ needs.database.result }}
+          DEPENDENCIES: ${{ needs.dependency-review.result }}
+          E2E: ${{ needs.e2e.result }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -eu
+          test "$QUALITY" = success
+          test "$DATABASE" = success
+          test "$E2E" = success
+          if [ "$EVENT_NAME" = pull_request ]; then
+            test "$DEPENDENCIES" = success
+          fi
+  quality:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
