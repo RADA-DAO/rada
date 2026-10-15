@@ -27,6 +27,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set migration administrator password}
       AUTH_PASSWORD: ${AUTH_PASSWORD:?Set separate auth login password}
       SERVICE_PASSWORD: ${SERVICE_PASSWORD:?Set separate service login password}
+      STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
+      STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
     networks: [database]
     depends_on:
       postgres:
@@ -37,11 +39,14 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       API_HOST: 0.0.0.0
-      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:?Set exact Pages HTTPS origin}
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:?Set exact Worker HTTPS origin}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set separate staging bot token}
       IDENTITY_AUTH_DATABASE_URL: postgresql://staging_auth:${AUTH_PASSWORD:?Set auth password}@postgres:5432/rada_staging
       IDENTITY_SERVICE_DATABASE_URL: postgresql://staging_service:${SERVICE_PASSWORD:?Set service password}@postgres:5432/rada_staging
-      STAGING_SYNTHETIC_ONLY: "true"
+      STAGING_RUNTIME: "true"
+      STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
+      STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
+      STAGING_ALLOWED_TELEGRAM_IDS: ${STAGING_ALLOWED_TELEGRAM_IDS-}
     healthcheck:
       test:
         [
@@ -63,18 +68,25 @@ services:
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-  tunnel:
-    image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
-    command: [tunnel, --no-autoupdate, run]
+  caddy:
+    image: caddy:2.11.2-alpine@sha256:834468128c7696cec0ceea6172f7d692daf645ae51983ca76e39da54a97c570d
     environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set named staging tunnel token}
+      STAGING_API_HOSTNAME: ${STAGING_API_HOSTNAME:?Set staging API HTTPS hostname}
+    entrypoint: [sh, /etc/caddy/caddy-entrypoint.sh]
+    command: [caddy, run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-entrypoint.sh:/etc/caddy/caddy-entrypoint.sh:ro
+      - staging-caddy-data:/data
+      - staging-caddy-config:/config
     networks: [origin, egress]
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
-    read_only: true
     cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
 networks:
   database:
@@ -84,3 +96,5 @@ networks:
   egress:
 volumes:
   staging-data:
+  staging-caddy-data:
+  staging-caddy-config:

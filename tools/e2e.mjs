@@ -55,6 +55,9 @@ try {
       stdio: "inherit",
       env: {
         ...process.env,
+        STAGING_RUNTIME: "true",
+        STAGING_AUTH_MODE: "synthetic",
+        STAGING_ALLOWED_TELEGRAM_IDS: "",
         STAGING_SYNTHETIC_ONLY: "true",
         APPS_SERVICE_DATABASE_URL: registry.toString(),
         APP_ARTIFACT_ORIGIN: "https://artifacts.example",

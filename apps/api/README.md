@@ -106,9 +106,11 @@ integration test, apply migrations to an isolated disposable database, set
 `npm run test:api:db`. The test provisions and removes fixture-only login roles.
 It creates synthetic identities and must never target production.
 
-Staging sets `STAGING_SYNTHETIC_ONLY=true` to reject all verified Telegram IDs
-except reserved synthetic fixtures 101/102 before persistence. This does not
-bypass signature verification. This mode always returns membership `unavailable`
-and never calls Telegram, even if a chat ID is configured. The isolated staging
-API has no outbound network access. Live membership requires a non-synthetic
-runtime with outbound HTTPS to Telegram. See the [staging runbook](../../infra/compose/STAGING.md).
+Staging sets `STAGING_RUNTIME=true` and `STAGING_AUTH_MODE=allowlist`, with a
+nonempty server-only `STAGING_ALLOWED_TELEGRAM_IDS` list. Every staging data route,
+including public registry reads, rejects unsigned or unlisted launches before
+persistence/provider calls. Invalid or conflicting configuration prevents startup.
+CI instead sets `STAGING_AUTH_MODE=synthetic` and `STAGING_SYNTHETIC_ONLY=true`:
+only signed fixtures 101/102 are accepted. Both staging modes return membership
+`unavailable` without Telegram calls. Production keeps normal verified identity
+and configured membership behavior. See the [staging runbook](../../infra/compose/STAGING.md).

@@ -1,95 +1,96 @@
 # Staging
 
-Preparation only. Deployment is off until `STAGING_DEPLOY_ENABLED=true` and the
-GitHub `staging` environment scopes deployment secrets to main.
-Create that environment and restrict deployment branches to main before enabling.
-First deployment needs explicit approval and a separate test bot. Once explicitly
-enabled, successful main CI revisions deploy automatically.
+Deployment stays off unless `STAGING_DEPLOY_ENABLED=true`. The first deployment
+is performed by the operator after approval. Use the existing `rada-staging`
+Cloudflare Worker with static assets and the existing separate test bot. Never
+use production credentials or import production data.
 
-## Provisioning
+## Server
 
-Use a dedicated host directory `/srv/rada-staging`, database volume, test bot,
-named Cloudflare Tunnel and Pages Direct Upload project. Never import production
-data or use production tokens. Pin the SSH host key from a trusted channel.
-Create a dedicated deployment SSH key/login with access only to this staging
-host; Docker access is administrator-equivalent. Store the private key in GitHub,
-not this repository. Keep `staging.env` mode 0600 outside release directories.
+Use a dedicated `/srv/rada-staging` directory, deployment login/key and database
+volume. Pin the SSH host key through a trusted channel. Keep `staging.env` outside
+release directories with mode 0600. Docker access is administrator-equivalent.
 
-Create the named tunnel in Cloudflare's dashboard and route only the chosen API
-HTTPS hostname to `http://api:8000`; leave unmatched ingress returning 404.
-Do not route PostgreSQL or add host port mappings. The connector alone joins an
-egress network; API and database networks are internal. Validate DNS and outbound
-[port 7844](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/tunnel-with-firewall/)
-before starting: QUIC uses UDP, HTTP/2 uses TCP, both on 7844. HTTPS 443 alone
-cannot carry this tunnel. Image pulls and Pages uploads also require HTTPS egress.
+Server environment:
 
-Create a separate Pages Direct Upload project with production branch `main` and
-no Git integration or automatic preview deployment. Record its HTTPS origin for
-CORS. Set `STAGING_API_ORIGIN` to the exact HTTPS API origin; this public build
-variable contains no token. Keep all bot and database credentials on the API host.
+- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`: distinct high-entropy
+  hexadecimal passwords; runtime logins receive only their respective module role.
+- `TELEGRAM_BOT_TOKEN`: the test bot token, server only; no bot update changes.
+- `STAGING_AUTH_MODE=allowlist`, `STAGING_SYNTHETIC_ONLY=false`.
+- `STAGING_ALLOWED_TELEGRAM_IDS`: nonempty comma-separated positive decimal IDs of
+  approved testers. Keep actual IDs only here; never in frontend assets or logs.
+- `STAGING_API_HOSTNAME`: the host's public sslip.io hostname, without a scheme,
+  path or port. The container entrypoint rejects whitespace, configuration syntax,
+  invalid DNS labels and overlong names before Caddy validation or startup. Keep
+  the actual host address outside the repository.
+- `API_ALLOWED_ORIGINS`: the exact existing Worker HTTPS origin, no trailing slash.
 
-## Configuration
+Missing, empty or malformed allowlists and conflicting modes prevent API startup.
+Only signed launches for allowed testers reach persistence. Every staging API
+route, including `/apps/published`, requires authentication except `/health` and
+CORS preflight. The static Worker shell can load for guests. Ordinary signatures
+last 24 hours; writes and review reads require signatures within one hour.
+Staging membership remains `unavailable` and makes no external provider calls.
 
-Protected GitHub environment secrets:
+Caddy provides [automatic HTTPS](https://caddyserver.com/docs/quick-starts/https).
+Before deployment, the operator must confirm DNS resolves to the server and open
+inbound TCP 80/443 in UFW and the provider firewall. Only Caddy publishes ports;
+API and PostgreSQL remain inside Docker. Caddy alone has internet egress for ACME.
+Certificates and configuration persist in dedicated volumes. There is no tunnel
+or tunnel token requirement. Verify certificate issuance before phone testing;
+never fall back to insecure HTTP.
 
-- `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`
-- `STAGING_SSH_KNOWN_HOSTS` (trusted complete known_hosts line)
-- `STAGING_CLOUDFLARE_ACCOUNT_ID`, `STAGING_CLOUDFLARE_API_TOKEN` (Pages edit only)
+## GitHub and Worker
 
-Repository variables: `STAGING_DEPLOY_ENABLED` (absent/false until approved),
-`STAGING_API_ORIGIN`, `STAGING_PAGES_PROJECT` (letters, digits and hyphens only).
+Create/review the protected `staging` environment restricted to `main` before
+activation. Environment secrets:
 
-Host `staging.env` keys: `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`,
-`TELEGRAM_BOT_TOKEN`, `TUNNEL_TOKEN`, `API_ALLOWED_ORIGINS`.
-Generate distinct high-entropy hexadecimal database passwords (URL-safe).
-`API_ALLOWED_ORIGINS` is the exact Pages HTTPS origin, without a trailing slash.
-The runtime receives only `staging_auth` and `staging_service` login credentials.
-The administrator credential is confined to PostgreSQL and the one-off migration
-container. Migrations create NOLOGIN module roles; bootstrap grants each runtime
-login only its respective role. Password rotation requires rerunning migration
-bootstrap and recreating the API; changing the administrator environment alone
-does not rotate an existing PostgreSQL volume password.
+- `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`.
+- `STAGING_SSH_KNOWN_HOSTS`: trusted complete known_hosts line.
+- `STAGING_CLOUDFLARE_ACCOUNT_ID`, `STAGING_CLOUDFLARE_API_TOKEN`: scoped to the
+  staging account with Workers Scripts: Edit permission.
 
-## Start and verify
+Repository variables: `STAGING_API_ORIGIN` (exact public HTTPS API origin) and
+`STAGING_DEPLOY_ENABLED` (absent/false until approved). API origin is a public build
+value; credentials and tester IDs are server configuration only.
 
-After approval, deploy an exact main SHA using the workflow. It waits for CI,
-builds the shell, uploads that revision, runs migrations/bootstrap/seed once,
-starts API/tunnel and publishes Pages. The host needs Docker with Compose v2;
-all build tools are pinned in containers. Never start API before migration succeeds.
-The shell is built with Node 24.14.0 and published with Wrangler 4.151.0.
-Run `sh tools/check-staging.sh` for configuration/build validation and
-`sh tools/test-staging.sh` for disposable image/database/API verification.
-These tests use synthetic credentials and never start a tunnel.
-For a manual approved run, place that revision in its release directory and run
-`sh infra/compose/deploy-staging.sh FULL_SHA` from there.
+The workflow accepts successful push CI for an exact main SHA, checks out that
+revision, builds with Node 24.14.0, uploads the same source, migrates/bootstraps
+before API startup, then publishes static assets with Wrangler 4.151.0:
 
-Check named tunnel health, public `/health`, guest shell loading and CORS against
-the exact Pages origin. `/health` is liveness, not database readiness. The seed
-asserts exactly two synthetic subjects/Telegram links, stable UUIDs, no role
-grants, consents or frog selection. Reapplying it must preserve these invariants.
-Do not log initData, tokens, identifiers or database errors.
+```sh
+wrangler deploy --assets apps/miniapp/dist --config infra/cloudflare/wrangler.jsonc
+```
 
-`STAGING_SYNTHETIC_ONLY=true` is fixed in Compose: only signed fixture IDs 101/102
-can reach persistence. Sign fixtures only in isolated tests with a synthetic token.
-There is no public test login, forged production authentication or frontend token.
-Real test-bot sessions are rejected before database access, so native manual
-checks are guest-only pending a separate privacy decision. Restrict staging bot
-access and ensure these reserved fixture identifiers are never assigned to testers.
+This updates the existing named Worker; it does not create a Pages project.
+The build copies `_headers` into assets, preserving `frame-src 'none'` protection
+for the sandboxed app host. See [Workers assets](https://developers.cloudflare.com/workers/static-assets/)
+and [asset headers](https://developers.cloudflare.com/workers/static-assets/headers/).
 
-Membership is always `unavailable` in this synthetic mode, even if a private chat
-ID is configured. No Telegram membership request leaves the isolated API network.
-In a future non-synthetic runtime, live checks require `DAO_TELEGRAM_CHAT_ID` in
-the server environment, the same canonical bot as authentication, bot administrator
-rights in that closed chat and outbound HTTPS to Telegram. Never put the chat ID
-or bot token in frontend configuration. Changing staging privacy or network policy
-requires a separate decision before enabling real-user checks.
+## Validation and rollback
 
-## Rollback
+Run `sh tools/check-staging.sh` for configuration/build checks and
+`sh tools/test-staging.sh` for disposable database/API verification. CI fixes
+synthetic mode to signed fixtures 101/102 and rejects 103; no real bot is used.
+Caddy validation runs without host ports, ACME or live DNS. These checks never
+start a public proxy. Synthetic seed reruns enforce two fixture identities and
+no role grants, consents or frog selection. Seeding runs only in explicit synthetic
+mode. Allowlist migrations preserve existing testers and consents; the smoke test
+checks a third synthetic tester and consent survive two migration reruns.
 
-Set `STAGING_DEPLOY_ENABLED=false` first. Stop only this project's API and tunnel,
-select the previous recorded full SHA, and review migration compatibility before
-running its deploy script. Restore the matching previous Pages deployment in the
-Cloudflare dashboard. Keep the named database volume; never use `down --volumes`
-as rollback. Forward-only migrations require a compatible forward fix, not an
-old binary on an incompatible schema. Record API and Pages SHAs together; a
-partial publication must be repaired or rolled back before testing resumes.
+After approval, deploy the exact checked SHA using the workflow, or run
+`sh infra/compose/deploy-staging.sh FULL_SHA` from its server release directory.
+That server command records only `api-pending-sha`; it does not mean the frontend
+published. After the matching Worker publishes successfully, the workflow calls
+`sh infra/compose/finalize-staging.sh FULL_SHA`. This verifies the pending SHA and
+atomically updates `current-sha` for the paired release. A manual deployment must
+complete Worker publication successfully before invoking that finalizer.
+Check HTTPS `/health`, guest shell, exact-origin CORS, allowed test-bot launches,
+and denied accounts. Never log initData, identifiers, tokens or database errors.
+
+For rollback, disable deployment first, stop only staging API/Caddy, choose a
+recorded compatible SHA and review migrations before deploying it. Restore the
+matching previous Worker version in Cloudflare. Keep all persistent volumes;
+never use `down --volumes` for rollback. Record API and Worker SHAs together and
+repair partial publication before testing resumes. Forward-only schema changes
+may require a compatible forward fix.

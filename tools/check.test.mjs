@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { pathAllowed, conventional, uiViolations } from "./check.mjs";
 import "./architecture.test.mjs";
+import "./staging-config.test.mjs";
 import "../packages/ui/scripts/test-theme-compiler.ts";
 import "../packages/ui/scripts/test-ui-behavior.ts";
 import "../packages/i18n/scripts/test-keys.ts";

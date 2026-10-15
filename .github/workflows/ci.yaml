@@ -50,7 +50,7 @@ jobs:
         run: docker compose --env-file .env.example -f infra/compose/local.yaml config --quiet
       - name: Validate staging preparation
         run: sh tools/check-staging.sh
-      - name: Verify isolated staging images without a tunnel
+      - name: Verify isolated staging images without public listeners
         run: sh tools/test-staging.sh
       - name: Scan tracked files and history for secrets
         shell: bash
