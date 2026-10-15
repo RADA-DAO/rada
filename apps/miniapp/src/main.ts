@@ -1,4 +1,5 @@
 import { settingsDialog } from "./settings.ts";
+import * as payment from "./payment-copy.ts";
 import { openAppPermissions, permissionLabel } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
@@ -62,6 +63,7 @@ screen.className = "screen";
 root.append(screen);
 const text = (key: MessageKey) => t(locale, key);
 const back = () => {
+  if (payment.paymentBusy) return;
   if (sheet?.open) {
     sheet.close();
     return;
@@ -123,6 +125,7 @@ window.RadaAppHost = Object.freeze({
         platform.readAppWalletAddress(appId, signal),
       readWalletBalances: (appId, signal) =>
         platform.readAppWalletBalances(appId, signal),
+      ...payment.paymentHostAdapter(platform, locale, payment.setPaymentBusy),
       onNavigateBack: back,
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
@@ -148,6 +151,7 @@ window.RadaAppHost = Object.freeze({
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installSwipeBack(screen, {
   canStart: () =>
+    !payment.paymentBusy &&
     !sheet?.open &&
     document.documentElement.dataset.appViewportReduced !== "true" &&
     pageBackNavigation(screen).canSwipe(),

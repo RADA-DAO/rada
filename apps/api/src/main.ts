@@ -7,7 +7,10 @@ import {
 } from "../../../modules/identity/index.ts";
 import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
 import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
-import { PostgresWalletStore } from "../../../modules/wallet/index.ts";
+import {
+  PostgresWalletStore,
+  PostgresPaymentStore,
+} from "../../../modules/wallet/index.ts";
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -87,6 +90,12 @@ if (import.meta.main) {
     registry ? new PostgresRegistryStore(auth, registry) : undefined,
     artifactOrigin,
     wallet,
+    walletUrl
+      ? new PostgresPaymentStore(
+          auth,
+          new pg.Pool({ connectionString: walletUrl }),
+        )
+      : undefined,
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },

@@ -24,6 +24,32 @@ export class TonConnectUI {
     });
   }
 
+  get account() {
+    if (!this.connected) return null;
+    return {
+      address:
+        localStorage.getItem("fixture-ton-account") ?? "restored-session",
+      chain: localStorage.getItem("fixture-ton-chain") ?? "-239",
+      walletStateInit: "",
+      publicKey: "",
+    };
+  }
+  sendTransaction(transaction: unknown) {
+    if (localStorage.getItem("fixture-ton-payment") !== "enabled")
+      throw new Error("Payment fixture must be explicitly enabled");
+    localStorage.setItem(
+      "fixture-ton-sends",
+      String(Number(localStorage.getItem("fixture-ton-sends") ?? 0) + 1),
+    );
+    localStorage.setItem(
+      "fixture-ton-transaction",
+      JSON.stringify(transaction),
+    );
+    return Promise.resolve({ boc: "synthetic-no-chain-transaction" });
+  }
+  closeModal() {
+    document.dispatchEvent(new Event("fixture-ton-modal-closed"));
+  }
   setConnectionNetwork() {}
   setConnectRequestParameters(
     parameters: {

@@ -17,6 +17,8 @@ import {
 import {
   type WalletStore,
   registerWalletRoutes,
+  type PostgresPaymentStore,
+  registerPaymentRoutes,
 } from "../../../modules/wallet/index.ts";
 
 export function createApp(
@@ -28,6 +30,7 @@ export function createApp(
   registry?: RegistryStore,
   artifactOrigin?: string,
   wallet?: WalletStore,
+  payments?: PostgresPaymentStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -69,6 +72,7 @@ export function createApp(
     policy.mode !== "production",
   );
   if (wallet) registerWalletRoutes(app, wallet, authenticated);
+  if (payments) registerPaymentRoutes(app, payments, authenticated);
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   // Never log credentials, raw initData, database errors or Telegram profile data.
   app.onError(

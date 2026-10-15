@@ -32,11 +32,15 @@ iframe. Child CSP blocks network and storage access; the shell's `frame-src
 'none'` policy blocks external frame navigation. The `rada.member.*` bridge
 accepts only requests from the current frame and session channel. Children
 never receive Telegram launch data, API credentials or a Telegram user ID.
-Financial, wallet signature and DAO authority requests fail closed in v1.
+Generic wallet-signature and DAO-authority requests remain denied.
 Wallet address and balance reads pass through the host only for published app
 permissions and current app-scoped consent. Each read calls the server, which
 rechecks consent and the verified link before serving data. Balance responses
-contain exact integer strings; signature and transaction requests remain denied.
+contain exact integer strings. Published `money.transfer` releases can request
+a host-owned payment dialog. The child supplies only token, exact amount,
+recipient, purpose and idempotency key; the platform fetches the canonical
+intent and signs a server-built transaction. Other signature and transaction
+requests remain denied.
 
 Personal-data permissions use a host-owned consent dialog and authenticated
 `/me/consents` API. The profile shows active grants and lets the person revoke
@@ -51,3 +55,14 @@ credential-holding adapter. The queue projection excludes author subject IDs,
 validates immutable artifact URLs and hashes, and limits one response to 1,000
 versions. An oversized or malformed response fails closed. Preview callers must
 supply an empty granted-permission list for versions awaiting approval.
+
+Payment requests use `rada.member.payment.request` and return an intent ID and
+`prepared`, `cancelled`, `unknown`, or `paid` status. The app must retain its
+idempotency key for that purchase and poll `rada.member.payment.status` with the
+intent ID after `unknown`. It must never interpret a wallet BOC as payment proof.
+Only the server can produce `paid` after chain reconciliation. A claimed intent
+cannot be signed again, including wallet rejection, timeout, reload or network loss.
+Confirmation shows the full amount and destination plus an expiring numeric sender
+fee estimate. Unknown-wallet fee estimation fails closed. Host disposal cancels
+unanswered confirmation; once sent to a wallet, a late transaction may still land
+and must be reconciled. The platform blocks Back during the active payment request.

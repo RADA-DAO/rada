@@ -151,6 +151,19 @@
     "jpegpe": "JPEGPE",
     "balanceUnknown": "Balance unavailable"
   },
+  "payment": {
+    "title": "RADA · Confirm payment",
+    "token": "Token",
+    "amount": "Exact amount",
+    "recipient": "Full recipient address",
+    "purpose": "Purpose",
+    "fee": "Estimated sender network fee",
+    "feeWallet": "Estimated from current wallet state. Recipient execution uses the attached amount; your wallet shows the final estimate before signing.",
+    "gasBudget": "Attached TON gas budget (separate from tokens and wallet fee)",
+    "confirm": "Continue to wallet",
+    "cancel": "Cancel",
+    "unknown": "Checking payment on chain"
+  },
   "profile": {
     "collection": "Your frogs",
     "emptyCollection": "Your collection is empty.",

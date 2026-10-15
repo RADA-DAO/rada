@@ -65,7 +65,8 @@ within one hour.
 Review and publication require the `apps.reviewer` grant in
 `identity.role_grants`. The registry login cannot issue role grants. A review
 records the actor and reason; the public projection omits private subject IDs.
-Published `grantedPermissions` excludes financial and DAO authority capabilities;
+Published `grantedPermissions` includes reviewer-approved `money.transfer`;
+other financial and DAO authority capabilities remain excluded.
 personal-data access still requires live app-scoped user consent at the service
 that handles the data. The host must verify artifact bytes against SHA-256.
 
@@ -103,7 +104,11 @@ Missing, invalid or expired authentication returns `401 {"error":"unauthorized"}
 backend failures return `503 {"error":"unavailable"}`. HTTP responses are not cached.
 Ordinary routes accept initData for 24 hours; the privileged authentication policy
 is one hour and applies to consent and registry writes. Future clock skew is
-limited to 120 seconds. No financial transaction routes exist in this scaffold.
+limited to 120 seconds. Payment creation, claim and cancellation require the
+privileged one-hour launch; reconciliation is self-only. `/me/payments` never
+accepts arbitrary transaction messages. The payment dialog shows exact amounts
+and the wallet estimates its own network fee before signing. A claim is
+single-use, including after an unknown wallet outcome.
 No logs contain raw initData, Telegram IDs, tokens or database errors.
 
 Run `npm run check` for API types, auth and HTTP unit tests. For the PostgreSQL 17

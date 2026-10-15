@@ -1,0 +1,289 @@
+import { Address, beginCell, JettonMaster, TonClient } from "@ton/ton";
+import { estimatePaymentFee } from "./payment-fee.ts";
+import { JPEGPE_JETTON_MASTER } from "./balances.ts";
+
+export type PaymentRecord = {
+  intentId: string;
+  token: "TON" | "JPEGPE";
+  amount: string;
+  recipient: string;
+  sender: string;
+  purpose: string;
+  createdAt: string;
+};
+export type SignRequest = {
+  network: "-239";
+  from: string;
+  validUntil: number;
+  messages: { address: string; amount: string; payload: string }[];
+};
+type Dict = Record<string, unknown>;
+const object = (value: unknown): Dict | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Dict)
+    : null;
+const same = (a: unknown, b: string) => {
+  try {
+    if (typeof a === "string") return Address.parse(a).equals(Address.parse(b));
+    const value = object(a);
+    return (
+      value?.["@type"] === "addr_std" &&
+      Address.parse(`${value.workchain_id}:${value.address}`).equals(
+        Address.parse(b),
+      )
+    );
+  } catch {
+    return false;
+  }
+};
+function receiptHash(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  if (!/^[A-Za-z0-9+/_-]{43}=?$/.test(value)) return null;
+  const bytes = Buffer.from(
+    value.replaceAll("-", "+").replaceAll("_", "/"),
+    "base64",
+  );
+  return bytes.length === 32 ? bytes.toString("hex") : null;
+}
+const comment = (intent: PaymentRecord) =>
+  `RADA:${intent.intentId}:${intent.purpose}`;
+const after = (value: unknown, start: number) =>
+  (typeof value === "number" ||
+    (typeof value === "string" && /^\d+$/.test(value))) &&
+  Number.isSafeInteger(Number(value)) &&
+  Number(value) >= start;
+const payload = (text: string) =>
+  beginCell()
+    .storeUint(0, 32)
+    .storeStringTail(text)
+    .endCell()
+    .toBoc()
+    .toString("base64");
+
+export class PaymentChain {
+  private send: typeof fetch;
+  private resolveJettonWallet: ((owner: string) => Promise<string>) | undefined;
+  private ton = new TonClient({
+    endpoint: "https://toncenter.com/api/v2/jsonRPC",
+    timeout: 5000,
+  });
+  constructor(
+    send: typeof fetch = fetch,
+    resolveJettonWallet?: (owner: string) => Promise<string>,
+  ) {
+    this.send = send;
+    this.resolveJettonWallet = resolveJettonWallet;
+  }
+  private async json(path: string): Promise<Dict> {
+    const response = await this.send(`https://toncenter.com/api/v3/${path}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+      cache: "no-store",
+      redirect: "error",
+    });
+    if (
+      !response.ok ||
+      Number(response.headers.get("content-length")) > 2_000_000
+    )
+      throw new Error("chain_unavailable");
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("chain_unavailable");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const part = await reader.read();
+        if (part.done) break;
+        size += part.value.length;
+        if (size > 2_000_000) {
+          await reader.cancel();
+          throw new Error("chain_unavailable");
+        }
+        chunks.push(part.value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const value: unknown = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes),
+    );
+    const result = object(value);
+    if (!result) throw new Error("chain_unavailable");
+    return result;
+  }
+  private async jettonWallet(owner: string) {
+    if (this.resolveJettonWallet) return this.resolveJettonWallet(owner);
+    const master = this.ton.open(
+      JettonMaster.create(Address.parse(JPEGPE_JETTON_MASTER)),
+    );
+    return (await master.getWalletAddress(Address.parse(owner))).toRawString();
+  }
+  async signRequest(intent: PaymentRecord): Promise<SignRequest> {
+    const validUntil = Math.floor(Date.now() / 1000) + 180;
+    const from = Address.parse(intent.sender).toRawString();
+    const address = Address.parse(intent.recipient).toString({
+      bounceable: false,
+      urlSafe: true,
+    });
+    if (intent.token === "TON")
+      return {
+        network: "-239",
+        from,
+        validUntil,
+        messages: [
+          { address, amount: intent.amount, payload: payload(comment(intent)) },
+        ],
+      };
+    const jettonWallet = await this.jettonWallet(from);
+    const body = beginCell()
+      .storeUint(0x0f8a7ea5, 32)
+      .storeUint(
+        BigInt(`0x${intent.intentId.replaceAll("-", "")}`) & ((1n << 64n) - 1n),
+        64,
+      )
+      .storeCoins(BigInt(intent.amount))
+      .storeAddress(Address.parse(intent.recipient))
+      .storeAddress(Address.parse(from))
+      .storeMaybeRef(null)
+      .storeCoins(50_000_000n)
+      .storeBit(true)
+      .storeRef(
+        beginCell().storeUint(0, 32).storeStringTail(comment(intent)).endCell(),
+      )
+      .endCell()
+      .toBoc()
+      .toString("base64");
+    return {
+      network: "-239",
+      from,
+      validUntil,
+      messages: [
+        {
+          address: Address.parse(jettonWallet).toString({
+            bounceable: true,
+            urlSafe: true,
+          }),
+          amount: "100000000",
+          payload: body,
+        },
+      ],
+    };
+  }
+  async estimateFee(intent: PaymentRecord) {
+    return await estimatePaymentFee(this.ton, await this.signRequest(intent));
+  }
+  async receipt(intent: PaymentRecord): Promise<string | null> {
+    const start = Math.floor(new Date(intent.createdAt).getTime() / 1000);
+    if (!Number.isSafeInteger(start) || start <= 0)
+      throw new Error("invalid_intent");
+    if (intent.token === "TON") {
+      const query = new URLSearchParams({
+        account: intent.recipient,
+        start_utime: String(start),
+        limit: "100",
+      });
+      const transactions = (await this.json(`transactions?${query}`))
+        .transactions;
+      if (!Array.isArray(transactions)) throw new Error("chain_unavailable");
+      for (const candidate of transactions) {
+        const tx = object(candidate),
+          inbound = object(tx?.in_msg);
+        const content = object(inbound?.message_content);
+        const decoded = object(content?.decoded);
+        if (
+          tx?.finality !== "finalized" ||
+          tx?.emulated !== false ||
+          !after(tx.mc_block_seqno, 1) ||
+          object(tx.description)?.aborted !== false ||
+          inbound?.bounced !== false ||
+          !same(tx.account, intent.recipient) ||
+          !same(inbound?.source, intent.sender) ||
+          !same(inbound?.destination, intent.recipient) ||
+          inbound?.value !== intent.amount ||
+          !after(tx.now, start) ||
+          (decoded?.comment !== comment(intent) &&
+            decoded?.text !== comment(intent)) ||
+          !receiptHash(tx.hash)
+        )
+          continue;
+        return receiptHash(tx.hash);
+      }
+      return null;
+    }
+    const query = new URLSearchParams({
+      owner_address: intent.recipient,
+      direction: "in",
+      jetton_master: JPEGPE_JETTON_MASTER,
+      start_utime: String(start),
+      limit: "100",
+    });
+    const transfers = (await this.json(`jetton/transfers?${query}`))
+      .jetton_transfers;
+    if (!Array.isArray(transfers)) throw new Error("chain_unavailable");
+    for (const candidate of transfers) {
+      const row = object(candidate),
+        decoded = object(row?.decoded_forward_payload);
+      if (
+        !same(row?.source, intent.sender) ||
+        !same(row?.destination, intent.recipient) ||
+        !same(row?.jetton_master, JPEGPE_JETTON_MASTER) ||
+        row?.amount !== intent.amount ||
+        row?.transaction_aborted !== false ||
+        !after(row?.transaction_now, start) ||
+        decoded?.comment !== comment(intent) ||
+        typeof row?.trace_id !== "string"
+      )
+        continue;
+      const sourceWallet = await this.jettonWallet(intent.sender);
+      const recipientWallet = await this.jettonWallet(intent.recipient);
+      if (!same(row.source_wallet, sourceWallet)) continue;
+      const traces = (
+        await this.json(
+          `traces?${new URLSearchParams({ trace_id: row.trace_id })}`,
+        )
+      ).traces;
+      const trace = Array.isArray(traces) ? object(traces[0]) : null;
+      if (
+        trace?.is_incomplete !== false ||
+        object(trace.trace_info)?.trace_state !== "complete" ||
+        !after(trace.mc_seqno_end, 1)
+      )
+        continue;
+      const transactions = object(trace.transactions);
+      if (!transactions) continue;
+      for (const value of Object.values(transactions)) {
+        const tx = object(value),
+          inbound = object(tx?.in_msg);
+        const body = object(object(inbound?.message_content)?.decoded);
+        const amount = object(body?.amount);
+        const forward = object(object(body?.forward_payload)?.value);
+        if (
+          tx?.finality !== "finalized" ||
+          tx?.emulated !== false ||
+          object(tx?.description)?.aborted !== false ||
+          !same(tx?.account, intent.recipient) ||
+          !same(inbound?.source, recipientWallet) ||
+          !same(inbound?.destination, intent.recipient) ||
+          !after(tx.mc_block_seqno, 1) ||
+          inbound?.opcode !== "0x7362d09c" ||
+          inbound?.bounced !== false ||
+          amount?.value !== intent.amount ||
+          !same(body?.sender, intent.sender) ||
+          forward?.text !== comment(intent) ||
+          !after(tx.now, start) ||
+          !receiptHash(tx.hash)
+        )
+          continue;
+        return receiptHash(tx.hash);
+      }
+    }
+    return null;
+  }
+}
