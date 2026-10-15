@@ -1,5 +1,9 @@
 import pg from "pg";
 import { createApp } from "./app.ts";
+import {
+  TelegramMembershipProvider,
+  unavailableMembership,
+} from "./membership.ts";
 import { PostgresIdentityStore } from "./database.ts";
 
 function required(name: string): string {
@@ -24,10 +28,16 @@ if (import.meta.main) {
     )
   )
     throw new Error("Invalid API_ALLOWED_ORIGINS");
+  const token = required("TELEGRAM_BOT_TOKEN");
+  const chatId = Deno.env.get("DAO_TELEGRAM_CHAT_ID")?.trim();
+  const membership = chatId
+    ? new TelegramMembershipProvider(token, chatId)
+    : unavailableMembership;
   const app = createApp(
-    required("TELEGRAM_BOT_TOKEN"),
+    token,
     new PostgresIdentityStore(auth, service),
     allowedOrigins,
+    membership,
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },

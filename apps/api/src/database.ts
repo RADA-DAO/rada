@@ -1,9 +1,10 @@
 import pg from "pg";
+import type { MembershipStatus } from "./membership.ts";
 
 export type Me = {
   subject_id: string;
   profile: { visibility: "private"; public: null };
-  membership: { status: "unavailable" };
+  membership: { status: MembershipStatus };
 };
 export interface IdentityStore {
   me(verifiedTelegramId: string): Promise<Me>;
