@@ -1,0 +1,9 @@
+* @4ezzy
+/modules/wallet/ @4ezzy
+/modules/treasury/ @4ezzy
+/modules/identity/ @4ezzy
+/packages/platform-sdk/ @4ezzy
+/apps/api/ @4ezzy
+/db/migrations/ @4ezzy
+/infra/ @4ezzy
+/.github/ @4ezzy
