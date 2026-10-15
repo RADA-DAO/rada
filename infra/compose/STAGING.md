@@ -1,10 +1,10 @@
 # Staging
 
 Preparation only. Deployment is off until `STAGING_DEPLOY_ENABLED=true` and the
-protected GitHub `staging` environment approves a successful main CI revision.
-Create that environment with required reviewers, prevent self-review, restrict
-it to main, and confirm protection is supported by the repository's plan before
-enabling. First deployment needs explicit approval and a separate test bot.
+GitHub `staging` environment scopes deployment secrets to main.
+Create that environment and restrict deployment branches to main before enabling.
+First deployment needs explicit approval and a separate test bot. Once explicitly
+enabled, successful main CI revisions deploy automatically.
 
 ## Provisioning
 
