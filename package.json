@@ -12,22 +12,29 @@
     "lint": "prettier --check . && node --check tools/check.mjs && node tools/check.mjs",
     "typecheck": "tsc",
     "test:unit": "node --test tools/check.test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run test:unit",
+    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run check:api",
     "commits": "node tools/commits.mjs",
     "e2e": "node tools/e2e.mjs",
     "db:config": "docker compose --env-file .env -f infra/compose/local.yaml config --quiet",
     "db:up": "docker compose --env-file .env -f infra/compose/local.yaml up -d postgres",
     "db:down": "docker compose --env-file .env -f infra/compose/local.yaml down",
     "db:migrate": "node tools/db-migrate.mjs",
-    "test:db": "node tools/db-test.mjs"
+    "test:db": "node tools/db-test.mjs",
+    "check:api": "deno check --config apps/api/deno.json apps/api/src/main.ts apps/api/src/*test.ts && deno test --config apps/api/deno.json apps/api/src/auth.test.ts apps/api/src/app.test.ts",
+    "test:api:db": "deno test --allow-env --allow-net --config apps/api/deno.json apps/api/src/database.test.ts"
   },
   "devDependencies": {
     "@types/node": "22.13.1",
     "markdownlint": "0.42.0",
     "prettier": "3.9.10",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@types/pg": "8.23.1"
   },
   "overrides": {
     "katex": "0.18.2"
+  },
+  "dependencies": {
+    "hono": "4.13.13",
+    "pg": "8.23.1"
   }
 }
