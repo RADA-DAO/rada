@@ -20,11 +20,11 @@ jobs:
     environment: staging
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -60,7 +60,7 @@ jobs:
           scp -o BatchMode=yes -o StrictHostKeyChecking=yes /tmp/staging.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/srv/rada-staging/releases/$RELEASE_SHA/source.tar.gz"
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "cd /srv/rada-staging/releases/$RELEASE_SHA && tar -xzf source.tar.gz && sh infra/compose/deploy-staging.sh $RELEASE_SHA"
       - name: Publish staging shell
-        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
