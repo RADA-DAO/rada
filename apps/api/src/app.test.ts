@@ -77,3 +77,49 @@ Deno.test(
     }
   },
 );
+Deno.test(
+  "membership uses verified identity and provider failure preserves private profile",
+  async () => {
+    const store = {
+      me: async () => ({
+        subject_id: "00000000-0000-4000-8000-000000000001",
+        profile: { visibility: "private" as const, public: null },
+        membership: { status: "unavailable" as const },
+      }),
+    };
+    let called = false;
+    const provider = {
+      status: async (id: string) => {
+        called = true;
+        assert(id === "101");
+        return "member" as const;
+      },
+    };
+    const app = createApp(FIXTURE_TOKEN, store, [], provider);
+    assert((await app.request("/me?user_id=102")).status === 401 && !called);
+    const response = await app.request("/me?user_id=102&chat_id=-102", {
+      headers: { authorization: `tma ${await signed()}` },
+    });
+    const body = await response.json();
+    assert(
+      body.membership.status === "member" &&
+        body.profile.visibility === "private" &&
+        body.profile.public === null,
+    );
+    const broken = createApp(FIXTURE_TOKEN, store, [], {
+      status: () => {
+        throw new Error("sensitive provider error");
+      },
+    });
+    const unavailable = await broken.request("/me", {
+      headers: { authorization: `tma ${await signed()}` },
+    });
+    const own = await unavailable.json();
+    assert(
+      unavailable.status === 200 &&
+        own.membership.status === "unavailable" &&
+        own.subject_id === body.subject_id &&
+        own.profile.visibility === "private",
+    );
+  },
+);
