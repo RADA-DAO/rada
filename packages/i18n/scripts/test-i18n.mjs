@@ -15,6 +15,7 @@ function flatten(value, prefix = "", result = {}) {
     else if (
       child &&
       typeof child === "object" &&
+      "other" in child &&
       Object.values(child).every((form) => typeof form === "string")
     )
       result[path] = child;
@@ -25,6 +26,13 @@ function flatten(value, prefix = "", result = {}) {
 assert.deepEqual(
   Object.keys(flatten(en)).sort(),
   Object.keys(flatten(uk)).sort(),
+);
+assert.ok(Object.keys(flatten(en)).includes("common.close"));
+const incomplete = structuredClone(uk);
+delete incomplete.common.close;
+assert.notDeepEqual(
+  Object.keys(flatten(en)).sort(),
+  Object.keys(flatten(incomplete)).sort(),
 );
 assert.equal(t("en", "state.items", { count: 1 }), "1 item");
 assert.equal(t("en", "state.items", { count: 5 }), "5 items");
