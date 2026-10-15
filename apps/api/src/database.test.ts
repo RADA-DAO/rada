@@ -7,9 +7,24 @@ Deno.test(
   "API to PostgreSQL: stable UUID, isolated identity and private projection",
   async () => {
     // Provision fixture-only restricted logins outside migrations, as production does.
-    const admin = new pg.Pool({
-      connectionString: Deno.env.get("API_TEST_DATABASE_URL"),
-    });
+    const databaseUrl = Deno.env.get("API_TEST_DATABASE_URL");
+    if (!databaseUrl?.trim())
+      throw new Error(
+        "Explicit API_TEST_DATABASE_URL required for disposable database test",
+      );
+    let fixtureUrl: URL;
+    try {
+      fixtureUrl = new URL(databaseUrl);
+    } catch {
+      throw new Error("Invalid API_TEST_DATABASE_URL");
+    }
+    if (
+      !["postgres:", "postgresql:"].includes(fixtureUrl.protocol) ||
+      !fixtureUrl.hostname ||
+      fixtureUrl.pathname.length < 2
+    )
+      throw new Error("Invalid API_TEST_DATABASE_URL");
+    const admin = new pg.Pool({ connectionString: fixtureUrl.toString() });
     let auth: pg.Pool | undefined;
     let service: pg.Pool | undefined;
     try {
@@ -21,7 +36,7 @@ Deno.test(
       await admin.query(
         "CREATE ROLE api_fixture_auth LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_auth TO api_fixture_auth; CREATE ROLE api_fixture_service LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_service TO api_fixture_service;",
       );
-      const url = new URL(Deno.env.get("API_TEST_DATABASE_URL")!);
+      const url = new URL(fixtureUrl);
       url.username = "api_fixture_auth";
       url.password = "fixture-only";
       auth = new pg.Pool({ connectionString: url.toString(), max: 1 });

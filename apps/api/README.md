@@ -5,8 +5,11 @@ Dependencies are pinned in `deno.json`, `deno.lock`, and the root npm lockfile
 (the npm lockfile supplies dependency license review).
 
 ```sh
-deno run --allow-env=TELEGRAM_BOT_TOKEN,IDENTITY_AUTH_DATABASE_URL,IDENTITY_SERVICE_DATABASE_URL,API_ALLOWED_ORIGINS,API_HOST --allow-net --config apps/api/deno.json apps/api/src/main.ts
+deno run --allow-env --allow-net --config apps/api/deno.json apps/api/src/main.ts
 ```
+
+The PostgreSQL driver also reads standard process environment defaults, so the
+runtime needs environment permission.
 
 Supply one canonical platform `TELEGRAM_BOT_TOKEN` and separate
 `IDENTITY_AUTH_DATABASE_URL` / `IDENTITY_SERVICE_DATABASE_URL` credentials with
