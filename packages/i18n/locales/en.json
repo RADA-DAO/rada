@@ -1,1 +1,16 @@
-{}
+{
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "close": "Close",
+    "dismiss": "Dismiss"
+  },
+  "state": {
+    "empty": "Nothing here yet",
+    "error": "Something went wrong",
+    "items": {
+      "one": "{{count}} item",
+      "other": "{{count}} items"
+    }
+  }
+}
