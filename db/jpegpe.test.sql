@@ -36,10 +36,6 @@ EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
 SET LOCAL ROLE jpegpe_operator;
 DO $$ BEGIN
-  UPDATE jpegpe.frogs SET username = username || '_x';
-  RAISE EXCEPTION 'Frog username changed';
-EXCEPTION WHEN check_violation THEN NULL; END $$;
-DO $$ BEGIN
   UPDATE jpegpe.ownership_events SET to_subject_id = gen_random_uuid();
   RAISE EXCEPTION 'Operator could rewrite history';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
@@ -63,6 +59,10 @@ SELECT pg_temp.assert_true((SELECT selected_frog_id = :'first_frog' FROM identit
 DO $$ BEGIN
   UPDATE jpegpe.frogs SET creator_subject_id = current_owner_subject_id;
   RAISE EXCEPTION 'Frog creator changed';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
+DO $$ BEGIN
+  UPDATE jpegpe.frogs SET username = username || '_x';
+  RAISE EXCEPTION 'Frog username changed';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
 DO $$ BEGIN
   UPDATE jpegpe.ownership_events SET occurred_at = now();
