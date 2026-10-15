@@ -1,0 +1,26 @@
+import type { Locale } from "../../../packages/i18n/src/index.ts";
+
+type Amount = { raw: string; decimals: number } | null;
+
+export function displayAmount(
+  amount: Amount,
+  locale: Locale,
+  minimumFractionDigits: number,
+  maximumFractionDigits = minimumFractionDigits,
+): string | null {
+  if (!amount) return null;
+  const divisor = 10n ** BigInt(amount.decimals);
+  const scale = 10n ** BigInt(maximumFractionDigits);
+  const rounded = (BigInt(amount.raw) * scale + divisor / 2n) / divisor;
+  const whole = rounded / scale;
+  const fraction = (rounded % scale)
+    .toString()
+    .padStart(maximumFractionDigits, "0")
+    .replace(/0+$/, "")
+    .padEnd(minimumFractionDigits, "0");
+  const formatter = new Intl.NumberFormat(locale);
+  const separator =
+    formatter.formatToParts(1.1).find((part) => part.type === "decimal")
+      ?.value ?? ".";
+  return formatter.format(whole) + (fraction ? separator + fraction : "");
+}

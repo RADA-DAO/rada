@@ -233,7 +233,7 @@ async function loadProfile() {
       if (generation !== profileGeneration || !onProfileRoute()) return;
       reviewProbeFailed = !(
         error instanceof Error &&
-        ["forbidden", "expired"].includes(error.message)
+        ["forbidden", "expired", "not_available"].includes(error.message)
       );
     }
   }
@@ -287,7 +287,7 @@ function render() {
     );
   } else if (route === "review") {
     const queue = document.createElement("div");
-    content.append(queue, Button(text("shell.back"), { onClick: back }));
+    content.append(queue);
     queue.dataset.reviewQueue = "true";
   } else {
     if (reviewAuthorized)
@@ -336,7 +336,6 @@ function render() {
           onRetry: () => void loadProfile(),
         }),
       );
-    content.append(Button(text("shell.back"), { onClick: back }));
   }
   const footer = document.createElement("nav");
   footer.setAttribute("aria-label", text("shell.navigation"));

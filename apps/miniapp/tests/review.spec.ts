@@ -306,7 +306,7 @@ test("late queue response cannot replace a destination after Back", async ({
   });
   await launch(page);
   await expect(page.getByText("Loading…", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Back to apps" }).click();
+  await page.getByRole("button", { name: "Apps", exact: true }).click();
   finish?.();
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
@@ -330,4 +330,30 @@ test("non-reviewer profile has no admin entry", async ({ page, request }) => {
   await expect(
     page.getByRole("button", { name: "App review", exact: true }),
   ).toHaveCount(0);
+  await expect(page.getByText(t("en", "review.accessUnavailable"))).toHaveCount(
+    0,
+  );
+  await page.route("**/apps/review-queue", (route) =>
+    route.fulfill({ status: 404, json: { error: "not_found" } }),
+  );
+  await page.getByRole("button", { name: "Apps", exact: true }).click();
+  const unavailableProbe = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/apps/review-queue") &&
+      response.status() === 404,
+  );
+  await page.getByRole("button", { name: "Profile", exact: true }).click();
+  await unavailableProbe;
+  await expect(page.getByText(t("en", "review.accessUnavailable"))).toHaveCount(
+    0,
+  );
+  await page.unroute("**/apps/review-queue");
+  await page.route("**/apps/review-queue", (route) =>
+    route.fulfill({ status: 503, json: { error: "unavailable" } }),
+  );
+  await page.getByRole("button", { name: "Apps", exact: true }).click();
+  await page.getByRole("button", { name: "Profile", exact: true }).click();
+  await expect(
+    page.getByText(t("en", "review.accessUnavailable")),
+  ).toBeVisible();
 });
