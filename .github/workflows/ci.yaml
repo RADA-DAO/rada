@@ -36,6 +36,36 @@ jobs:
           source_dir="$(mktemp -d)"
           git ls-files -z | tar --null -T - -cf - | tar -xf - -C "$source_dir"
           "$scan_dir/gitleaks" dir "$source_dir" --redact --no-banner
+  database:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17.11-bookworm@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826
+        env:
+          POSTGRES_DB: rada_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rada_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: rada_test
+      PGPASSWORD: fixture-password
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm run test:db
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04

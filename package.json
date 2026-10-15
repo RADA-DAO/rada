@@ -17,7 +17,9 @@
     "e2e": "node tools/e2e.mjs",
     "db:config": "docker compose --env-file .env -f infra/compose/local.yaml config --quiet",
     "db:up": "docker compose --env-file .env -f infra/compose/local.yaml up -d postgres",
-    "db:down": "docker compose --env-file .env -f infra/compose/local.yaml down"
+    "db:down": "docker compose --env-file .env -f infra/compose/local.yaml down",
+    "db:migrate": "node tools/db-migrate.mjs",
+    "test:db": "node tools/db-test.mjs"
   },
   "devDependencies": {
     "@types/node": "22.13.1",
