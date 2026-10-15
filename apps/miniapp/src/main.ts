@@ -1,3 +1,4 @@
+import { mountReview } from "./review.ts";
 import "../../../packages/ui/src/design-system.css";
 import "./shell.css";
 import {
@@ -40,7 +41,11 @@ declare global {
 }
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
-let route: "launcher" | "profile" = "launcher";
+let route: "launcher" | "profile" | "review" = "launcher";
+let reviewAuthorized = false;
+let reviewProbeFailed = false;
+let profileGeneration = 0;
+let reviewDispose: (() => void) | undefined;
 let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
@@ -76,14 +81,15 @@ screen.className = "screen";
 root.append(screen);
 const text = (key: MessageKey) => t(locale, key);
 const back = () => {
-  if (activeAppDispose || pendingAppMount) {
-    closeActiveApp();
-    route = "launcher";
-    render();
-    return;
-  }
   if (sheet?.open) {
     sheet.close();
+    return;
+  }
+
+  if (activeAppDispose || pendingAppMount) {
+    closeActiveApp();
+    route = route === "review" ? "review" : "launcher";
+    render();
     return;
   }
   pageBackNavigation(screen).back();
@@ -136,7 +142,7 @@ window.RadaAppHost = Object.freeze({
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
         pendingAppMount = undefined;
-        platform.setBackVisible(route === "profile");
+        platform.setBackVisible(route !== "launcher");
       }
       throw error;
     });
@@ -150,7 +156,7 @@ window.RadaAppHost = Object.freeze({
     return () => {
       if (activeAppDispose !== dispose) return;
       closeActiveApp();
-      platform.setBackVisible(route === "profile");
+      platform.setBackVisible(route !== "launcher");
     };
   },
 });
@@ -201,7 +207,7 @@ function openSettings() {
     () => {
       dialog.remove();
       if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(Boolean(sheet?.open) || route === "profile");
+      platform.setBackVisible(Boolean(sheet?.open) || route !== "launcher");
       if (!sheet?.open) opener?.focus();
     },
     { once: true },
@@ -225,7 +231,7 @@ async function openAppPermissions() {
     () => {
       dialog.remove();
       if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(route === "profile");
+      platform.setBackVisible(route !== "launcher");
     },
     { once: true },
   );
@@ -268,33 +274,55 @@ async function openAppPermissions() {
   await refresh();
 }
 async function loadProfile() {
+  const generation = ++profileGeneration;
+  reviewAuthorized = false;
+  reviewProbeFailed = false;
   profile = "loading";
   profileFrogName = undefined;
   membership = "unavailable";
   render();
   try {
     const ownProfile = await platform.readOwnProfile();
+    if (generation !== profileGeneration || route !== "profile") return;
     profile = ownProfile?.profile.visibility ?? "guest";
     profileFrogName = ownProfile?.profile.public?.username.toUpperCase() ?? "";
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
+    if (generation !== profileGeneration || route !== "profile") return;
     membership = "unavailable";
     profile =
       error instanceof Error && error.message === "expired"
         ? "expired"
         : "unavailable";
   }
+  if (generation !== profileGeneration || route !== "profile") return;
+  render();
+  if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
+    try {
+      await platform.readReviewQueue();
+      if (generation !== profileGeneration || route !== "profile") return;
+      reviewAuthorized = true;
+    } catch (error) {
+      if (generation !== profileGeneration || route !== "profile") return;
+      reviewProbeFailed = !(
+        error instanceof Error &&
+        ["forbidden", "expired"].includes(error.message)
+      );
+    }
+  }
   render();
 }
 function render() {
   if (deferPageBackRender(screen, render)) return;
+  reviewDispose?.();
+  reviewDispose = undefined;
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   configurePageBack(screen, {
     key: route,
-    parent: route === "profile" ? "launcher" : undefined,
+    parent: route !== "launcher" ? "launcher" : undefined,
     back:
-      route === "profile"
+      route !== "launcher"
         ? () => {
             route = "launcher";
             render();
@@ -313,7 +341,11 @@ function render() {
   content.className = "workspace";
   const heading = document.createElement("h1");
   heading.textContent = text(
-    route === "launcher" ? "shell.apps" : "shell.profile",
+    route === "launcher"
+      ? "shell.apps"
+      : route === "review"
+        ? "review.title"
+        : "shell.profile",
   );
   content.append(heading);
   if (route === "launcher") {
@@ -323,7 +355,29 @@ function render() {
         message: text("shell.emptyDescription"),
       }),
     );
+  } else if (route === "review") {
+    const queue = document.createElement("div");
+    content.append(queue, Button(text("shell.back"), { onClick: back }));
+    // Mount after attachment below, keeping locale and navigation disposal together.
+    queue.dataset.reviewQueue = "true";
   } else {
+    if (reviewAuthorized)
+      content.append(
+        Button(text("review.title"), {
+          onClick: () => {
+            route = "review";
+            render();
+          },
+        }),
+      );
+    if (reviewProbeFailed)
+      content.append(
+        ErrorState({
+          message: text("review.accessUnavailable"),
+          retryLabel: text("common.retry"),
+          onRetry: () => void loadProfile(),
+        }),
+      );
     content.append(paragraph(`shell.${profile}`));
     if (profile === "private")
       content.append(
@@ -383,13 +437,24 @@ function render() {
       (route === "launcher" ? index === 0 : index === 1) ? "page" : "false",
     );
   screen.replaceChildren(header, content, footer);
-  platform.setBackVisible(route === "profile");
+  const queue = content.querySelector<HTMLElement>("[data-review-queue]");
+  if (queue)
+    reviewDispose = mountReview(queue, {
+      locale,
+      read: (signal) => platform.readReviewQueue(signal),
+      decide: (appId, versionId, decision, reason, signal) =>
+        platform.reviewAppVersion(appId, versionId, decision, reason, signal),
+      closePreview: closeActiveApp,
+    });
+  platform.setBackVisible(route !== "launcher");
 }
 render();
 window.addEventListener(
   "pagehide",
   (event) => {
     if (event.persisted) return;
+    profileGeneration++;
+    reviewDispose?.();
     closeActiveApp();
     swipe.dispose();
     platform.dispose();

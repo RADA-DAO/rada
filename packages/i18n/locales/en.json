@@ -56,5 +56,83 @@
       "frogCollection": "your frog collection",
       "notifications": "notifications"
     }
+  },
+  "review": {
+    "title": "App review",
+    "denied": "Reviewer access is required.",
+    "stale": "This version has changed. Refresh the queue before deciding.",
+    "empty": "Queue is clear",
+    "emptyDescription": "There are no versions awaiting review.",
+    "requested": "Requested permissions",
+    "preview": "Preview app",
+    "previewNotice": "Preview has no permissions. Approval does not publish this version.",
+    "previewFailed": "Preview could not be verified or loaded.",
+    "reason": "Decision reason",
+    "approve": "Approve",
+    "reject": "Reject",
+    "declarations": "Requested level: {{trust}} · Design: {{design}}",
+    "officialRequested": "Official (requested)",
+    "communityRequested": "Community",
+    "standard": "Standard",
+    "freeStyle": "Free style",
+    "permissions": {
+      "identity": {
+        "self": {
+          "read": "Own profile"
+        }
+      },
+      "theme": {
+        "read": "Theme"
+      },
+      "navigation": "Navigation",
+      "storage": {
+        "self": "Own app storage"
+      },
+      "dao": {
+        "public": {
+          "read": "Public DAO data"
+        }
+      },
+      "telegram": {
+        "username": {
+          "read": "Telegram username"
+        }
+      },
+      "wallet": {
+        "address": {
+          "read": "Wallet address"
+        },
+        "balances": {
+          "read": "Token balances"
+        },
+        "sign": "Wallet signature"
+      },
+      "jpegpe": {
+        "collection": {
+          "read": "Frog collection"
+        }
+      },
+      "notifications": {
+        "send": "Notifications"
+      },
+      "money": {
+        "exchange": "Token exchange",
+        "transfer": "Money transfer"
+      },
+      "frog": {
+        "transfer": "Frog transfer",
+        "issue": "Frog issuance"
+      },
+      "governance": {
+        "vote": "DAO vote"
+      },
+      "treasury": {
+        "request": "Treasury request"
+      },
+      "rewards": {
+        "grant": "Rewards"
+      }
+    },
+    "accessUnavailable": "Review access could not be checked. Try again."
   }
 }

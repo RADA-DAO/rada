@@ -1,3 +1,10 @@
+import {
+  parseReviewQueue,
+  appSlug,
+  versionUuid,
+  type ReviewVersion,
+} from "./review-registry.ts";
+export type { ReviewVersion } from "./review-registry.ts";
 import { installAppKeyboard } from "./keyboard.ts";
 import { CONSENT_PERMISSIONS } from "./app-manifest.ts";
 export type MembershipStatus = "member" | "not_member" | "unavailable";
@@ -137,6 +144,76 @@ export function initializePlatform(options: {
     setBackVisible(visible: boolean) {
       if (visible) host?.BackButton.show();
       else host?.BackButton.hide();
+    },
+    async readReviewQueue(signal?: AbortSignal): Promise<ReviewVersion[]> {
+      const headers = authHeaders();
+      if (!headers) throw new Error("expired");
+      const response = await fetch(
+        `${apiOrigin?.origin ?? "/api"}/apps/review-queue`,
+        { headers, credentials: "omit", cache: "no-store", signal },
+      );
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? "expired"
+            : response.status === 403
+              ? "forbidden"
+              : "unavailable",
+        );
+      const value: unknown = await response.json();
+      return parseReviewQueue(value);
+    },
+    async reviewAppVersion(
+      appId: string,
+      versionId: string,
+      decision: "approve" | "reject",
+      reason: string,
+      signal?: AbortSignal,
+    ): Promise<void> {
+      if (
+        !appSlug.test(appId) ||
+        !versionUuid.test(versionId) ||
+        !["approve", "reject"].includes(decision) ||
+        !reason.trim() ||
+        reason.length > 500
+      )
+        throw new Error("invalid_request");
+      const headers = authHeaders();
+      if (!headers) throw new Error("expired");
+      const response = await fetch(
+        `${apiOrigin?.origin ?? "/api"}/apps/${encodeURIComponent(appId)}/versions/${versionId}/${decision}`,
+        {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason.trim() }),
+          credentials: "omit",
+          cache: "no-store",
+          signal,
+        },
+      );
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? "expired"
+            : response.status === 403
+              ? "forbidden"
+              : [404, 409].includes(response.status)
+                ? "stale"
+                : "unavailable",
+        );
+      const value: unknown = await response.json();
+      if (
+        !value ||
+        typeof value !== "object" ||
+        Array.isArray(value) ||
+        !("appId" in value) ||
+        value.appId !== appId ||
+        !("versionId" in value) ||
+        value.versionId !== versionId ||
+        !("status" in value) ||
+        value.status !== (decision === "approve" ? "approved" : "rejected")
+      )
+        throw new Error("unavailable");
     },
     async readOwnProfile() {
       const headers = authHeaders();

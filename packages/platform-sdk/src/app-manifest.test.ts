@@ -65,3 +65,49 @@ test("host rejects forged release grants before artifact fetch", async () => {
       } as never),
     );
 });
+
+test("review queue validates immutable releases and strips private metadata", async () => {
+  const { parseReviewQueue } = await import("./review-registry.ts");
+  const row = {
+    appId: "example.app",
+    versionId: "00000000-0000-4000-8000-000000000001",
+    versionNo: 1,
+    manifest: valid,
+    sha256: "a".repeat(64),
+    artifactUrl: `https://artifacts.example/artifacts/${"a".repeat(64)}.html`,
+    authorId: "private-subject",
+    createdAt: "fixture",
+  };
+  const projected = parseReviewQueue({ versions: [row] })[0];
+  assert.equal(projected.artifactSha256, row.sha256);
+  assert.equal("authorId" in projected, false);
+  assert.equal("createdAt" in projected, false);
+  for (const change of [
+    { appId: "../app" },
+    { versionId: "bad" },
+    { versionNo: "1" },
+    { versionNo: 0 },
+    { versionNo: 1.5 },
+    { sha256: "A".repeat(64) },
+    { artifactUrl: row.artifactUrl + "?token=bad" },
+    { artifactUrl: row.artifactUrl.replace("https:", "http:") },
+    {
+      artifactUrl: row.artifactUrl.replace(
+        "artifacts.example",
+        "user:password@artifacts.example",
+      ),
+    },
+    { manifest: { ...valid, permissions: ["unknown"] } },
+    { grantedPermissions: ["wallet.sign"] },
+  ])
+    assert.throws(() =>
+      parseReviewQueue({ versions: [{ ...row, ...change }] }),
+    );
+  for (const input of [
+    null,
+    { versions: {} },
+    { versions: [], extra: true },
+    { versions: Array(1001).fill(row) },
+  ])
+    assert.throws(() => parseReviewQueue(input));
+});
