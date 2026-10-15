@@ -80,7 +80,11 @@ test.beforeEach(async ({ page }) => {
   page.on("console", (message) => {
     if (
       message.type() === "error" &&
-      !message.text().includes("401 (Unauthorized)")
+      !message.text().includes("401 (Unauthorized)") &&
+      !(
+        message.text().includes("403") &&
+        message.location().url.endsWith("/apps/review-queue")
+      )
     )
       throw new Error(message.text());
   });

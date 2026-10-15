@@ -2,7 +2,7 @@
 
 Framework-neutral shell adapter for Telegram initialization, native Back, theme
 chrome, safe areas, viewport and keyboard lifecycle. `initializePlatform` returns
-own-profile reading, Back visibility and disposal; it exposes no launch credentials.
+own-profile reading, consent and reviewer operations, Back visibility and disposal; it exposes no launch credentials.
 The shell owns translated keyboard labels and navigation destinations.
 
 The keyboard, page Back and swipe controllers preserve the existing tested geometry,
@@ -41,3 +41,9 @@ the existing self-only `identity.consents` policy. This host does not yet serve
 the protected personal data; future services must check current consent again
 for each read. The sandbox protocol derives from the earlier community app
 host, with a new platform-only authentication boundary.
+
+Reviewer methods validate queue responses and decision parameters within the
+credential-holding adapter. The queue projection excludes author subject IDs,
+validates immutable artifact URLs and hashes, and limits one response to 1,000
+versions. An oversized or malformed response fails closed. Preview callers must
+supply an empty granted-permission list for versions awaiting approval.
