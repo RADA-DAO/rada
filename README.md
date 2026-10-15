@@ -5,7 +5,7 @@ The project is in early development; nothing is deployable yet.
 
 ## Development
 
-Requirements: Node.js 24 (see `.node-version`), npm, Docker Compose v2.
+Requirements: Node.js 24 (see `.node-version`), npm, Deno 2.9.7, Docker Compose v2.
 
 ```sh
 npm ci
