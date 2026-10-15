@@ -32,11 +32,13 @@ jobs:
       - name: Validate public build configuration
         env:
           API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
+          APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
         run: |
-          node --input-type=module -e 'const o=process.env.API_ORIGIN; if(!o || new URL(o).origin!==o || !o.startsWith("https://")) process.exit(1);'
+          node --input-type=module -e 'for (const o of [process.env.API_ORIGIN, process.env.APP_ORIGIN]) { if(!o || new URL(o).origin!==o || !o.startsWith("https://")) process.exit(1); }'
       - run: npm run build:miniapp
         env:
           VITE_API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
+          VITE_TON_CONNECT_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
       - name: Install staging SSH identity
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}

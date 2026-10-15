@@ -13,7 +13,7 @@ release directories with mode 0600. Docker access is administrator-equivalent.
 
 Server environment:
 
-- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`: distinct high-entropy
+- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`: distinct high-entropy
   hexadecimal passwords; runtime logins receive only their respective module role.
 - `TELEGRAM_BOT_TOKEN`: the test bot token, server only; no bot update changes.
 - `STAGING_AUTH_MODE=allowlist`, `STAGING_SYNTHETIC_ONLY=false`.
@@ -23,7 +23,9 @@ Server environment:
   path or port. The container entrypoint rejects whitespace, configuration syntax,
   invalid DNS labels and overlong names before Caddy validation or startup. Keep
   the actual host address outside the repository.
-- `API_ALLOWED_ORIGINS`: the exact existing Worker HTTPS origin, no trailing slash.
+- `API_ALLOWED_ORIGINS` and `WALLET_APP_ORIGIN`: the exact existing Worker HTTPS
+  origin, no trailing slash. The wallet proof accepts only this server-configured
+  HTTPS domain; local domains are rejected.
 
 Missing, empty or malformed allowlists and conflicting modes prevent API startup.
 Only signed launches for allowed testers reach persistence. Every staging API
@@ -35,7 +37,8 @@ Staging membership remains `unavailable` and makes no external provider calls.
 Caddy provides [automatic HTTPS](https://caddyserver.com/docs/quick-starts/https).
 Before deployment, the operator must confirm DNS resolves to the server and open
 inbound TCP 80/443 in UFW and the provider firewall. Only Caddy publishes ports;
-API and PostgreSQL remain inside Docker. Caddy alone has internet egress for ACME.
+API and PostgreSQL remain inside Docker. Caddy has internet egress for ACME. The API has egress for fixed TON public
+endpoints used for wallet proofs and balances; no additional ports are published.
 Certificates and configuration persist in dedicated volumes. There is no tunnel
 or tunnel token requirement. Verify certificate issuance before phone testing;
 never fall back to insecure HTTP.
@@ -50,9 +53,11 @@ activation. Environment secrets:
 - `STAGING_CLOUDFLARE_ACCOUNT_ID`, `STAGING_CLOUDFLARE_API_TOKEN`: scoped to the
   staging account with Workers Scripts: Edit permission.
 
-Repository variables: `STAGING_API_ORIGIN` (exact public HTTPS API origin) and
+Repository variables: `STAGING_API_ORIGIN` (exact public HTTPS API origin),
+`STAGING_APP_ORIGIN` (exact existing Worker HTTPS origin, matching server wallet
+configuration), and
 `STAGING_DEPLOY_ENABLED` (absent/false until approved). API origin is a public build
-value; credentials and tester IDs are server configuration only.
+value; `STAGING_APP_ORIGIN` generates the public TON Connect manifest. Credentials and tester IDs are server configuration only.
 
 The workflow accepts successful push CI for an exact main SHA, checks out that
 revision, builds with Node 24.14.0, uploads the same source, migrates/bootstraps

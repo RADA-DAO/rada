@@ -1,5 +1,7 @@
 export type AppConsent = { app_id: string; capability: string };
 import { profileAdapter } from "./profile.ts";
+import { walletAdapter } from "./wallet.ts";
+export type { LinkedWallet, WalletBalances, WalletProof } from "./wallet.ts";
 export type { OwnProfile, OwnFrog, MembershipStatus } from "./profile.ts";
 import {
   parseReviewQueue,
@@ -184,6 +186,7 @@ export function initializePlatform(options: {
         throw new Error("unavailable");
     },
     ...profileAdapter(profileUrl, authHeaders),
+    ...walletAdapter(profileUrl, authHeaders),
     async readAppConsents(): Promise<AppConsent[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");

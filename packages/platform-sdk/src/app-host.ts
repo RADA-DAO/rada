@@ -35,6 +35,8 @@ export type AppHostOptions = {
     granted: boolean,
   ): Promise<boolean>;
   ownSubject(): Promise<string | null>;
+  readWalletAddress?(appId: string, signal: AbortSignal): Promise<unknown>;
+  readWalletBalances?(appId: string, signal: AbortSignal): Promise<unknown>;
   onNavigateBack?(): void;
   onError?(code: string): void;
 };
@@ -281,6 +283,24 @@ export async function mountAppHost(
         granted.has("identity.self.read")
       )
         return { subjectId: await options.ownSubject() };
+      if (message.type === "rada.member.wallet.address.read") {
+        if (
+          !granted.has("wallet.address.read") ||
+          !options.readWalletAddress ||
+          !(await options.readConsent(release.appId, "wallet.address.read"))
+        )
+          throw new Error("capability_denied");
+        return options.readWalletAddress(release.appId, controller.signal);
+      }
+      if (message.type === "rada.member.wallet.balances.read") {
+        if (
+          !granted.has("wallet.balances.read") ||
+          !options.readWalletBalances ||
+          !(await options.readConsent(release.appId, "wallet.balances.read"))
+        )
+          throw new Error("capability_denied");
+        return options.readWalletBalances(release.appId, controller.signal);
+      }
       if (message.type === "rada.member.permission.request") {
         const payload = message.payload;
         const permission =

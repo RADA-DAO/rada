@@ -4,6 +4,9 @@ Owns verified Telegram identity resolution, own profiles and selections, role gr
 app-scoped consents, and Telegram membership display. `index.ts` exports the
 store, identity router, authentication verifier, membership provider and
 `resolveTelegramSubject` for callers holding an auth-only pool.
+Wallet links and append-only link/revoke history are identity-owned. Narrow SQL
+functions expose only the current subject's active wallets and live app consent
+to `wallet_service`; other modules do not read these base tables.
 
 The router owns `/me`, `/me/consents`, `/me/frogs` and `/me/profile-frog`. Profile reads call JPEGPE's public
 projection helper on the same subject-scoped transaction connection; identity

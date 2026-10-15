@@ -2,3 +2,9 @@
   Content-Security-Policy: frame-src 'none'; object-src 'none'; base-uri 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+
+/tonconnect-manifest.json
+  Access-Control-Allow-Origin: *
+
+/wallet-icon.png
+  Access-Control-Allow-Origin: *

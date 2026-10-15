@@ -1,6 +1,11 @@
 # Mini app
 
 Vite and TypeScript shell with an empty launcher and guest or own profile.
+The profile lists verified TON wallets and exact TON/JPEGPE balances. Connecting
+uses the official TON Connect UI with a server-issued proof challenge; removing a
+link records revocation. Set `VITE_TON_CONNECT_APP_ORIGIN` to the exact HTTPS shell
+origin for staging or production builds so Vite emits a same-origin wallet manifest.
+The API must use that same origin in `WALLET_APP_ORIGIN`.
 All visible copy comes from `packages/i18n`; shared theme and controls come from
 `packages/ui`. The profile shows the selected frog, its public/private status, and an own collection picker. Selecting an owned frog makes the profile public; clearing it makes the profile private. App permissions remain visible and revocable.
 

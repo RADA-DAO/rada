@@ -7,6 +7,7 @@ import {
 } from "../../../modules/identity/index.ts";
 import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
 import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
+import { PostgresWalletStore } from "../../../modules/wallet/index.ts";
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -30,6 +31,37 @@ if (import.meta.main) {
   const registry = registryUrl
     ? new pg.Pool({ connectionString: registryUrl })
     : undefined;
+  const walletUrl = Deno.env.get("WALLET_SERVICE_DATABASE_URL");
+  const walletOrigin = Deno.env.get("WALLET_APP_ORIGIN");
+  if (Boolean(walletUrl) !== Boolean(walletOrigin))
+    throw new Error(
+      "Wallet credentials and app origin must be configured together",
+    );
+  let walletDomain: string | undefined;
+  if (walletOrigin) {
+    const origin = new URL(walletOrigin);
+    if (
+      origin.origin !== walletOrigin ||
+      origin.protocol !== "https:" ||
+      origin.username ||
+      origin.password ||
+      origin.hostname === "localhost" ||
+      origin.hostname === "127.0.0.1" ||
+      origin.hostname.endsWith(".localhost") ||
+      origin.hostname.startsWith("[") ||
+      /^\d+(?:\.\d+){3}$/.test(origin.hostname)
+    )
+      throw new Error("Invalid WALLET_APP_ORIGIN");
+    walletDomain = origin.hostname;
+  }
+  const wallet =
+    walletUrl && walletDomain
+      ? new PostgresWalletStore(
+          auth,
+          new pg.Pool({ connectionString: walletUrl }),
+          walletDomain,
+        )
+      : undefined;
   const allowedOrigins = (Deno.env.get("API_ALLOWED_ORIGINS") ?? "")
     .split(",")
     .map((value) => value.trim())
@@ -54,6 +86,7 @@ if (import.meta.main) {
     policy,
     registry ? new PostgresRegistryStore(auth, registry) : undefined,
     artifactOrigin,
+    wallet,
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },
