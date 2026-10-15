@@ -74,6 +74,7 @@ Deno.test(
         own.membership.status === "unavailable" &&
           Object.keys(own).length === 3,
       );
+      const consentAppId = `fixture.api.${crypto.randomUUID()}`;
       const authHeader = async (id: number) => ({
         authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,
       });
@@ -85,7 +86,7 @@ Deno.test(
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            appId: "example",
+            appId: consentAppId,
             capability: "wallet.address.read",
             granted,
           }),
@@ -98,8 +99,16 @@ Deno.test(
       const consent102 = await app.request("/me/consents", {
         headers: await authHeader(102),
       });
-      assert((await consent101.json()).consents.length === 1);
-      assert((await consent102.json()).consents.length === 0);
+      assert(
+        (await consent101.json()).consents.filter(
+          (item: { app_id: string }) => item.app_id === consentAppId,
+        ).length === 1,
+      );
+      assert(
+        (await consent102.json()).consents.filter(
+          (item: { app_id: string }) => item.app_id === consentAppId,
+        ).length === 0,
+      );
       assert((await putConsent(101, false)).status === 200);
       assert(
         (
@@ -108,10 +117,13 @@ Deno.test(
               headers: await authHeader(101),
             })
           ).json()
-        ).consents.length === 0,
+        ).consents.filter(
+          (item: { app_id: string }) => item.app_id === consentAppId,
+        ).length === 0,
       );
       const recorded = await admin.query(
-        "SELECT subject_id, revoked_at FROM identity.consents WHERE app_id = 'example'",
+        "SELECT subject_id, revoked_at FROM identity.consents WHERE app_id = $1",
+        [consentAppId],
       );
       assert(
         recorded.rows.length === 1 &&

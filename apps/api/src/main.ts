@@ -5,6 +5,7 @@ import {
   unavailableMembership,
 } from "./membership.ts";
 import { PostgresIdentityStore } from "./database.ts";
+import { PostgresRegistryStore } from "./registry.ts";
 
 function required(name: string): string {
   const value = Deno.env.get(name);
@@ -18,6 +19,15 @@ if (import.meta.main) {
   const service = new pg.Pool({
     connectionString: required("IDENTITY_SERVICE_DATABASE_URL"),
   });
+  const registryUrl = Deno.env.get("APPS_SERVICE_DATABASE_URL");
+  const artifactOrigin = Deno.env.get("APP_ARTIFACT_ORIGIN");
+  if (Boolean(registryUrl) !== Boolean(artifactOrigin))
+    throw new Error(
+      "Registry credentials and artifact origin must be configured together",
+    );
+  const registry = registryUrl
+    ? new pg.Pool({ connectionString: registryUrl })
+    : undefined;
   const allowedOrigins = (Deno.env.get("API_ALLOWED_ORIGINS") ?? "")
     .split(",")
     .map((value) => value.trim())
@@ -41,6 +51,8 @@ if (import.meta.main) {
     allowedOrigins,
     membership,
     syntheticOnly,
+    registry ? new PostgresRegistryStore(auth, registry) : undefined,
+    artifactOrigin,
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },

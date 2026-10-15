@@ -70,5 +70,5 @@ SET LOCAL ROLE identity_service;
 SELECT set_config('rada.subject_id', :'first_subject', true);
 SELECT pg_temp.assert_true((SELECT role_name = 'fixture.reviewer' FROM identity.role_grants));
 RESET ROLE;
-SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM platform_migrations.applied));
+SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM platform_migrations.applied WHERE name = '0001_identity.sql'));
 ROLLBACK;

@@ -38,6 +38,29 @@ permission. Writes require the privileged one-hour launch signature. Revoking
 marks the existing row inactive; it does not select another subject or erase
 the audit timestamp. Manifest declarations alone cannot grant access.
 
+Enable the registry with a separate `APPS_SERVICE_DATABASE_URL` credential and
+an exact HTTPS `APP_ARTIFACT_ORIGIN`; both settings are required together.
+Authors submit a manifest and SHA-256; the API derives
+`/artifacts/<sha256>.html` under that origin. The artifact must already be staged
+there. A submission creates a private draft and advances it to the review queue
+atomically. Registry writes and review-queue reads require a signed launch
+within one hour.
+
+- `POST /apps/:appId/versions`: `{ "manifest": {...}, "sha256": "64 hex digits" }`.
+- `GET /apps/review-queue`: reviewer-only pending versions.
+- `POST /apps/:appId/versions/:versionId/approve` or `/reject`: `{ "reason": "..." }`.
+- `POST /apps/:appId/versions/:versionId/publish`: `{}`.
+- `POST /apps/:appId/rollback`: `{ "versionId": "approved earlier version UUID" }`.
+- `POST /apps/:appId/withdraw`: `{ "reason": "..." }`.
+- `GET /apps/published`: approved live releases for a future launcher.
+
+Review and publication require the `apps.reviewer` grant in
+`identity.role_grants`. The registry login cannot issue role grants. A review
+records the actor and reason; the public projection omits private subject IDs.
+Published `grantedPermissions` excludes financial and DAO authority capabilities;
+personal-data access still requires live app-scoped user consent at the service
+that handles the data. The host must verify artifact bytes against SHA-256.
+
 The subject is the authenticated person's stable UUID. Request parameters cannot
 select a different identity. Profiles remain private until JPEGPE supplies verified
 current ownership and a live public projection. A selected frog UUID alone does
@@ -63,8 +86,8 @@ authorization rules rather than treating this display flag as authority.
 Missing, invalid or expired authentication returns `401 {"error":"unauthorized"}`;
 backend failures return `503 {"error":"unavailable"}`. HTTP responses are not cached.
 Ordinary routes accept initData for 24 hours; the privileged authentication policy
-is one hour and must be used by future privileged routes. Future clock skew is
-limited to 120 seconds. No privileged or financial routes exist in this scaffold.
+is one hour and applies to consent and registry writes. Future clock skew is
+limited to 120 seconds. No financial transaction routes exist in this scaffold.
 No logs contain raw initData, Telegram IDs, tokens or database errors.
 
 Run `npm run check` for API types, auth and HTTP unit tests. For the PostgreSQL 17
