@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "types": ["node", "vite/client"],
     "checkJs": true,
     "noEmit": true,
     "strict": true,
@@ -11,5 +12,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["tools/**/*.mjs", "packages/**/*.ts"]
+  "include": ["tools/**/*.mjs", "packages/**/*.ts", "apps/miniapp/**/*.ts"]
 }

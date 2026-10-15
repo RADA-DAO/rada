@@ -1,0 +1,94 @@
+/* The environment stays full height; only interactive viewports shrink.
+   New native screens inherit this instead of adding keyboard resize handlers. */
+:root {
+  --app-visible-height: var(--app-height, 100dvh);
+  --app-keyboard-inset: 0px;
+}
+.rada-keyboard-safe-area {
+  position: fixed;
+  top: var(--app-workspace-safe-top, 0px);
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+:root[data-app-viewport-reduced="true"] .screen-wrap {
+  height: min(100%, var(--app-visible-height));
+}
+:root[data-app-viewport-reduced="true"] .screen-wrap > .screen {
+  min-height: 0;
+  padding-bottom: 16px;
+  scroll-padding-block: 16px;
+}
+:root[data-app-viewport-reduced="true"] [data-keyboard-viewport] {
+  bottom: auto;
+  height: var(--app-visible-height);
+  max-height: var(--app-visible-height);
+  min-height: 0;
+  box-sizing: border-box;
+}
+:root[data-app-viewport-reduced="true"] [data-keyboard-scroll] {
+  min-height: 0;
+  max-height: calc(var(--app-visible-height) - 60px);
+  overflow-y: auto;
+}
+:root[data-app-viewport-reduced="true"] dialog[open] {
+  inset-block-start: max(12px, var(--app-workspace-safe-top, 12px));
+  inset-block-end: var(--app-keyboard-inset);
+  max-height: max(
+    80px,
+    calc(
+      var(--app-visible-height) - max(12px, var(--app-workspace-safe-top, 12px))
+    )
+  );
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 16px;
+}
+.rada-keyboard-accessory {
+  position: fixed;
+  z-index: 1000;
+  inset: auto 0 var(--app-keyboard-inset);
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 44px;
+  min-height: 44px;
+  padding-inline: 8px max(8px, var(--app-content-safe-right, 0px));
+  background: var(--telegram-keyboard-edge, var(--surface-base));
+  box-shadow: 0 -1px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.rada-keyboard-done {
+  min-width: 76px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text-primary);
+  font: 600 15px/1 var(--rada-font-body, system-ui);
+  cursor: pointer;
+}
+dialog > .rada-keyboard-accessory {
+  /* Dialog filters/transforms establish a containing block for fixed children.
+     Keep Done in its own scrollport rather than offsetting it a second time. */
+  position: sticky;
+  inset: auto 0 0;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:root[data-telegram-keyboard-edge="true"] dialog::backdrop {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 calc(var(--app-visible-height) - 24px),
+    transparent var(--app-visible-height)
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 calc(var(--app-visible-height) - 24px),
+    transparent var(--app-visible-height)
+  );
+}

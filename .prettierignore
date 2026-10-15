@@ -1,2 +1,5 @@
 package-lock.json
 LICENSE
+dist/
+playwright-report/
+test-results/

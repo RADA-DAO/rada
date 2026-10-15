@@ -14,5 +14,30 @@
       "many": "{{count}} елементів",
       "other": "{{count}} елемента"
     }
+  },
+  "shell": {
+    "brand": "RADA",
+    "apps": "Апки",
+    "profile": "Профіль",
+    "settings": "Налаштування",
+    "language": "Мова",
+    "english": "Англійська",
+    "ukrainian": "Українська",
+    "navigation": "Навігація",
+    "back": "Назад до апок",
+    "done": "Готово",
+    "dismissKeyboard": "Сховати клавіатуру",
+    "emptyTitle": "Простір спільноти",
+    "emptyDescription": "Тут з’являться апки спільноти.",
+    "guest": "Гостьовий профіль",
+    "guestDescription": "Відкрий RADA з Telegram, щоб перейти до приватного профілю.",
+    "loading": "Відкриваємо профіль…",
+    "private": "Приватний профіль",
+    "privateDescription": "Твій профіль бачиш лише ти. Публічні профілі з’являться після підключення перевірки володіння жабкою.",
+    "membershipUnavailable": "Статус учасника DAO поки недоступний.",
+    "expired": "Сесія завершилась",
+    "expiredDescription": "Відкрий RADA з Telegram ще раз і повтори спробу.",
+    "unavailable": "Профіль недоступний",
+    "unavailableDescription": "Перевір з’єднання та повтори спробу."
   }
 }
