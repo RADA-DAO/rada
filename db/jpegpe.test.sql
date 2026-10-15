@@ -36,6 +36,10 @@ EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
 SET LOCAL ROLE jpegpe_operator;
 DO $$ BEGIN
+  UPDATE jpegpe.frogs SET username = username || '_x';
+  RAISE EXCEPTION 'Frog username changed';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
+DO $$ BEGIN
   UPDATE jpegpe.ownership_events SET to_subject_id = gen_random_uuid();
   RAISE EXCEPTION 'Operator could rewrite history';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;

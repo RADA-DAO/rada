@@ -26,6 +26,7 @@ CREATE FUNCTION jpegpe.immutable_frog_identity() RETURNS trigger
 LANGUAGE plpgsql SET search_path = '' AS $$
 BEGIN
   IF NEW.frog_id IS DISTINCT FROM OLD.frog_id
+     OR NEW.username IS DISTINCT FROM OLD.username
      OR NEW.creator_subject_id IS DISTINCT FROM OLD.creator_subject_id
      OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
     RAISE EXCEPTION 'Frog identity is immutable' USING ERRCODE = '23514';
@@ -87,10 +88,6 @@ BEGIN
   PERFORM identity.clear_selected_frog(target_frog_id, actual_owner);
 END $$;
 
-CREATE FUNCTION jpegpe.rename_frog(target_frog_id uuid, new_username text)
-RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
-  UPDATE jpegpe.frogs SET username = new_username WHERE frog_id = target_frog_id
-$$;
 
 CREATE FUNCTION jpegpe.is_current_owner(target_frog_id uuid, target_subject_id uuid)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
@@ -121,7 +118,7 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA jpegpe FROM PUBLIC;
 GRANT USAGE ON SCHEMA jpegpe TO jpegpe_service, jpegpe_operator, identity_service;
 GRANT EXECUTE ON FUNCTION jpegpe.own_public_frog(uuid) TO jpegpe_service, identity_service;
 GRANT EXECUTE ON FUNCTION jpegpe.create_frog(uuid,text,uuid,text,text,jsonb,jsonb),
-  jpegpe.transfer_frog(uuid,uuid,uuid), jpegpe.rename_frog(uuid,text) TO jpegpe_operator;
+  jpegpe.transfer_frog(uuid,uuid,uuid) TO jpegpe_operator;
 GRANT REFERENCES (frog_id) ON jpegpe.frogs TO identity_owner;
 GRANT USAGE ON SCHEMA jpegpe TO identity_owner;
 RESET ROLE;
