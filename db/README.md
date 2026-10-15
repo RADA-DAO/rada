@@ -52,7 +52,7 @@ no rows. The context is an isolation aid, not an authentication mechanism.
 and verifies current JPEGPE ownership. A transfer atomically clears the former
 owner's selection. `jpegpe.own_public_frog(uuid)` rechecks current ownership on
 each read and returns only frog UUID, username and stored authored colours.
-JPEGPE usernames are unique ignoring ASCII case and may change; frog UUIDs are
+JPEGPE usernames are unique ignoring ASCII case and immutable; frog UUIDs are
 the stable keys. Ownership events are append-only. There is no public identity
 listing, and neither service role has direct access to the other module's tables.
 Telegram data must not appear in public profile responses. Other private data

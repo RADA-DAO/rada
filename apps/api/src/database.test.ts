@@ -85,7 +85,32 @@ Deno.test(
         "SELECT jpegpe.create_frog($1::uuid, $2, $3::uuid, $4, $5)",
         [frogId, frogName, first.subject_id, "#123456", "#ABCDEF"],
       );
-      assert(await store.selectFrog("101", frogId));
+      const headers = {
+        authorization: `tma ${await signed()}`,
+        "content-type": "application/json",
+      };
+      const select = (frogId: string | null) =>
+        app.request("/me/profile-frog", {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ frogId }),
+        });
+      const collection = await app.request(
+        "/me/frogs?subject_id=" + second.subject_id,
+        { headers },
+      );
+      const collectionBody = await collection.json();
+      assert(collection.status === 200 && collectionBody.frogs.length === 1);
+      assert(
+        collectionBody.frogs[0].frog_id === frogId &&
+          Object.keys(collectionBody.frogs[0]).length === 5,
+      );
+      assert((await select(foreignFrogId)).status === 409);
+      assert((await select(frogId)).status === 200);
+      assert((await me(101)).profile.visibility === "public");
+      assert((await select(null)).status === 200);
+      assert((await me(101)).profile.visibility === "private");
+      assert((await select(frogId)).status === 200);
       const publicProfile = await me(101);
       assert(publicProfile.profile.visibility === "public");
       assert(publicProfile.profile.public.frog_id === frogId);
@@ -98,6 +123,9 @@ Deno.test(
         [frogId, first.subject_id, second.subject_id],
       );
       assert((await me(101)).profile.visibility === "private");
+      assert((await select(frogId)).status === 409);
+      const transferred = await app.request("/me/frogs", { headers });
+      assert((await transferred.json()).frogs.length === 0);
       assert(await store.selectFrog("102", frogId));
       assert((await me(102)).profile.visibility === "public");
       const consentAppId = `fixture.api.${crypto.randomUUID()}`;

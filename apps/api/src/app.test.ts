@@ -1,6 +1,8 @@
 import { createApp } from "./app.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
 const consentMethods = {
+  ownFrogs: async () => [],
+  selectFrog: async () => false,
   consents: async () => [],
   setConsent: async (
     _id: string,
@@ -183,6 +185,7 @@ Deno.test(
   async () => {
     const writes: string[] = [];
     const app = createApp(FIXTURE_TOKEN, {
+      ...consentMethods,
       me: async () => {
         throw Error("unused");
       },
@@ -263,5 +266,102 @@ Deno.test(
       writes.length === 1 &&
         writes[0] === "101:example:wallet.address.read:true",
     );
+  },
+);
+
+Deno.test(
+  "profile collection and selection are self-only, bounded and privileged",
+  async () => {
+    const own = "00000000-0000-4000-8000-000000000011";
+    const foreign = "00000000-0000-4000-8000-000000000012";
+    const writes: (string | null)[] = [];
+    const app = createApp(FIXTURE_TOKEN, {
+      ...consentMethods,
+      me: async () => {
+        throw Error("unused");
+      },
+      ownFrogs: async (id) => {
+        assert(id === "101");
+        return [
+          {
+            frog_id: own,
+            username: "Fixture",
+            background_color: null,
+            accent_color: null,
+            artwork_path: null,
+          },
+        ];
+      },
+      selectFrog: async (id, frogId) => {
+        assert(id === "101");
+        writes.push(frogId);
+        return frogId === null || frogId === own;
+      },
+    });
+    const fresh = `tma ${await signed()}`;
+    const old = `tma ${await signed({ auth_date: String(Math.floor(Date.now() / 1000) - 3700) })}`;
+    assert((await app.request("/me/frogs")).status === 401);
+    const read = await app.request("/me/frogs?subject_id=other", {
+      headers: { authorization: old },
+    });
+    const frogs = (await read.json()).frogs;
+    assert(
+      read.status === 200 &&
+        frogs.length === 1 &&
+        Object.keys(frogs[0]).length === 5 &&
+        frogs[0].frog_id === own,
+    );
+    const put = (body: unknown, authorization = fresh) =>
+      app.request("/me/profile-frog", {
+        method: "PUT",
+        headers: { authorization, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    for (const body of [
+      {},
+      { frogId: 7 },
+      { frogId: "invalid" },
+      { frogId: own, subjectId: "other" },
+      { frogId: [own] },
+    ])
+      assert((await put(body)).status === 400);
+    assert((await put({ frogId: own }, old)).status === 401);
+    assert(writes.length === 0);
+    assert((await put({ frogId: foreign })).status === 409);
+    assert((await put({ frogId: own })).status === 200);
+    assert((await put({ frogId: null })).status === 200);
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(new Uint8Array(1100));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    assert(
+      (
+        await app.request(
+          new Request("http://localhost/me/profile-frog", {
+            method: "PUT",
+            headers: {
+              authorization: fresh,
+              "content-type": "application/json",
+            },
+            body,
+          }),
+        )
+      ).status === 413 && cancelled,
+    );
+    assert(
+      (
+        await app.request("/me/profile-frog", {
+          method: "PUT",
+          headers: { authorization: fresh, "content-type": "application/json" },
+          body: new Uint8Array([255]),
+        })
+      ).status === 400,
+    );
+    assert(Number(writes.length) === 3);
   },
 );

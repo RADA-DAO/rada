@@ -69,8 +69,12 @@ select a different identity. If that person has selected a currently owned frog,
 "username":"…","background_color":"#123456","accent_color":"#ABCDEF"}}`.
 Colours may be null. Ownership is rechecked on each read, so a transferred frog
 immediately makes the former owner's profile private. Telegram fields, proofs and
-other private identifiers are never returned. Selection is currently available
-through the identity-owned database function, not a client API route.
+other private identifiers are never returned. `GET /me/frogs` returns only the authenticated person's collection, with frog UUID,
+username, colours and nullable `artwork_path`. It never accepts an owner selector.
+`PUT /me/profile-frog` accepts exactly `{ "frogId": "UUID" }` or `{ "frogId": null }`;
+selection requires current ownership and a launch within one hour. A stale or foreign
+frog returns 409. Clearing selection makes the profile private. Selection and transfer
+serialize through the existing owner functions. Collection reads retain the 24-hour window.
 
 Membership is checked in the configured closed DAO Telegram chat, using the
 same canonical bot token as authentication. `membership.status` is `member`,

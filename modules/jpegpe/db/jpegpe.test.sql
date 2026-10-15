@@ -68,4 +68,17 @@ DO $$ BEGIN
   UPDATE jpegpe.ownership_events SET occurred_at = now();
   RAISE EXCEPTION 'Ownership event changed';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
+SET LOCAL ROLE identity_service;
+SELECT set_config('rada.subject_id', :'first_subject', true);
+SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM jpegpe.own_frogs()));
+SELECT set_config('rada.subject_id', :'second_subject', true);
+SELECT pg_temp.assert_true((SELECT count(*) >= 1 FROM jpegpe.own_frogs()));
+SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM jpegpe.own_frogs() WHERE frog_id = :'first_frog'));
+SELECT set_config('rada.subject_id', '', true);
+SELECT pg_temp.assert_true((SELECT count(*) = 0 FROM jpegpe.own_frogs()));
+RESET ROLE;
+DO $$ BEGIN
+  UPDATE jpegpe.frogs SET artwork_path = '/media/jpegpe/' || repeat('a', 64) || '.png';
+  RAISE EXCEPTION 'Frog artwork changed';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
 ROLLBACK;

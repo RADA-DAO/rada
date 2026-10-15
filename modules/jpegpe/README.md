@@ -15,6 +15,14 @@ cross-schema foreign key and ownership-transfer coordination.
 `db/*.test.sql` verifies the module with synthetic, rolled-back fixtures.
 Cross-module TypeScript imports use only the other module's `index.ts`.
 
+`readOwnFrogs(client)` exposes the current person's collection through
+`jpegpe.own_frogs()`. Its five-field projection adds nullable `artwork_path`
+to the public frog metadata; creator/owner IDs and proofs remain private.
+Artwork paths are immutable, content-addressed local PNG/WebP references under
+`/media/jpegpe/`. Existing frogs have no imported artwork. Asset ingestion and
+hosting are outside this change; missing or failed artwork has an accessible
+fallback. This self-only metadata does not change the public identity projection.
+
 ## Color Drop protocol
 
 `color-protocol/` preserves JPEGPE Color Drop v1. It derives a uniformly

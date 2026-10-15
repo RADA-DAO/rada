@@ -1,5 +1,10 @@
 import pg from "pg";
-import { readOwnPublicFrog, type PublicFrog } from "../../jpegpe/index.ts";
+import {
+  readOwnPublicFrog,
+  readOwnFrogs,
+  type PublicFrog,
+  type OwnFrog,
+} from "../../jpegpe/index.ts";
 import { resolveTelegramSubject } from "./subject.ts";
 import type { MembershipStatus } from "./membership.ts";
 
@@ -13,7 +18,13 @@ export type Me = {
       };
   membership: { status: MembershipStatus };
 };
+
 export interface IdentityStore {
+  ownFrogs(verifiedTelegramId: string): Promise<OwnFrog[]>;
+  selectFrog(
+    verifiedTelegramId: string,
+    frogId: string | null,
+  ): Promise<boolean>;
   me(verifiedTelegramId: string): Promise<Me>;
   consents(
     verifiedTelegramId: string,
@@ -116,6 +127,24 @@ export class PostgresIdentityStore implements IdentityStore {
           : { visibility: "private", public: null },
         membership: { status: "unavailable" },
       };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async ownFrogs(verifiedTelegramId: string): Promise<OwnFrog[]> {
+    const subjectId = await this.subject(verifiedTelegramId);
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        subjectId,
+      ]);
+      const frogs = await readOwnFrogs(client);
+      await client.query("COMMIT");
+      return frogs;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
