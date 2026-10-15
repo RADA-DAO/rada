@@ -293,6 +293,7 @@ export function check() {
     "0BSD",
     "Python-2.0",
     "(MIT OR CC0-1.0)",
+    "(Apache-2.0 OR MIT)",
   ]);
   for (const [path, info] of Object.entries(lock.packages)) {
     if (

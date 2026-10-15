@@ -14,3 +14,20 @@ cross-schema foreign key and ownership-transfer coordination.
 `db/migrations` contains immutable, globally versioned SQL history.
 `db/*.test.sql` verifies the module with synthetic, rolled-back fixtures.
 Cross-module TypeScript imports use only the other module's `index.ts`.
+
+## Color Drop protocol
+
+`color-protocol/` preserves JPEGPE Color Drop v1. It derives a uniformly
+selected 24-bit sRGB colour from a committed future drand Quicknet round and
+separates background and accent drops with a fixed purpose byte. The frozen
+technical classifier has six chromatic classes and three neutral classes;
+the product mapping combines the neutral classes into one faction. Both
+classifications happen after the exact colour is derived.
+
+The public `index.ts` exports the dependency-free derivation and classification
+API. `color-protocol/verify.ts` verifies issued proof fixtures offline,
+including the Quicknet BLS signature. `mirror-quorum.ts` retains the pinned
+three-relay, two-matching-verified-beacon rule used when a new proof is built.
+Tests use the published synthetic fixtures and injected relay results; they do
+not contact drand. Run `npm run check:jpegpe-color` for protocol, proof,
+signature and quorum compatibility checks.

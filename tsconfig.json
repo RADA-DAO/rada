@@ -12,5 +12,10 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["tools/**/*.mjs", "packages/**/*.ts", "apps/miniapp/**/*.ts"]
+  "include": [
+    "tools/**/*.mjs",
+    "packages/**/*.ts",
+    "apps/miniapp/**/*.ts",
+    "modules/jpegpe/**/*.ts"
+  ]
 }
