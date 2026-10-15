@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rada.app.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "author",
+    "trustLevel",
+    "designRoute",
+    "permissions",
+    "minPlatformVersion"
+  ],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "author": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "trustLevel": { "enum": ["community", "official"] },
+    "designRoute": { "enum": ["standard", "free-style"] },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 18,
+      "items": {
+        "enum": [
+          "identity.self.read",
+          "theme.read",
+          "navigation",
+          "storage.self",
+          "dao.public.read",
+          "telegram.username.read",
+          "wallet.address.read",
+          "wallet.balances.read",
+          "jpegpe.collection.read",
+          "notifications.send",
+          "money.exchange",
+          "money.transfer",
+          "frog.transfer",
+          "wallet.sign",
+          "governance.vote",
+          "treasury.request",
+          "frog.issue",
+          "rewards.grant"
+        ]
+      }
+    },
+    "minPlatformVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    }
+  }
+}

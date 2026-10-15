@@ -16,3 +16,28 @@ Page routes provide a stable key, parent, explicit Back callback and live blocke
 predicate. Native, header and swipe Back share that callback. Active editors and
 dialogs retain gesture ownership. A blocked route consumes Back without falling
 through. No navigation action submits or writes data.
+
+## Community app host v1
+
+`rada.app.json` follows `rada.app.schema.json`; `parseAppManifest` also validates
+it at runtime. Its requested trust level, design route and permissions are
+declarations. A trusted registry release must separately provide the allowed
+permission subset, artifact URL and SHA-256. The current shell has no release
+registry or published apps yet. Its `RadaAppHost.mount` adapter is ready for a
+trusted launcher to supply that release record.
+
+The host fetches an immutable HTML artifact without credentials, checks its
+size and SHA-256, and only then starts it in an opaque-origin `allow-scripts`
+iframe. Child CSP blocks network and storage access; the shell's `frame-src
+'none'` policy blocks external frame navigation. The `rada.member.*` bridge
+accepts only requests from the current frame and session channel. Children
+never receive Telegram launch data, API credentials or a Telegram user ID.
+Financial, wallet signature and DAO authority requests fail closed in v1.
+
+Personal-data permissions use a host-owned consent dialog and authenticated
+`/me/consents` API. The profile shows active grants and lets the person revoke
+them. The API uses the privileged one-hour authentication window for writes and
+the existing self-only `identity.consents` policy. This host does not yet serve
+the protected personal data; future services must check current consent again
+for each read. The sandbox protocol derives from the earlier community app
+host, with a new platform-only authentication boundary.

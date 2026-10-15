@@ -74,6 +74,50 @@ Deno.test(
         own.membership.status === "unavailable" &&
           Object.keys(own).length === 3,
       );
+      const authHeader = async (id: number) => ({
+        authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,
+      });
+      const putConsent = async (id: number, granted: boolean) =>
+        app.request("/me/consents", {
+          method: "PUT",
+          headers: {
+            ...(await authHeader(id)),
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            appId: "example",
+            capability: "wallet.address.read",
+            granted,
+          }),
+        });
+      assert((await putConsent(101, true)).status === 200);
+      assert((await putConsent(101, true)).status === 200);
+      const consent101 = await app.request("/me/consents", {
+        headers: await authHeader(101),
+      });
+      const consent102 = await app.request("/me/consents", {
+        headers: await authHeader(102),
+      });
+      assert((await consent101.json()).consents.length === 1);
+      assert((await consent102.json()).consents.length === 0);
+      assert((await putConsent(101, false)).status === 200);
+      assert(
+        (
+          await (
+            await app.request("/me/consents", {
+              headers: await authHeader(101),
+            })
+          ).json()
+        ).consents.length === 0,
+      );
+      const recorded = await admin.query(
+        "SELECT subject_id, revoked_at FROM identity.consents WHERE app_id = 'example'",
+      );
+      assert(
+        recorded.rows.length === 1 &&
+          recorded.rows[0].subject_id === first.subject_id &&
+          recorded.rows[0].revoked_at,
+      );
       assert(
         (await service.query("SELECT * FROM identity.subjects")).rows.length ===
           0,

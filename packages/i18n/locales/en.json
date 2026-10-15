@@ -40,6 +40,20 @@
     "expired": "Session expired",
     "expiredDescription": "Reopen RADA from Telegram, then try again.",
     "unavailable": "Profile unavailable",
-    "unavailableDescription": "Check your connection and try again."
+    "unavailableDescription": "Check your connection and try again.",
+    "appPermissions": "App permissions",
+    "noAppPermissions": "No app permissions have been granted.",
+    "revokePermission": "Revoke",
+    "consentTitle": "Allow this app?",
+    "consentDescription": "{{app}} requests access to {{permission}}.",
+    "consentAllow": "Allow",
+    "consentDeny": "Don't allow",
+    "permissions": {
+      "telegramUsername": "your Telegram username",
+      "walletAddress": "your wallet address",
+      "walletBalances": "your token balances",
+      "frogCollection": "your frog collection",
+      "notifications": "notifications"
+    }
   }
 }

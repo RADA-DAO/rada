@@ -31,6 +31,13 @@ clients. An empty value disables cross-origin reads. Credentials are not enabled
 }
 ```
 
+`GET /me/consents` returns only the authenticated person's active app grants.
+`PUT /me/consents` accepts `{ "appId": "app.slug", "capability":
+"wallet.address.read", "granted": true }` for one supported personal-data
+permission. Writes require the privileged one-hour launch signature. Revoking
+marks the existing row inactive; it does not select another subject or erase
+the audit timestamp. Manifest declarations alone cannot grant access.
+
 The subject is the authenticated person's stable UUID. Request parameters cannot
 select a different identity. Profiles remain private until JPEGPE supplies verified
 current ownership and a live public projection. A selected frog UUID alone does

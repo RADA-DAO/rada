@@ -1,10 +1,12 @@
 import { installAppKeyboard } from "./keyboard.ts";
+import { CONSENT_PERMISSIONS } from "./app-manifest.ts";
 export type MembershipStatus = "member" | "not_member" | "unavailable";
 export type OwnProfile = {
   subject_id: string;
   profile: { visibility: "private"; public: null };
   membership: { status: MembershipStatus };
 };
+export type AppConsent = { app_id: string; capability: string };
 export {
   configurePageBack,
   pageBackNavigation,
@@ -60,6 +62,9 @@ export function initializePlatform(options: {
   )
     throw new Error("Invalid API origin");
   const profileUrl = apiOrigin ? `${apiOrigin.origin}/me` : "/api/me";
+  const consentsUrl = `${profileUrl}/consents`;
+  const authHeaders = () =>
+    host?.initData ? { Authorization: `tma ${host.initData}` } : null;
   const sync = () => {
     for (const side of ["top", "right", "bottom", "left"] as const) {
       const inset =
@@ -106,9 +111,10 @@ export function initializePlatform(options: {
       else host?.BackButton.hide();
     },
     async readOwnProfile() {
-      if (!host?.initData) return null;
+      const headers = authHeaders();
+      if (!headers) return null;
       const response = await fetch(profileUrl, {
-        headers: { Authorization: `tma ${host.initData}` },
+        headers,
         cache: "no-store",
         credentials: "omit",
       });
@@ -138,6 +144,73 @@ export function initializePlatform(options: {
       )
         throw new Error("unavailable");
       return value as OwnProfile;
+    },
+    async readAppConsents(): Promise<AppConsent[]> {
+      const headers = authHeaders();
+      if (!headers) throw new Error("expired");
+      const response = await fetch(consentsUrl, {
+        headers,
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (!response.ok)
+        throw new Error(response.status === 401 ? "expired" : "unavailable");
+      const value: unknown = await response.json();
+      if (
+        !value ||
+        typeof value !== "object" ||
+        !("consents" in value) ||
+        !Array.isArray(value.consents)
+      )
+        throw new Error("unavailable");
+      if (
+        value.consents.some(
+          (item: unknown) =>
+            !item ||
+            typeof item !== "object" ||
+            Array.isArray(item) ||
+            !("app_id" in item) ||
+            typeof item.app_id !== "string" ||
+            !("capability" in item) ||
+            typeof item.capability !== "string" ||
+            !CONSENT_PERMISSIONS.includes(
+              item.capability as (typeof CONSENT_PERMISSIONS)[number],
+            ),
+        )
+      )
+        throw new Error("unavailable");
+      return value.consents as AppConsent[];
+    },
+    async readAppConsent(appId: string, capability: string): Promise<boolean> {
+      return (await this.readAppConsents()).some(
+        (item) => item.app_id === appId && item.capability === capability,
+      );
+    },
+    async writeAppConsent(
+      appId: string,
+      capability: string,
+      granted: boolean,
+    ): Promise<boolean> {
+      const headers = authHeaders();
+      if (!headers) throw new Error("expired");
+      const response = await fetch(consentsUrl, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ appId, capability, granted }),
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (!response.ok)
+        throw new Error(response.status === 401 ? "expired" : "unavailable");
+      const value: unknown = await response.json();
+      if (
+        !value ||
+        typeof value !== "object" ||
+        !("granted" in value) ||
+        typeof value.granted !== "boolean"
+      )
+        throw new Error("unavailable");
+      return value.granted;
     },
     dispose() {
       keyboard.dispose();

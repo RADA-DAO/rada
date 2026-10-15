@@ -26,12 +26,102 @@ export function createApp(
     cors({
       origin: (origin) =>
         allowedOrigins.includes(origin) ? origin : undefined,
-      allowMethods: ["GET"],
-      allowHeaders: ["Authorization"],
+      allowMethods: ["GET", "PUT"],
+      allowHeaders: ["Authorization", "Content-Type"],
       credentials: false,
     }),
   );
   app.get("/health", (c) => c.json({ status: "ok" }));
+  const consentCapabilities = new Set([
+    "telegram.username.read",
+    "wallet.address.read",
+    "wallet.balances.read",
+    "jpegpe.collection.read",
+    "notifications.send",
+  ]);
+  async function authenticated(
+    c: { req: { header(name: string): string | undefined } },
+    privileged: boolean,
+  ) {
+    const authorization = c.req.header("Authorization") ?? "";
+    if (!authorization.startsWith("tma ")) return null;
+    const id = await verifyTelegramInitData(
+      authorization.slice(4),
+      token,
+      privileged ? "privileged" : "ordinary",
+    );
+    return id && (!syntheticOnly || ["101", "102"].includes(id)) ? id : null;
+  }
+  app.get("/me/consents", async (c) => {
+    const id = await authenticated(c, false);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ consents: await store.consents(id) });
+  });
+  app.put("/me/consents", async (c) => {
+    const id = await authenticated(c, true);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const raw = c.req.header("Content-Type") ?? "";
+    if (!/^application\/json(?:\s*;|$)/i.test(raw))
+      return c.json({ error: "invalid_request" }, 400);
+    const reader = c.req.raw.body?.getReader();
+    if (!reader) return c.json({ error: "invalid_request" }, 400);
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    try {
+      while (true) {
+        const item = await reader.read();
+        if (item.done) break;
+        length += item.value.length;
+        if (length > 1024) {
+          await reader.cancel();
+          return c.json({ error: "invalid_request" }, 413);
+        }
+        chunks.push(item.value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    let bodyText: string;
+    try {
+      bodyText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return c.json({ error: "invalid_request" }, 400);
+    const value = body as Record<string, unknown>;
+    if (
+      Object.keys(value).length !== 3 ||
+      Object.keys(value).some(
+        (key) => !["appId", "capability", "granted"].includes(key),
+      ) ||
+      typeof value.appId !== "string" ||
+      !/^[a-z][a-z0-9_.:-]{0,127}$/.test(value.appId) ||
+      typeof value.capability !== "string" ||
+      !consentCapabilities.has(value.capability) ||
+      typeof value.granted !== "boolean"
+    )
+      return c.json({ error: "invalid_request" }, 400);
+    const granted = await store.setConsent(
+      id,
+      value.appId,
+      value.capability,
+      value.granted,
+    );
+    return c.json({ granted });
+  });
   app.get("/me", async (c) => {
     const authorization = c.req.header("Authorization") ?? "";
     if (!authorization.startsWith("tma "))
