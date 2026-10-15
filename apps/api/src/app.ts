@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
-  verifyTelegramInitData,
+  identityAuthPolicy,
+  telegramAuthenticator,
+  registerStagingGuard,
+  type IdentityAuthPolicy,
   type IdentityStore,
   registerIdentityRoutes,
   unavailableMembership,
@@ -17,11 +20,23 @@ export function createApp(
   store: IdentityStore,
   allowedOrigins: string[] = [],
   membership: MembershipProvider = unavailableMembership,
-  syntheticOnly = false,
+  access: IdentityAuthPolicy | boolean = false,
   registry?: RegistryStore,
   artifactOrigin?: string,
 ) {
-  if (!token) throw new Error("Canonical bot token required");
+  const policy =
+    typeof access === "boolean"
+      ? identityAuthPolicy(
+          access
+            ? {
+                STAGING_RUNTIME: "true",
+                STAGING_AUTH_MODE: "synthetic",
+                STAGING_SYNTHETIC_ONLY: "true",
+              }
+            : {},
+        )
+      : access;
+  const authenticated = telegramAuthenticator(token, policy);
   const app = new Hono();
   app.use("*", async (c, next) => {
     c.header("Cache-Control", "no-store");
@@ -37,23 +52,17 @@ export function createApp(
       credentials: false,
     }),
   );
+  registerStagingGuard(app, authenticated, policy);
   app.get("/health", (c) => c.json({ status: "ok" }));
-  async function authenticated(
-    c: { req: { header(name: string): string | undefined } },
-    privileged: boolean,
-  ) {
-    const authorization = c.req.header("Authorization") ?? "";
-    if (!authorization.startsWith("tma ")) return null;
-    const id = await verifyTelegramInitData(
-      authorization.slice(4),
-      token,
-      privileged ? "privileged" : "ordinary",
-    );
-    return id && (!syntheticOnly || ["101", "102"].includes(id)) ? id : null;
-  }
   if (registry && artifactOrigin)
     registerRegistryRoutes(app, registry, artifactOrigin, authenticated);
-  registerIdentityRoutes(app, store, authenticated, membership, syntheticOnly);
+  registerIdentityRoutes(
+    app,
+    store,
+    authenticated,
+    membership,
+    policy.mode !== "production",
+  );
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   // Never log credentials, raw initData, database errors or Telegram profile data.
   app.onError(

@@ -14,3 +14,9 @@ export {
 } from "./api/store.ts";
 export { registerIdentityRoutes } from "./api/router.ts";
 export { resolveTelegramSubject } from "./api/subject.ts";
+export {
+  identityAuthPolicy,
+  telegramAuthenticator,
+  registerStagingGuard,
+  type IdentityAuthPolicy,
+} from "./api/policy.ts";

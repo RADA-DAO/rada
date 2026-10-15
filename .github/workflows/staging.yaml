@@ -15,6 +15,7 @@ jobs:
       vars.STAGING_DEPLOY_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     environment: staging
     runs-on: ubuntu-24.04
@@ -31,9 +32,8 @@ jobs:
       - name: Validate public build configuration
         env:
           API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
-          PAGES_PROJECT: ${{ vars.STAGING_PAGES_PROJECT }}
         run: |
-          node --input-type=module -e 'const o=process.env.API_ORIGIN; if(!o || new URL(o).origin!==o || !o.startsWith("https://") || !/^[a-z0-9-]+$/.test(process.env.PAGES_PROJECT??"")) process.exit(1);'
+          node --input-type=module -e 'const o=process.env.API_ORIGIN; if(!o || new URL(o).origin!==o || !o.startsWith("https://")) process.exit(1);'
       - run: npm run build:miniapp
         env:
           VITE_API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
@@ -63,7 +63,17 @@ jobs:
           apiToken: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.151.0"
-          command: pages deploy apps/miniapp/dist --project-name=${{ vars.STAGING_PAGES_PROJECT }} --branch=main --commit-hash=${{ github.event.workflow_run.head_sha }}
+          command: deploy --assets apps/miniapp/dist --config infra/cloudflare/wrangler.jsonc
+      - name: Record paired API and Worker revision
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -eu
+          case "$RELEASE_SHA" in *[!0-9a-f]*|'') exit 2;; esac
+          [ "${#RELEASE_SHA}" -eq 40 ] || exit 2
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sh /srv/rada-staging/releases/$RELEASE_SHA/infra/compose/finalize-staging.sh $RELEASE_SHA"
       - name: Remove runner credentials
         if: always()
         run: rm -f ~/.ssh/id_ed25519 ~/.ssh/known_hosts /tmp/staging.tar.gz

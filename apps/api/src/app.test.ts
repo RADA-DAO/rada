@@ -365,3 +365,188 @@ Deno.test(
     assert(Number(writes.length) === 3);
   },
 );
+
+Deno.test(
+  "staging configuration rejects missing, malformed and conflicting modes",
+  async () => {
+    const { identityAuthPolicy } =
+      await import("../../../modules/identity/index.ts");
+    const valid = {
+      STAGING_RUNTIME: "true",
+      STAGING_AUTH_MODE: "allowlist",
+      STAGING_ALLOWED_TELEGRAM_IDS: "101,102",
+    };
+    for (const config of [
+      { STAGING_RUNTIME: "true" },
+      { ...valid, STAGING_AUTH_MODE: "unknown" },
+      { ...valid, STAGING_ALLOWED_TELEGRAM_IDS: undefined },
+      { ...valid, STAGING_ALLOWED_TELEGRAM_IDS: "" },
+      { ...valid, STAGING_ALLOWED_TELEGRAM_IDS: " " },
+      ...["101,", "101,101", "001", "-101", "101.5", "9007199254740992"].map(
+        (ids) => ({ ...valid, STAGING_ALLOWED_TELEGRAM_IDS: ids }),
+      ),
+      { ...valid, STAGING_SYNTHETIC_ONLY: "true" },
+      { ...valid, STAGING_RUNTIME: "false" },
+      {
+        ...valid,
+        STAGING_AUTH_MODE: "synthetic",
+        STAGING_SYNTHETIC_ONLY: "true",
+      },
+      { ...valid, STAGING_SYNTHETIC_ONLY: "TRUE" },
+    ]) {
+      let rejected = false;
+      try {
+        identityAuthPolicy(config);
+      } catch (error) {
+        rejected = true;
+        assert(!String(error).includes("101"));
+      }
+      assert(rejected);
+    }
+    assert(identityAuthPolicy({}).mode === "production");
+  },
+);
+
+Deno.test(
+  "allowlist guards all staging data routes before stores and providers",
+  async () => {
+    const { identityAuthPolicy } =
+      await import("../../../modules/identity/index.ts");
+    let dataCalls = 0;
+    let providerCalls = 0;
+    const policy = identityAuthPolicy({
+      STAGING_RUNTIME: "true",
+      STAGING_AUTH_MODE: "allowlist",
+      STAGING_ALLOWED_TELEGRAM_IDS: "101,102",
+    });
+    const registry = {
+      published: async () => {
+        dataCalls++;
+        return [];
+      },
+      queue: async () => {
+        dataCalls++;
+        return [];
+      },
+      submit: async () => {
+        throw Error("unexpected");
+      },
+      review: async () => {
+        throw Error("unexpected");
+      },
+      publish: async () => {
+        throw Error("unexpected");
+      },
+      rollback: async () => {
+        throw Error("unexpected");
+      },
+      withdraw: async () => {
+        throw Error("unexpected");
+      },
+    };
+    const app = createApp(
+      FIXTURE_TOKEN,
+      {
+        ...consentMethods,
+        me: async () => {
+          dataCalls++;
+          return {
+            subject_id: "fixture",
+            profile: { visibility: "private", public: null },
+            membership: { status: "unavailable" },
+          };
+        },
+        consents: async () => {
+          dataCalls++;
+          return [];
+        },
+        setConsent: async () => {
+          dataCalls++;
+          return false;
+        },
+      },
+      ["https://staging.example.invalid"],
+      {
+        status: async () => {
+          providerCalls++;
+          return "member";
+        },
+      },
+      policy,
+      registry,
+      "https://artifacts.example",
+    );
+    for (const authorization of [
+      "",
+      "tma invalid",
+      `tma ${await signed({ user: JSON.stringify({ id: 103 }) })}`,
+      `tma ${await signed({}, "wrong-fixture-token")}`,
+    ]) {
+      for (const [path, method] of [
+        ["/me", "GET"],
+        ["/me/consents", "GET"],
+        ["/me/consents", "PUT"],
+        ["/apps/published", "GET"],
+        ["/unknown-data-route", "GET"],
+        ["/health", "POST"],
+        ["/apps/review-queue", "GET"],
+        ["/apps/example/versions", "POST"],
+        ["/apps/example/withdraw", "POST"],
+      ])
+        assert(
+          (await app.request(path, { method, headers: { authorization } }))
+            .status === 401,
+        );
+    }
+    assert(dataCalls === 0 && providerCalls === 0);
+    assert((await app.request("/health")).status === 200);
+    assert(
+      (
+        await app.request("/apps/published", {
+          method: "OPTIONS",
+          headers: {
+            origin: "https://staging.example.invalid",
+            "access-control-request-method": "GET",
+          },
+        })
+      ).status === 204,
+    );
+    for (const id of [101, 102]) {
+      const headers = {
+        authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,
+      };
+      assert((await app.request("/me", { headers })).status === 200);
+      assert(
+        (await app.request("/apps/published", { headers })).status === 200,
+      );
+    }
+    const old = {
+      authorization: `tma ${await signed({ auth_date: String(Math.floor(Date.now() / 1000) - 3700) })}`,
+    };
+    assert((await app.request("/me", { headers: old })).status === 200);
+    assert(
+      (await app.request("/apps/review-queue", { headers: old })).status ===
+        401,
+    );
+    assert(
+      (await app.request("/me/consents", { method: "PUT", headers: old }))
+        .status === 401,
+    );
+    assert(providerCalls === 0);
+    const production = createApp(
+      FIXTURE_TOKEN,
+      {
+        ...consentMethods,
+        me: async () => {
+          throw Error("unused");
+        },
+      },
+      [],
+      undefined,
+      false,
+      registry,
+      "https://artifacts.example",
+    );
+    assert((await production.request("/apps/published")).status === 200);
+  },
+);

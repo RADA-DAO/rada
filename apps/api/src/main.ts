@@ -2,6 +2,7 @@ import pg from "pg";
 import { createApp } from "./app.ts";
 import {
   TelegramMembershipProvider,
+  identityAuthPolicy,
   unavailableMembership,
 } from "../../../modules/identity/index.ts";
 import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
@@ -13,6 +14,7 @@ function required(name: string): string {
   return value;
 }
 if (import.meta.main) {
+  const policy = identityAuthPolicy(Deno.env.toObject());
   const auth = new pg.Pool({
     connectionString: required("IDENTITY_AUTH_DATABASE_URL"),
   });
@@ -40,9 +42,8 @@ if (import.meta.main) {
     throw new Error("Invalid API_ALLOWED_ORIGINS");
   const token = required("TELEGRAM_BOT_TOKEN");
   const chatId = Deno.env.get("DAO_TELEGRAM_CHAT_ID")?.trim();
-  const syntheticOnly = Deno.env.get("STAGING_SYNTHETIC_ONLY") === "true";
   const membership =
-    !syntheticOnly && chatId
+    policy.mode === "production" && chatId
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
   const app = createApp(
@@ -50,7 +51,7 @@ if (import.meta.main) {
     new PostgresIdentityStore(auth, service),
     allowedOrigins,
     membership,
-    syntheticOnly,
+    policy,
     registry ? new PostgresRegistryStore(auth, registry) : undefined,
     artifactOrigin,
   );
