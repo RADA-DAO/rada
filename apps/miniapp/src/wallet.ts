@@ -74,13 +74,28 @@ export function mountWallet(
     busy = true;
     try {
       await platform.revokeWallet(address, controller.signal);
-      await connector?.disconnect().catch(() => {});
+      const restored = await ensureConnector();
+      if (restored?.connected) await restored.disconnect().catch(() => {});
       if (!isDisposed()) await refresh();
     } catch {
       if (!isDisposed()) status.textContent = text("wallet.unavailable");
     } finally {
       busy = false;
     }
+  }
+  // TON Connect restores a remembered session asynchronously. Waiting for it keeps a
+  // restored, proof-less session from racing a fresh proof request.
+  async function ensureConnector(): Promise<TonConnectUI | undefined> {
+    if (!connector) {
+      const { TonConnectUI } = await import("@tonconnect/ui");
+      if (isDisposed()) return undefined;
+      connector = new TonConnectUI({
+        manifestUrl: new URL("/tonconnect-manifest.json", location.origin).href,
+      });
+      connector.setConnectionNetwork("-239");
+    }
+    await connector.connectionRestored;
+    return connector;
   }
   async function connect() {
     if (busy || isDisposed()) return;
@@ -91,12 +106,9 @@ export function mountWallet(
         throw new Error("unavailable");
       challenge = await platform.issueWalletChallenge(controller.signal);
       if (isDisposed()) return;
-      const { TonConnectUI } = await import("@tonconnect/ui");
-      if (isDisposed()) return;
-      connector ??= new TonConnectUI({
-        manifestUrl: new URL("/tonconnect-manifest.json", location.origin).href,
-      });
-      connector.setConnectionNetwork("-239");
+      const restored = await ensureConnector();
+      if (!restored || isDisposed()) return;
+      connector = restored;
       if (connector.connected) await connector.disconnect();
       connector.setConnectRequestParameters({
         state: "ready",
