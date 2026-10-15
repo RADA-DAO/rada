@@ -198,7 +198,17 @@ export function uiViolations(path, text) {
 /** @param {string} directory @returns {string[]} */
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if ([".git", "node_modules", ".env"].includes(entry.name)) return [];
+    if (
+      [
+        ".git",
+        "node_modules",
+        ".env",
+        "dist",
+        "playwright-report",
+        "test-results",
+      ].includes(entry.name)
+    )
+      return [];
     const path = resolve(directory, entry.name);
     return entry.isDirectory() ? walk(path) : [path];
   });

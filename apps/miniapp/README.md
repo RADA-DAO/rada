@@ -1,3 +1,25 @@
 # Mini app
 
-Telegram Mini App shell that hosts platform modules and community applications.
+Vite and TypeScript shell with an empty launcher and guest or own private profile.
+All visible copy comes from `packages/i18n`; shared theme and controls come from
+`packages/ui`. No product modules or public profiles are enabled.
+
+Run `npm run dev:miniapp`. The same-origin `/api` proxy targets the local API on
+port 8000. The hosting reverse proxy must provide this route in other environments.
+The host must supply Telegram's WebApp bridge before application startup; ordinary
+browser launches remain guests. Raw launch credentials stay in the platform adapter
+and go only to the own-profile endpoint, never storage or child applications.
+
+Run `npm run e2e` with `E2E_DATABASE_URL` pointing at a fresh disposable local
+PostgreSQL 17 database and `psql` plus Deno on PATH. The runner applies migrations,
+provisions restricted fixture logins, starts the real API and built shell, and tests
+mobile and desktop Chromium and WebKit. All identities and tokens are synthetic.
+The database must be discarded afterward. CI supplies an isolated service database.
+Browser emulation does not prove native Telegram keyboard or safe-area behavior;
+physical iOS and Android Telegram checks remain required before release.
+
+For separate API hosting set `VITE_API_ORIGIN` to the exact HTTPS API origin at
+build time and configure that API's `API_ALLOWED_ORIGINS` for the shell origin.
+Only loopback origins may use HTTP for local development. If omitted, the shell
+uses the same-origin `/api` route. The official Telegram SDK loads before startup;
+tests intercept that script and use a controlled host without external requests.

@@ -1,0 +1,58 @@
+/* Opt-in; the native Telegram controls and shared background stay stationary. */
+.rada-back-dragging,
+.rada-back-settling {
+  translate: var(--back-x, 0px) 0;
+  will-change: translate;
+  user-select: none;
+  -webkit-user-select: none;
+  contain: paint;
+}
+.rada-back-settling {
+  transition: translate var(--back-duration, 220ms)
+    cubic-bezier(0.22, 0.7, 0.25, 1);
+}
+.rada-back-preview {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  contain: paint;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+}
+.rada-back-preview-page {
+  position: absolute;
+  inset: 0;
+  translate: var(--back-preview-x, 0px) 0;
+}
+.rada-back-preview.rada-back-settling {
+  translate: none;
+  transition: clip-path var(--back-duration, 220ms)
+    cubic-bezier(0.22, 0.7, 0.25, 1);
+}
+.rada-back-preview.rada-back-settling > .rada-back-preview-page {
+  transition: translate var(--back-duration, 220ms)
+    cubic-bezier(0.22, 0.7, 0.25, 1);
+}
+
+/* A return preview is a still page, not another mount. Legacy entrance and
+   loading animations otherwise restart at opacity:0 as soon as it is cloned. */
+.rada-back-preview .screen,
+.rada-back-preview .screen *,
+.rada-back-preview .screen *::before,
+.rada-back-preview .screen *::after {
+  animation: none !important;
+}
+.rada-back-preview .screen *,
+.rada-back-preview .screen *::before,
+.rada-back-preview .screen *::after {
+  transition: none !important;
+}
+
+/* Match the existing main-pager compositor policy for expensive identity
+   layers. The authoritative artwork/material stays owned by its renderer. */
+:is(.rada-back-dragging, .rada-back-settling, .rada-back-preview)
+  :is(.dao-leaderboard, .nft-spark-username, .nft-spark-level) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

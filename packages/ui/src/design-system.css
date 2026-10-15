@@ -49,9 +49,9 @@
 }
 
 .rada-button {
-  color: var(--control-primary-ink);
-  background: var(--control-primary-bg);
-  border: 1px solid var(--control-primary-border);
+  color: var(--control-secondary-ink);
+  background: var(--control-secondary-bg);
+  border: 1px solid var(--control-secondary-border);
 }
 .rada-button:focus-visible {
   outline: 2px solid var(--theme-ring);
