@@ -1,6 +1,8 @@
 export type AppConsent = { app_id: string; capability: string };
 import { profileAdapter } from "./profile.ts";
 import { walletAdapter } from "./wallet.ts";
+import { paymentAdapter } from "./payment.ts";
+export type { PaymentRequest, PaymentResult, PaymentCopy } from "./payment.ts";
 export type { LinkedWallet, WalletBalances, WalletProof } from "./wallet.ts";
 export type { OwnProfile, OwnFrog, MembershipStatus } from "./profile.ts";
 import {
@@ -194,6 +196,7 @@ export function initializePlatform(options: {
     },
     ...profileAdapter(profileUrl, authHeaders),
     ...walletAdapter(profileUrl, authHeaders),
+    ...paymentAdapter(profileUrl, authHeaders),
     async readAppConsents(): Promise<AppConsent[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");

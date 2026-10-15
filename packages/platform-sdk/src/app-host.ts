@@ -1,4 +1,4 @@
-import { Button, Sheet } from "../../ui/src/index.ts";
+import { consentWindow } from "./app-host-consent.ts";
 import {
   APP_PERMISSIONS,
   CONSENT_PERMISSIONS,
@@ -37,6 +37,12 @@ export type AppHostOptions = {
   ownSubject(): Promise<string | null>;
   readWalletAddress?(appId: string, signal: AbortSignal): Promise<unknown>;
   readWalletBalances?(appId: string, signal: AbortSignal): Promise<unknown>;
+  requestPayment?(
+    appId: string,
+    payload: unknown,
+    signal: AbortSignal,
+  ): Promise<unknown>;
+  paymentStatus?(appId: string, intentId: string): Promise<unknown>;
   onNavigateBack?(): void;
   onError?(code: string): void;
 };
@@ -93,47 +99,6 @@ export async function verifyAppArtifact(
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
-function consentWindow(
-  copy: ConsentCopy,
-  signal: AbortSignal,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve(false);
-      return;
-    }
-    let result = false;
-    const description = document.createElement("p");
-    description.textContent = copy.description;
-    const allow = Button(copy.allow, {
-      onClick: () => {
-        result = true;
-        dialog.close();
-      },
-    });
-    const dialog = Sheet({
-      title: copy.title,
-      closeLabel: copy.deny,
-      children: [description, allow],
-    });
-    const abort = () => {
-      dialog.close();
-    };
-    signal.addEventListener("abort", abort, { once: true });
-    dialog.addEventListener(
-      "close",
-      () => {
-        signal.removeEventListener("abort", abort);
-        dialog.remove();
-        resolve(result && !signal.aborted);
-      },
-      { once: true },
-    );
-    document.body.append(dialog);
-    dialog.showModal();
-  });
-}
-
 function childDocument(
   hostOrigin: string,
   channel: string,
@@ -147,7 +112,7 @@ function childDocument(
     const send = (message) => parent.postMessage({ ...message, bridgeVersion: 1, channel: state.channel }, state.hostOrigin);
     window.rada = Object.freeze({ member: Object.freeze({
       request(type, payload = {}) { if (typeof type !== 'string' || !type.startsWith('rada.member.')) return Promise.reject(Error('invalid_request'));
-        const requestId = 'r' + (++seq); return new Promise((resolve, reject) => { const timeout = setTimeout(() => { pending.delete(requestId); reject(Error('timeout')); }, 10000); pending.set(requestId, { resolve, reject, timeout }); send({ type, requestId, payload }); }); },
+    const requestId = 'r' + (++seq); return new Promise((resolve, reject) => { const timeout = setTimeout(() => { pending.delete(requestId); reject(Error('timeout')); }, type === 'rada.member.payment.request' ? 300000 : 10000); pending.set(requestId, { resolve, reject, timeout }); send({ type, requestId, payload }); }); },
       back() { send({ type: 'rada.member.navigation.back' }); }
     }) });
     addEventListener('message', event => { if (event.source !== parent || event.origin !== state.hostOrigin) return;
@@ -287,9 +252,12 @@ export async function mountAppHost(
     const controller = new AbortController();
     const isAborted = () => controller.signal.aborted;
     controllers.set(id, controller);
-    const timeout = setTimeout(() => {
-      controller.abort();
-    }, 10000);
+    const timeout = setTimeout(
+      () => {
+        controller.abort();
+      },
+      message.type === "rada.member.payment.request" ? 300000 : 10000,
+    );
     const run = async () => {
       if (message.type === "rada.member.context.get")
         return { locale: options.locale };
@@ -315,6 +283,35 @@ export async function mountAppHost(
         )
           throw new Error("capability_denied");
         return options.readWalletBalances(release.appId, controller.signal);
+      }
+      if (message.type === "rada.member.payment.request") {
+        if (
+          !granted.has("money.transfer") ||
+          !options.requestPayment ||
+          promptOwner
+        )
+          throw new Error("capability_denied");
+        promptOwner = id;
+        try {
+          return await options.requestPayment(
+            release.appId,
+            message.payload,
+            controller.signal,
+          );
+        } finally {
+          if (promptOwner === id) promptOwner = null;
+        }
+      }
+      if (message.type === "rada.member.payment.status") {
+        if (!granted.has("money.transfer") || !options.paymentStatus)
+          throw new Error("capability_denied");
+        const payload = message.payload;
+        const intentId =
+          payload && typeof payload === "object" && !Array.isArray(payload)
+            ? (payload as Record<string, unknown>).intentId
+            : null;
+        if (typeof intentId !== "string") throw new Error("capability_denied");
+        return options.paymentStatus(release.appId, intentId);
       }
       if (message.type === "rada.member.permission.request") {
         const payload = message.payload;

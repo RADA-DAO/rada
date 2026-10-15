@@ -187,7 +187,8 @@ Deno.test(
           `https://artifacts.example/artifacts/${digest}.html`,
       );
       assert(
-        JSON.stringify(listing[0].grantedPermissions) === '["theme.read"]',
+        JSON.stringify(listing[0].grantedPermissions) ===
+          '["theme.read","money.transfer"]',
       );
       const nextResponse = await create(101);
       const next = await nextResponse.json();
