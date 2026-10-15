@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import type { Hono } from "hono";
 import type { IdentityStore } from "./store.ts";
 import {
@@ -23,6 +24,38 @@ export function registerIdentityRoutes(
     "jpegpe.collection.read",
     "notifications.send",
   ]);
+  app.get("/me/frogs", async (c) => {
+    const id = await authenticated(c, false);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ frogs: await store.ownFrogs(id) });
+  });
+  app.put("/me/profile-frog", async (c) => {
+    const id = await authenticated(c, true);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    let body: unknown;
+    try {
+      body = await readSmallJson(c.req.raw);
+    } catch (error) {
+      if (error instanceof HTTPException) return error.getResponse();
+      throw error;
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return c.json({ error: "invalid_request" }, 400);
+    const value = body as Record<string, unknown>;
+    if (
+      Object.keys(value).length !== 1 ||
+      !("frogId" in value) ||
+      (value.frogId !== null &&
+        (typeof value.frogId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            value.frogId,
+          )))
+    )
+      return c.json({ error: "invalid_request" }, 400);
+    if (!(await store.selectFrog(id, value.frogId as string | null)))
+      return c.json({ error: "not_owned" }, 409);
+    return c.json({ selected: true });
+  });
   app.get("/me/consents", async (c) => {
     const id = await authenticated(c, false);
     if (!id) return c.json({ error: "unauthorized" }, 401);
@@ -105,4 +138,59 @@ export function registerIdentityRoutes(
     }
     return c.json({ ...own, membership: { status } });
   });
+}
+
+async function readSmallJson(request: Request): Promise<unknown> {
+  const raw = request.headers.get("Content-Type") ?? "";
+  if (!/^application\/json(?:\s*;|$)/i.test(raw))
+    throw new HTTPException(400, {
+      res: Response.json({ error: "invalid_request" }, { status: 400 }),
+    });
+  const reader = request.body?.getReader();
+  if (!reader)
+    throw new HTTPException(400, {
+      res: Response.json({ error: "invalid_request" }, { status: 400 }),
+    });
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const item = await reader.read();
+      if (item.done) break;
+      length += item.value.length;
+      if (length > 1024) {
+        await reader.cancel();
+        throw new HTTPException(413, {
+          res: Response.json({ error: "invalid_request" }, { status: 413 }),
+        });
+      }
+      chunks.push(item.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  let bodyText: string;
+  try {
+    bodyText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new HTTPException(400, {
+      res: Response.json({ error: "invalid_request" }, { status: 400 }),
+    });
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    throw new HTTPException(400, {
+      res: Response.json({ error: "invalid_request" }, { status: 400 }),
+    });
+  }
+
+  return body;
 }

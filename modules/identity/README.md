@@ -5,7 +5,7 @@ app-scoped consents, and Telegram membership display. `index.ts` exports the
 store, identity router, authentication verifier, membership provider and
 `resolveTelegramSubject` for callers holding an auth-only pool.
 
-The router owns `/me` and `/me/consents`. Profile reads call JPEGPE's public
+The router owns `/me`, `/me/consents`, `/me/frogs` and `/me/profile-frog`. Profile reads call JPEGPE's public
 projection helper on the same subject-scoped transaction connection; identity
 never reads JPEGPE tables. Membership conveys no write authority.
 

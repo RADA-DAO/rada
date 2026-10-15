@@ -158,3 +158,5 @@ function state(
   element.append(description);
   return element;
 }
+
+export { FrogCard, frogCardName } from "./frog-card.ts";

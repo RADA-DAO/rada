@@ -86,3 +86,148 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.jpegpe-card {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 20rem);
+  margin: 1.25rem auto;
+  color: var(--frog-card-ink);
+  container-type: inline-size;
+  border-radius: clamp(5px, 6.111cqw, 25px);
+}
+.frog-card-plane {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  box-sizing: border-box;
+  border: max(1px, 0.278cqw) solid var(--frog-card-accent, var(--glass-edge));
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      ellipse 28% 8% at 18% 0%,
+      rgb(255 255 255 / 0.42),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 25% 16% at 91% 100%,
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 72%,
+        transparent
+      ),
+      transparent 76%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 66%,
+          var(--surface-raised) 34%
+        )
+        0 28%,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 78%,
+          var(--surface-base) 22%
+        )
+        48% 62%,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 60%,
+          var(--surface-shadow) 40%
+        )
+        100%
+    );
+  box-shadow:
+    inset 0 0 0 max(1px, 0.278cqw)
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 58%,
+        transparent
+      ),
+    inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.22),
+    inset 0 max(-1px, -0.278cqw) 0 rgb(var(--shadow-rgb) / 0.16),
+    0 5px 14px rgb(var(--shadow-rgb) / 0.11);
+  pointer-events: none;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+.frog-card-plane::before {
+  position: absolute;
+  inset: 1.667cqw;
+  border: max(1px, 0.278cqw) solid
+    color-mix(
+      in srgb,
+      var(--frog-card-accent, var(--glass-edge)) 54%,
+      transparent
+    );
+  border-radius: max(4px, calc(clamp(5px, 6.111cqw, 25px) - 1.667cqw));
+  background: var(--frog-card-bg, var(--surface-base));
+  box-shadow: inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.14);
+  content: "";
+}
+
+.frog-card-artwork {
+  position: absolute;
+  inset: 1.667cqw;
+  z-index: 1;
+  border-radius: max(4px, calc(clamp(5px, 6.111cqw, 25px) - 1.667cqw));
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.frog-card-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 1.667cqw;
+  border-radius: max(4px, calc(clamp(5px, 6.111cqw, 25px) - 1.667cqw));
+  background: linear-gradient(
+    180deg,
+    rgb(var(--shadow-rgb) / 0.04),
+    transparent 50%,
+    rgb(var(--shadow-rgb) / 0.28)
+  );
+  box-shadow:
+    inset 0 0 0 max(1px, 0.278cqw)
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 62%,
+        transparent
+      ),
+    inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.16);
+  pointer-events: none;
+}
+
+.frog-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.frog-card-username {
+  z-index: 5;
+  position: absolute;
+  top: calc(10.099cqw - 0.47em);
+  left: 5.556cqw;
+  right: 25.556cqw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 clamp(10px, 7.75cqw, 26px)/0.94 system-ui;
+  text-shadow:
+    0 0 0.833cqw var(--frog-card-bg),
+    0 0.278cqw 1.667cqw var(--frog-card-bg);
+}
+.profile-collection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 1rem;
+}
+.profile-collection .jpegpe-card {
+  margin: 0 0 0.75rem;
+}
+.profile-collection > div {
+  min-width: 0;
+}

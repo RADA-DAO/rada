@@ -134,5 +134,16 @@
       }
     },
     "accessUnavailable": "Review access could not be checked. Try again."
+  },
+  "profile": {
+    "collection": "Your frogs",
+    "emptyCollection": "Your collection is empty.",
+    "clear": "Make profile private",
+    "selectName": "Use {{name}}",
+    "selectedName": "{{name}} · Selected",
+    "saving": "Saving your profile…",
+    "notOwned": "This frog is no longer in your collection. Refresh to choose another.",
+    "publicDescription": "Your selected frog’s name and colors are public.",
+    "artUnavailable": "Artwork unavailable"
   }
 }

@@ -1,4 +1,7 @@
+import { settingsDialog } from "./settings.ts";
 import { openAppPermissions, permissionLabel } from "./permissions.ts";
+import { mountProfile } from "./profile.ts";
+import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import "../../../packages/ui/src/design-system.css";
 import "./shell.css";
@@ -9,7 +12,6 @@ import {
   Button,
   EmptyState,
   ErrorState,
-  Sheet,
 } from "../../../packages/ui/src/index.ts";
 import {
   t,
@@ -38,7 +40,8 @@ let reviewDispose: (() => void) | undefined;
 let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
-let profileFrogName: string | undefined;
+let selectedFrog: OwnProfile["profile"]["public"] = null;
+let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let sheet: HTMLDialogElement | undefined;
 let activeAppDispose: (() => void) | undefined;
@@ -154,44 +157,20 @@ function paragraph(key: MessageKey) {
 }
 function openSettings() {
   const opener = screen.querySelector<HTMLButtonElement>("header button");
-  const label = document.createElement("label");
-  label.textContent = text("shell.language");
-  const select = document.createElement("select");
-  select.setAttribute("aria-label", text("shell.language"));
-  for (const value of ["en", "uk"] as const) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text(
-      value === "en" ? "shell.english" : "shell.ukrainian",
-    );
-    select.append(option);
-  }
-  select.value = locale;
-  select.onchange = () => {
-    locale = select.value as Locale;
-    sheet?.close();
-    render();
-    openSettings();
-  };
-  label.append(select);
-  const dialog = Sheet({
-    title: text("shell.settings"),
-    closeLabel: text("common.close"),
-    children: [label],
-  });
-  dialog.addEventListener(
-    "close",
-    () => {
-      dialog.remove();
+  sheet = settingsDialog(
+    locale,
+    (value) => {
+      locale = value;
+      sheet?.close();
+      render();
+      openSettings();
+    },
+    (dialog) => {
       if (sheet === dialog) sheet = undefined;
       platform.setBackVisible(Boolean(sheet?.open) || route !== "launcher");
       if (!sheet?.open) opener?.focus();
     },
-    { once: true },
   );
-  sheet = dialog;
-  document.body.append(dialog);
-  dialog.showModal();
   platform.setBackVisible(true);
 }
 function showAppPermissions() {
@@ -212,14 +191,21 @@ async function loadProfile() {
   reviewAuthorized = false;
   reviewProbeFailed = false;
   profile = "loading";
-  profileFrogName = undefined;
+  selectedFrog = null;
   membership = "unavailable";
   render();
   try {
     const ownProfile = await platform.readOwnProfile();
     if (generation !== profileGeneration || route !== "profile") return;
     profile = ownProfile?.profile.visibility ?? "guest";
-    profileFrogName = ownProfile?.profile.public?.username.toUpperCase() ?? "";
+    selectedFrog = ownProfile?.profile.public ?? null;
+    applyTheme(
+      document.documentElement,
+      compileTheme(
+        selectedFrog?.background_color ?? DEFAULT_THEME_BACKGROUND,
+        selectedFrog?.accent_color,
+      ),
+    );
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
     if (generation !== profileGeneration || route !== "profile") return;
@@ -230,7 +216,6 @@ async function loadProfile() {
         : "unavailable";
   }
   if (generation !== profileGeneration || route !== "profile") return;
-  render();
   if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
     try {
       await platform.readReviewQueue();
@@ -250,6 +235,8 @@ function render() {
   if (deferPageBackRender(screen, render)) return;
   reviewDispose?.();
   reviewDispose = undefined;
+  profileDispose?.();
+  profileDispose = undefined;
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   configurePageBack(screen, {
@@ -313,19 +300,11 @@ function render() {
         }),
       );
     content.append(paragraph(`shell.${profile}`));
-    if (profile === "private")
+    if (["private", "public"].includes(profile)) {
+      const own = document.createElement("div");
+      own.dataset.profileCollection = "true";
       content.append(
-        paragraph("shell.privateDescription"),
-        paragraph(`shell.membership.${membership}`),
-        Button(text("shell.appPermissions"), {
-          onClick: () => void showAppPermissions(),
-        }),
-      );
-    if (profile === "public") {
-      const name = document.createElement("strong");
-      name.textContent = profileFrogName ?? "";
-      content.append(
-        name,
+        own,
         paragraph(`shell.membership.${membership}`),
         Button(text("shell.appPermissions"), {
           onClick: () => void showAppPermissions(),
@@ -371,6 +350,17 @@ function render() {
       (route === "launcher" ? index === 0 : index === 1) ? "page" : "false",
     );
   screen.replaceChildren(header, content, footer);
+  const ownCollection = content.querySelector<HTMLElement>(
+    "[data-profile-collection]",
+  );
+  if (ownCollection)
+    profileDispose = mountProfile(ownCollection, {
+      locale,
+      selected: selectedFrog,
+      read: (signal) => platform.readOwnFrogs(signal),
+      select: (frogId, signal) => platform.selectProfileFrog(frogId, signal),
+      refresh: () => void loadProfile(),
+    });
   const queue = content.querySelector<HTMLElement>("[data-review-queue]");
   if (queue)
     reviewDispose = mountReview(queue, {
@@ -388,6 +378,7 @@ window.addEventListener(
   (event) => {
     if (event.persisted) return;
     profileGeneration++;
+    profileDispose?.();
     reviewDispose?.();
     closeActiveApp();
     swipe.dispose();

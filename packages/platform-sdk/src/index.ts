@@ -1,3 +1,6 @@
+export type AppConsent = { app_id: string; capability: string };
+import { profileAdapter } from "./profile.ts";
+export type { OwnProfile, OwnFrog, MembershipStatus } from "./profile.ts";
 import {
   parseReviewQueue,
   appSlug,
@@ -7,41 +10,6 @@ import {
 export type { ReviewVersion } from "./review-registry.ts";
 import { installAppKeyboard } from "./keyboard.ts";
 import { CONSENT_PERMISSIONS } from "./app-manifest.ts";
-export type MembershipStatus = "member" | "not_member" | "unavailable";
-export type OwnProfile = {
-  subject_id: string;
-  profile:
-    | { visibility: "private"; public: null }
-    | {
-        visibility: "public";
-        public: {
-          frog_id: string;
-          username: string;
-          background_color: string | null;
-          accent_color: string | null;
-        };
-      };
-  membership: { status: MembershipStatus };
-};
-export type AppConsent = { app_id: string; capability: string };
-function validPublicFrog(value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const frog = value as Record<string, unknown>;
-  const color = (value: unknown) =>
-    value === null ||
-    (typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value));
-  return (
-    Object.keys(frog).length === 4 &&
-    typeof frog.frog_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      frog.frog_id,
-    ) &&
-    typeof frog.username === "string" &&
-    /^[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(frog.username) &&
-    color(frog.background_color) &&
-    color(frog.accent_color)
-  );
-}
 export {
   configurePageBack,
   pageBackNavigation,
@@ -215,50 +183,7 @@ export function initializePlatform(options: {
       )
         throw new Error("unavailable");
     },
-    async readOwnProfile() {
-      const headers = authHeaders();
-      if (!headers) return null;
-      const response = await fetch(profileUrl, {
-        headers,
-        cache: "no-store",
-        credentials: "omit",
-      });
-      if (!response.ok)
-        throw new Error(response.status === 401 ? "expired" : "unavailable");
-      const value: unknown = await response.json();
-      if (
-        !value ||
-        typeof value !== "object" ||
-        Array.isArray(value) ||
-        Object.keys(value).length !== 3 ||
-        !("profile" in value) ||
-        !("subject_id" in value) ||
-        typeof value.subject_id !== "string" ||
-        !value.profile ||
-        typeof value.profile !== "object" ||
-        Array.isArray(value.profile) ||
-        Object.keys(value.profile).length !== 2 ||
-        !("visibility" in value.profile) ||
-        !("public" in value.profile) ||
-        (value.profile.visibility === "private"
-          ? value.profile.public !== null
-          : value.profile.visibility === "public"
-            ? !validPublicFrog(value.profile.public)
-            : true) ||
-        !("membership" in value) ||
-        !value.membership ||
-        typeof value.membership !== "object" ||
-        Array.isArray(value.membership) ||
-        Object.keys(value.membership).length !== 1 ||
-        !("status" in value.membership) ||
-        typeof value.membership.status !== "string" ||
-        !["member", "not_member", "unavailable"].includes(
-          value.membership.status,
-        )
-      )
-        throw new Error("unavailable");
-      return value as OwnProfile;
-    },
+    ...profileAdapter(profileUrl, authHeaders),
     async readAppConsents(): Promise<AppConsent[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");

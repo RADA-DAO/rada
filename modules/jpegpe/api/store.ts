@@ -18,3 +18,12 @@ export async function readOwnPublicFrog(
   );
   return result.rows[0] ?? null;
 }
+
+export type OwnFrog = PublicFrog & { artwork_path: string | null };
+/** Uses the caller's verified, subject-scoped transaction. */
+export async function readOwnFrogs(client: pg.PoolClient): Promise<OwnFrog[]> {
+  const result = await client.query<OwnFrog>(
+    "SELECT * FROM jpegpe.own_frogs()",
+  );
+  return result.rows;
+}

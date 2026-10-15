@@ -583,7 +583,9 @@ test("real API and PostgreSQL follow selected frog ownership", async ({
       page.getByText("Public profile", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(username.toUpperCase(), { exact: true }),
+      page
+        .locator("[data-selected-frog]")
+        .getByText(username.toUpperCase(), { exact: true }),
     ).toBeVisible();
     const recipient = (
       await db.query("SELECT identity.resolve_telegram(102) AS subject_id")

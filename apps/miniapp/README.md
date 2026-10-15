@@ -1,8 +1,8 @@
 # Mini app
 
-Vite and TypeScript shell with an empty launcher and guest or own private profile.
+Vite and TypeScript shell with an empty launcher and guest or own profile.
 All visible copy comes from `packages/i18n`; shared theme and controls come from
-`packages/ui`. No product modules or public profiles are enabled.
+`packages/ui`. The profile shows the selected frog, its public/private status, and an own collection picker. Selecting an owned frog makes the profile public; clearing it makes the profile private. App permissions remain visible and revocable.
 
 Run `npm run dev:miniapp`. The same-origin `/api` proxy targets the local API on
 port 8000. The hosting reverse proxy must provide this route in other environments.
