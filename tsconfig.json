@@ -7,7 +7,9 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["tools/**/*.mjs"]
+  "include": ["tools/**/*.mjs", "packages/**/*.ts"]
 }

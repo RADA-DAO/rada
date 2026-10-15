@@ -86,12 +86,41 @@ export function uiViolations(path, text) {
         ts.isCallExpression(node.parent) &&
         node.parent.expression.getText(source) === "t" &&
         node.parent.arguments[0] === node;
-      const syntax =
-        ts.isJsxAttribute(node.parent) &&
-        /^(className|id|type|role|data-|aria-hidden)/.test(
-          node.parent.name.getText(source),
+      const jsxAttribute = ts.isJsxAttribute(node.parent);
+      const attributeName = jsxAttribute
+        ? node.parent.name.getText(source)
+        : "";
+      const visibleAttribute =
+        jsxAttribute &&
+        /^(aria-label|aria-description|alt|title|placeholder)$/.test(
+          attributeName,
         );
-      if (!translation && !syntax)
+      const jsxExpressionText =
+        ts.isJsxExpression(node.parent) &&
+        (ts.isJsxElement(node.parent.parent) ||
+          ts.isJsxSelfClosingElement(node.parent.parent));
+      const domTextAssignment =
+        ts.isBinaryExpression(node.parent) &&
+        node.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        node.parent.left
+          .getText(source)
+          .match(
+            /\.(textContent|innerText|title|placeholder|ariaLabel|ariaDescription|alt)$/,
+          );
+      const domAccessibilityAttribute =
+        ts.isCallExpression(node.parent) &&
+        node.parent.expression.getText(source).endsWith("setAttribute") &&
+        node.parent.arguments[1] === node &&
+        /^(aria-label|aria-description|alt|title|placeholder)$/.test(
+          node.parent.arguments[0]?.getText(source).replace(/["']/g, "") ?? "",
+        );
+      if (
+        !translation &&
+        (visibleAttribute ||
+          jsxExpressionText ||
+          domTextAssignment ||
+          domAccessibilityAttribute)
+      )
         issues.push("UI literal requires review or translation key");
     }
     ts.forEachChild(node, visit);
