@@ -1,4 +1,10 @@
 import { installAppKeyboard } from "./keyboard.ts";
+export type MembershipStatus = "member" | "not_member" | "unavailable";
+export type OwnProfile = {
+  subject_id: string;
+  profile: { visibility: "private"; public: null };
+  membership: { status: MembershipStatus };
+};
 export {
   configurePageBack,
   pageBackNavigation,
@@ -120,10 +126,18 @@ export function initializePlatform(options: {
         !("visibility" in value.profile) ||
         value.profile.visibility !== "private" ||
         !("public" in value.profile) ||
-        value.profile.public !== null
+        value.profile.public !== null ||
+        !("membership" in value) ||
+        !value.membership ||
+        typeof value.membership !== "object" ||
+        !("status" in value.membership) ||
+        typeof value.membership.status !== "string" ||
+        !["member", "not_member", "unavailable"].includes(
+          value.membership.status,
+        )
       )
         throw new Error("unavailable");
-      return value;
+      return value as OwnProfile;
     },
     dispose() {
       keyboard.dispose();
