@@ -44,7 +44,8 @@ export function configurePageBack(
       scope.snapshots.set(scope.route.key, captureSwipeBackPage(screen));
       scope.scrolls.set(scope.route.key, screen.scrollTop);
       while (scope.snapshots.size > 12) {
-        const key = scope.snapshots.keys().next().value!;
+        const key = scope.snapshots.keys().next().value;
+        if (key === undefined) break;
         scope.snapshots.delete(key);
         scope.scrolls.delete(key);
       }
@@ -76,10 +77,11 @@ export function pageBackNavigation(screen: HTMLElement) {
     back(): boolean {
       // A pending operation consumes Back rather than falling through to app exit.
       if (current.some(({ route }) => route.blocked?.())) return true;
-      if (!owner) return false;
+      const back = owner?.route.back;
+      if (!owner || !back) return false;
       const parent = owner.route.parent;
       const scroll = parent ? owner.scrolls.get(parent) : undefined;
-      owner.route.back!();
+      back();
       if (scroll !== undefined)
         requestAnimationFrame(() => {
           if (

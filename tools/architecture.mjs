@@ -34,7 +34,9 @@ export function codeSizeViolations(path, source) {
   )
     return [];
   const lines = source.replace(/\n$/, "").split("\n").length;
-  return lines > 400 ? [`${path}: code has ${lines} lines (maximum 400)`] : [];
+  return lines > 400
+    ? [`${path}: code has ${String(lines)} lines (maximum 400)`]
+    : [];
 }
 
 /** @param {string} path @param {string} source */
@@ -60,7 +62,7 @@ export function moduleImportViolations(path, source) {
       errors.push(`${path}: modules cannot depend on application composition`);
     if (module && module[1] !== owner && module[2] !== "index.ts")
       errors.push(
-        `${path}: import ${specifier} must use modules/${module[1]}/index.ts`,
+        `${path}: import ${specifier} must use modules/${module[1] ?? ""}/index.ts`,
       );
     if (/^(?:file:|\/)/.test(specifier))
       errors.push(`${path}: filesystem imports must use relative public paths`);
@@ -78,8 +80,7 @@ export function moduleImportViolations(path, source) {
       inspect(node.moduleSpecifier);
     else if (
       ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference) &&
-      node.moduleReference.expression
+      ts.isExternalModuleReference(node.moduleReference)
     )
       inspect(node.moduleReference.expression);
     else if (
@@ -157,11 +158,11 @@ export function moduleSqlViolations(path, source, publicViews = new Set()) {
     const references =
       /\b(?:from|join|update|into|references|on(?:\s+table)?|truncate(?:\s+table)?|alter\s+table|create\s+table(?:\s+if\s+not\s+exists)?|delete\s+from)\s+(?:only\s+)?("?[a-z_][a-z0-9_]*"?)\s*\.\s*("?[a-z_][a-z0-9_]*"?)/gi;
     for (const match of sql.matchAll(references)) {
-      const schema = match[1].replaceAll('"', "").toLowerCase();
+      const schema = (match[1] ?? "").replaceAll('"', "").toLowerCase();
       if (
         schema === owner ||
         publicViews.has(
-          `${schema}.${match[2].replaceAll('"', "").toLowerCase()}`,
+          `${schema}.${(match[2] ?? "").replaceAll('"', "").toLowerCase()}`,
         ) ||
         (/^(?:from|join)\b/i.test(match[0]) &&
           /^\s*\(/.test(sql.slice(match.index + match[0].length)))

@@ -29,7 +29,7 @@ for (let packed = 0; packed < FULL_SPACE; packed += 1) {
     g: (packed >>> 8) & 0xff,
     b: packed & 0xff,
   });
-  counts[colorClass] += 1;
+  counts[colorClass] = (counts[colorClass] ?? 0) + 1;
   chunk[chunkOffset] = colorClassCode(colorClass);
   chunkOffset += 1;
   if (chunkOffset === chunk.length) flushChunk();
@@ -51,7 +51,7 @@ const result = {
   elapsedMs: Math.round(performance.now() - startedAt),
 };
 
-console.log(JSON.stringify(result, null, 2));
+process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 if (
   VERIFY &&
   (!populationMatch ||

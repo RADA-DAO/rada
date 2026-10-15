@@ -2,7 +2,6 @@ import {
   fetchBeacon,
   type Chain,
   type ChainClient,
-  type ChainInfo,
   type RandomnessBeacon,
 } from "drand-client";
 import { QUICKNET_INFO } from "./chain-info.ts";
@@ -15,7 +14,7 @@ export async function verifyQuicknetBeaconOffline(
   }
   const chain: Chain = {
     baseUrl: "offline://quicknet",
-    info: async () => QUICKNET_INFO as ChainInfo,
+    info: () => Promise.resolve(QUICKNET_INFO),
   };
   const client: ChainClient = {
     options: {
@@ -27,8 +26,8 @@ export async function verifyQuicknetBeaconOffline(
       },
     },
     chain: () => chain,
-    latest: async () => beacon,
-    get: async () => beacon,
+    latest: () => Promise.resolve(beacon),
+    get: () => Promise.resolve(beacon),
   };
   await fetchBeacon(client, beacon.round);
 }

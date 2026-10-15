@@ -8,16 +8,16 @@ const frog = {
   accent_color: "#FFFFFF",
   artwork_path: null,
 };
-test("own collection decoder rejects identity leakage, remote art and malformed metadata", async () => {
+await test("own collection decoder rejects identity leakage, remote art and malformed metadata", async () => {
   const original = globalThis.fetch;
   let response: unknown;
   const adapter = profileAdapter("/api/me", () => ({
     Authorization: "tma fixture",
   }));
-  globalThis.fetch = async (_input, options) => {
+  globalThis.fetch = (_input, options) => {
     assert.equal(options?.credentials, "omit");
-    assert.equal(options?.cache, "no-store");
-    return Response.json(response);
+    assert.equal(options.cache, "no-store");
+    return Promise.resolve(Response.json(response));
   };
   try {
     response = { frogs: [frog] };

@@ -62,7 +62,7 @@ Deno.test(
         app.request(path, {
           method,
           headers: await header(id, age),
-          body: body === undefined ? undefined : JSON.stringify(body),
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         });
       const manifest = {
         name: "Fixture App",
@@ -104,11 +104,13 @@ Deno.test(
           )
         ).status === 403,
       );
-      const reviewer = (
+      const reviewerRow = (
         await admin.query<{ subject_id: string }>(
           "SELECT identity.resolve_telegram(102) AS subject_id",
         )
-      ).rows[0].subject_id;
+      ).rows[0];
+      assert(reviewerRow);
+      const reviewer = reviewerRow.subject_id;
       await admin.query(
         "INSERT INTO identity.role_grants(subject_id,role_name) VALUES($1,'apps.reviewer')",
         [reviewer],

@@ -9,5 +9,6 @@ export async function resolveTelegramSubject(
     "SELECT identity.resolve_telegram($1::bigint) AS subject_id",
     [verifiedTelegramId],
   );
+  if (!result.rows[0]) throw new Error("Identity unavailable");
   return result.rows[0].subject_id;
 }

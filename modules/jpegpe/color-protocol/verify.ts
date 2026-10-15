@@ -54,7 +54,7 @@ if (expected && record.colorHex !== expected.toUpperCase()) {
   );
   process.exit(1);
 }
-console.log(
+process.stdout.write(
   JSON.stringify(
     {
       ok: true,
@@ -71,5 +71,5 @@ console.log(
     },
     null,
     2,
-  ),
+  ) + "\n",
 );

@@ -142,11 +142,11 @@ for (const [name, value] of Object.entries(defaultPalette.tokens)) {
   const declaration = sharedCss.match(new RegExp(`${name}:\\s*([^;]+);`));
   assert.ok(declaration, `UI first-paint CSS must declare ${name}`);
   assert.equal(
-    normalizeCssValue(declaration[1]),
+    normalizeCssValue(declaration[1] ?? ""),
     normalizeCssValue(value),
     `${name} first-paint value must match the compiler`,
   );
 }
-console.log(
-  `theme compiler: ${authoredPairs.length} anchors + ${sampledPairs} arbitrary pairs preserve exact HEX; UI carries ${RADA_THEME_TOKEN_NAMES.length} matching roles`,
+process.stdout.write(
+  `theme compiler: ${String(authoredPairs.length)} anchors + ${String(sampledPairs)} arbitrary pairs preserve exact HEX; UI carries ${String(RADA_THEME_TOKEN_NAMES.length)} matching roles\n`,
 );

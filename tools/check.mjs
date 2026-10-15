@@ -25,6 +25,7 @@ const rootFiles = new Set([
   "package.json",
   "package-lock.json",
   "tsconfig.json",
+  "eslint.config.mjs",
 ]);
 const rootDirs = new Set([
   "apps",
@@ -45,7 +46,8 @@ export function pathAllowed(path) {
     return false;
   if (parts.length === 1) return rootFiles.has(path);
   return (
-    rootDirs.has(parts[0]) && (parts[0] !== "docs" || docDirs.has(parts[1]))
+    rootDirs.has(parts[0] ?? "") &&
+    (parts[0] !== "docs" || docDirs.has(parts[1] ?? ""))
   );
 }
 
@@ -222,11 +224,16 @@ function walk(directory) {
 /** @param {string} text */
 function anchors(text) {
   return [...text.matchAll(/^#+\s+(.+)$/gm)].map((match) =>
-    match[1]
+    (match[1] ?? "")
       .toLowerCase()
       .replace(/[^\p{L}\p{N}_ -]/gu, "")
       .replace(/ /g, "-"),
   );
+}
+
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function record(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 export function check() {
@@ -252,7 +259,7 @@ export function check() {
   for (const [path, issues] of Object.entries(markdown)) {
     for (const issue of issues)
       errors.push(
-        `${path}: ${issue.ruleNames.join("/")} line ${issue.lineNumber}`,
+        `${path}: ${issue.ruleNames.join("/")} line ${String(issue.lineNumber)}`,
       );
   }
   for (const absolute of walk(root)) {
@@ -269,7 +276,7 @@ export function check() {
     }
     if (path.endsWith(".md")) {
       for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
-        const target = match[1];
+        const target = match[1] ?? "";
         if (/^https?:\/\//.test(target)) continue;
         const [link, anchor] = target.split("#");
         const dest = link ? resolve(dirname(absolute), link) : absolute;
@@ -282,14 +289,18 @@ export function check() {
       }
     }
   }
+  /** @type {unknown} */
   const lock = JSON.parse(
     readFileSync(resolve(root, "package-lock.json"), "utf8"),
   );
+  if (!record(lock) || !record(lock.packages))
+    throw new Error("Invalid package lock");
   const licenses = new Set([
     "MIT",
     "Unlicense",
     "ISC",
     "Apache-2.0",
+    "BlueOak-1.0.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
     "0BSD",
@@ -300,7 +311,9 @@ export function check() {
   for (const [path, info] of Object.entries(lock.packages)) {
     if (
       path &&
-      !licenses.has(/** @type {{ license: string }} */ (info).license)
+      (!record(info) ||
+        typeof info.license !== "string" ||
+        !licenses.has(info.license))
     )
       errors.push(`Review dependency license: ${path}`);
   }

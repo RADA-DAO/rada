@@ -1,4 +1,4 @@
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 import { parseAppManifest } from "../../../packages/platform-sdk/src/app-manifest.ts";
 import type { RegistryStore } from "./store.ts";
 
@@ -72,7 +72,7 @@ export function registerRegistryRoutes(
     origin.password
   )
     throw new Error("APP_ARTIFACT_ORIGIN must be an exact HTTPS origin");
-  const respond = (c: any, error: unknown) => {
+  const respond = (c: Context, error: unknown) => {
     const code = (error as { code?: string }).code;
     if (code === "42501") return c.json({ error: "forbidden" }, 403);
     if (code === "P0002") return c.json({ error: "not_found" }, 404);

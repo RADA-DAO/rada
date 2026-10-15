@@ -8,12 +8,28 @@ const parsed = ts.parseConfigFileTextToJson(
   readFileSync("infra/cloudflare/wrangler.jsonc", "utf8"),
 );
 assert.equal(parsed.error, undefined);
+/** @type {unknown} */
 const config = parsed.config;
+assert.ok(
+  config !== null &&
+    typeof config === "object" &&
+    "name" in config &&
+    "preview_urls" in config &&
+    "assets" in config,
+);
 assert.equal(config.name, "rada-staging");
 assert.equal(config.preview_urls, false);
-assert.equal(config.assets.not_found_handling, "single-page-application");
+const assets = config.assets;
+assert.ok(
+  assets !== null &&
+    typeof assets === "object" &&
+    "not_found_handling" in assets &&
+    "directory" in assets &&
+    typeof assets.directory === "string",
+);
+assert.equal(assets.not_found_handling, "single-page-application");
 assert.equal(
-  resolve("infra/cloudflare", config.assets.directory),
+  resolve("infra/cloudflare", assets.directory),
   resolve("apps/miniapp/dist"),
 );
 const source = readFileSync("apps/miniapp/public/_headers", "utf8");

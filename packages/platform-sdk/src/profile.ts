@@ -49,7 +49,7 @@ export function profileAdapter(
         headers,
         credentials: "omit",
         cache: "no-store",
-        signal,
+        signal: signal ?? null,
       });
       if (!response.ok)
         throw new Error(response.status === 401 ? "expired" : "unavailable");
@@ -81,7 +81,7 @@ export function profileAdapter(
                 )))
           );
         }) ||
-        new Set(value.frogs.map((frog) => frog.frog_id)).size !==
+        new Set((value.frogs as OwnFrog[]).map((frog) => frog.frog_id)).size !==
           value.frogs.length
       )
         throw new Error("unavailable");
@@ -101,7 +101,7 @@ export function profileAdapter(
         body: JSON.stringify({ frogId }),
         credentials: "omit",
         cache: "no-store",
-        signal,
+        signal: signal ?? null,
       });
       if (!response.ok)
         throw new Error(

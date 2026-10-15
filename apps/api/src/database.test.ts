@@ -44,7 +44,7 @@ Deno.test(
       service = new pg.Pool({ connectionString: url.toString(), max: 1 });
       const store = new PostgresIdentityStore(auth, service);
       const app = createApp(FIXTURE_TOKEN, store);
-      async function me(id: number, query = "") {
+      const me = async (id: number, query = "") => {
         const response = await app.request("/me" + query, {
           headers: {
             authorization: `tma ${await signed({ user: JSON.stringify({ id }) })}`,
@@ -52,7 +52,7 @@ Deno.test(
         });
         assert(response.status === 200);
         return await response.json();
-      }
+      };
       const first = await me(101);
       const second = await me(102);
       assert(first.subject_id !== second.subject_id);

@@ -43,11 +43,20 @@ test("own frog selection, private clearing, transfer and app consent revocation"
   const path = `/media/jpegpe/${createHash("sha256").update(pixel).digest("hex")}.png`;
   try {
     const first = (
-      await db.query("SELECT identity.resolve_telegram(101) AS id")
-    ).rows[0].id;
+      await db.query<{ id: string }>(
+        "SELECT identity.resolve_telegram(101) AS id",
+      )
+    ).rows[0]?.id;
     const second = (
-      await db.query("SELECT identity.resolve_telegram(102) AS id")
-    ).rows[0].id;
+      await db.query<{ id: string }>(
+        "SELECT identity.resolve_telegram(102) AS id",
+      )
+    ).rows[0]?.id;
+    if (!first || !second) throw new Error("Fixture identities missing");
+    const readMe = async () =>
+      (await (await request.get(`${api}/me`, { headers })).json()) as {
+        profile: { visibility: string; public: { frog_id: string } | null };
+      };
     await db.query(
       "INSERT INTO jpegpe.frogs(frog_id, username, creator_subject_id, current_owner_subject_id, background_color, accent_color, artwork_path) VALUES ($1,$2,$3,$3,'#123456','#ABCDEF',$4)",
       [ownId, name, first, path],
@@ -73,13 +82,15 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       `${api}/me/frogs?subject_id=${second}`,
       { headers },
     );
-    const frogs = (await collection.json()).frogs;
+    const { frogs } = (await collection.json()) as {
+      frogs: { frog_id: string }[];
+    };
     expect(
       frogs.some((frog: { frog_id: string }) => frog.frog_id === foreignId),
     ).toBe(false);
     expect(
       Object.keys(
-        frogs.find((frog: { frog_id: string }) => frog.frog_id === ownId),
+        frogs.find((frog: { frog_id: string }) => frog.frog_id === ownId) ?? {},
       ).sort(),
     ).toEqual([
       "accent_color",
@@ -148,11 +159,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
         .getByRole("img", { name: name.toUpperCase() }),
     ).toBeVisible();
     await expect
-      .poll(
-        async () =>
-          (await (await request.get(`${api}/me`, { headers })).json()).profile
-            .public?.frog_id,
-      )
+      .poll(async () => (await readMe()).profile.public?.frog_id)
       .toBe(ownId);
     await page
       .getByRole("button", { name: "Make profile private", exact: true })
@@ -163,10 +170,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
         exact: true,
       }),
     ).toBeVisible();
-    expect(
-      (await (await request.get(`${api}/me`, { headers })).json()).profile
-        .visibility,
-    ).toBe("private");
+    expect((await readMe()).profile.visibility).toBe("private");
     await page
       .getByRole("button", { name: `Use ${name.toUpperCase()}`, exact: true })
       .click();
@@ -184,7 +188,9 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     await expect(row).toHaveCount(0);
     expect(
       (
-        await (await request.get(`${api}/me/consents`, { headers })).json()
+        (await (
+          await request.get(`${api}/me/consents`, { headers })
+        ).json()) as { consents: { app_id: string }[] }
       ).consents.some((item: { app_id: string }) => item.app_id === appId),
     ).toBe(false);
     await page
@@ -196,10 +202,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       first,
       second,
     ]);
-    expect(
-      (await (await request.get(`${api}/me`, { headers })).json()).profile
-        .visibility,
-    ).toBe("private");
+    expect((await readMe()).profile.visibility).toBe("private");
     expect(
       (
         await request.put(`${api}/me/profile-frog`, {

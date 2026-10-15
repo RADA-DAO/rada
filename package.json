@@ -9,7 +9,7 @@
   },
   "scripts": {
     "format": "prettier --write .",
-    "lint": "prettier --check . && node --check tools/check.mjs && node tools/check.mjs",
+    "lint": "prettier --check . && eslint tools packages apps/miniapp modules && deno lint --config apps/api/deno.json apps/api/src modules/*/api && node --check tools/check.mjs && node tools/check.mjs",
     "typecheck": "tsc",
     "test:unit": "node --test tools/check.test.mjs tools/migrations.test.mjs packages/platform-sdk/src/app-manifest.test.ts packages/platform-sdk/src/profile.test.ts modules/wallet/api/ton-proof.test.mjs modules/wallet/api/balances.test.mjs packages/platform-sdk/src/wallet.test.ts",
     "check:jpegpe-color": "node --experimental-strip-types modules/jpegpe/color-protocol/test.ts",
@@ -27,12 +27,16 @@
     "build:miniapp": "vite build --config apps/miniapp/vite.config.ts"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.58.2",
     "@types/node": "22.13.1",
     "@types/pg": "8.23.1",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
     "markdownlint": "0.42.0",
     "prettier": "3.9.10",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
     "vite": "7.3.7"
   },
   "overrides": {

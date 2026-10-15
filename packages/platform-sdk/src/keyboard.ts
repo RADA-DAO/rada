@@ -126,13 +126,15 @@ export function installAppKeyboard(options: KeyboardOptions) {
       done.className = "rada-keyboard-done";
       done.textContent = options.doneLabel();
       done.setAttribute("aria-label", options.dismissLabel());
-      done.addEventListener("pointerdown", (event) => event.preventDefault());
+      done.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+      });
       done.addEventListener("click", dismiss);
       accessory.append(done);
     }
     // A native dialog is in the top layer; a body button would be inert behind it.
     const host = field.closest("dialog[open]") ?? document.body;
-    if (accessory!.parentElement !== host) host.append(accessory!);
+    if (accessory && accessory.parentElement !== host) host.append(accessory);
   };
 
   const reveal = () => {
@@ -201,20 +203,25 @@ export function installAppKeyboard(options: KeyboardOptions) {
       window.visualViewport?.width ?? window.innerWidth,
       reset,
     );
-    root.style.setProperty("--app-height", `${viewport.canvasHeight}px`);
+    root.style.setProperty(
+      "--app-height",
+      `${String(viewport.canvasHeight)}px`,
+    );
     root.style.setProperty(
       "--app-visible-height",
-      `${viewport.visibleHeight}px`,
+      `${String(viewport.visibleHeight)}px`,
     );
     root.style.setProperty(
       "--app-keyboard-inset",
-      `${Math.max(0, window.innerHeight - viewport.visibleHeight)}px`,
+      `${String(Math.max(0, window.innerHeight - viewport.visibleHeight))}px`,
     );
     root.dataset.appViewportReduced = String(viewport.reduced);
     options.onViewport?.(viewport);
     schedule();
   }
-  const resized = () => refresh();
+  const resized = () => {
+    refresh();
+  };
   const dismissControl = (event: MouseEvent) => {
     if (
       event.target instanceof Element &&
@@ -249,7 +256,7 @@ export function installAppKeyboard(options: KeyboardOptions) {
       !field ||
       event.defaultPrevented ||
       event.isComposing ||
-      event.keyCode === 229 ||
+      Reflect.get(event, "keyCode") === 229 ||
       event.key !== "Enter"
     )
       return;

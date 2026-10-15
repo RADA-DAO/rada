@@ -56,13 +56,14 @@ const sheet = Sheet({
   title: "Details",
   closeLabel: "Close",
 }) as unknown as FakeElement;
-assert.equal(sheet.attributes.get("aria-labelledby"), sheet.children[0].id);
+assert.equal(sheet.attributes.get("aria-labelledby"), sheet.children[0]?.id);
+assert.ok(sheet.children[1]);
 sheet.children[1].click();
 assert.equal(sheet.closed, true);
 
 const empty = EmptyState({ message: "No entries" }) as unknown as FakeElement;
 assert.equal(empty.attributes.get("role"), "status");
-assert.equal(empty.children[0].textContent, "No entries");
+assert.equal(empty.children[0]?.textContent, "No entries");
 
 let retries = 0;
 const error = ErrorState({
@@ -71,5 +72,6 @@ const error = ErrorState({
   onRetry: () => retries++,
 }) as unknown as FakeElement;
 assert.equal(error.attributes.get("role"), "alert");
+assert.ok(error.children[1]);
 error.children[1].click();
 assert.equal(retries, 1);

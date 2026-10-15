@@ -98,7 +98,7 @@ export function Sheet(options: {
   closeLabel: string;
   onClose?: () => void;
 }): HTMLDialogElement {
-  const headingId = `rada-sheet-title-${++sheetSequence}`;
+  const headingId = `rada-sheet-title-${String(++sheetSequence)}`;
   const element = document.createElement("dialog");
   element.className = "rada-sheet";
   element.setAttribute("aria-labelledby", headingId);
@@ -106,7 +106,11 @@ export function Sheet(options: {
   heading.id = headingId;
   heading.textContent = options.title;
   const close = Button(options.closeLabel, {
-    onClick: options.onClose ?? (() => element.close()),
+    onClick:
+      options.onClose ??
+      (() => {
+        element.close();
+      }),
   });
   close.setAttribute("aria-label", options.closeLabel);
   element.append(heading, close, ...(options.children ?? []));

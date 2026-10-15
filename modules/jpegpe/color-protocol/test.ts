@@ -169,7 +169,7 @@ await assert.rejects(
   "a corrupted randomness value must not verify against the issued signature",
 );
 
-const sameFixture = async () => ({ ...beacon });
+const sameFixture = () => Promise.resolve({ ...beacon });
 await assert.rejects(
   fetchVerifiedQuicknetBeacon(background.round + 1, sameFixture),
   /quicknet_unavailable/,
@@ -190,13 +190,16 @@ assert.deepEqual(
 
 const invalidBeacon = { ...beacon, signature: "00".repeat(48) };
 await assert.rejects(
-  fetchVerifiedQuicknetBeacon(background.round, async () => invalidBeacon),
+  fetchVerifiedQuicknetBeacon(background.round, () =>
+    Promise.resolve(invalidBeacon),
+  ),
   /quicknet_unavailable/,
   "two identical invalid relay responses must never satisfy quorum",
 );
 const partialQuorum = await fetchVerifiedQuicknetBeacon(
   background.round,
-  async (url) => (url === "https://api.drand.sh" ? invalidBeacon : beacon),
+  (url) =>
+    Promise.resolve(url === "https://api.drand.sh" ? invalidBeacon : beacon),
 );
 assert.deepEqual(
   partialQuorum,
@@ -204,8 +207,8 @@ assert.deepEqual(
   "one invalid relay plus two matching valid mirrors reaches quorum",
 );
 await assert.rejects(
-  fetchVerifiedQuicknetBeacon(background.round, async (url) =>
-    url === "https://api.drand.sh" ? beacon : invalidBeacon,
+  fetchVerifiedQuicknetBeacon(background.round, (url) =>
+    Promise.resolve(url === "https://api.drand.sh" ? beacon : invalidBeacon),
   ),
   /quicknet_relay_mismatch/,
   "one valid relay without a matching verified mirror has no quorum",
@@ -217,6 +220,6 @@ assert.equal(
   "fixtures retain paired synthetic proof identity",
 );
 assert.equal(accent.requestId, background.requestId);
-console.log(
-  "JPEGPE color protocol compatibility, offline BLS and mirror quorum checks passed",
+process.stdout.write(
+  "JPEGPE color protocol compatibility, offline BLS and mirror quorum checks passed\n",
 );
