@@ -1,9 +1,25 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig } from "vite";
+/** Build version reported with client errors: RADA_BUILD, else git short sha, else "dev". */
+function buildVersion(): string {
+  const configured = process.env.RADA_BUILD?.trim();
+  if (configured && /^[0-9A-Za-z._-]{1,32}$/.test(configured))
+    return configured;
+  try {
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "dev";
+  }
+}
 /** Component catalog build for visual tests; production builds never include it. */
 const catalog = process.env.CATALOG === "true";
 
 export default defineConfig({
   root: "apps/miniapp",
+  define: { __RADA_BUILD__: JSON.stringify(buildVersion()) },
   ...(catalog
     ? {
         build: {

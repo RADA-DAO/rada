@@ -37,7 +37,7 @@ try {
   });
   if (migrations.status !== 0) throw new Error("E2E migrations failed");
   await db.query(
-    "CREATE ROLE shell_fixture_auth LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_auth TO shell_fixture_auth; CREATE ROLE shell_fixture_service LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_service TO shell_fixture_service; CREATE ROLE shell_fixture_apps LOGIN PASSWORD 'fixture-only' INHERIT; GRANT apps_service TO shell_fixture_apps; CREATE ROLE shell_fixture_wallet LOGIN PASSWORD 'fixture-only' INHERIT; GRANT wallet_service TO shell_fixture_wallet;",
+    "CREATE ROLE shell_fixture_auth LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_auth TO shell_fixture_auth; CREATE ROLE shell_fixture_service LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_service TO shell_fixture_service; CREATE ROLE shell_fixture_apps LOGIN PASSWORD 'fixture-only' INHERIT; GRANT apps_service TO shell_fixture_apps; CREATE ROLE shell_fixture_wallet LOGIN PASSWORD 'fixture-only' INHERIT; GRANT wallet_service TO shell_fixture_wallet; CREATE ROLE shell_fixture_ops LOGIN PASSWORD 'fixture-only' INHERIT; GRANT ops_service TO shell_fixture_ops;",
   );
   const auth = new URL(url);
   auth.username = "shell_fixture_auth";
@@ -48,6 +48,8 @@ try {
   registry.username = "shell_fixture_apps";
   const wallet = new URL(auth);
   wallet.username = "shell_fixture_wallet";
+  const ops = new URL(auth);
+  ops.username = "shell_fixture_ops";
   api = spawn(
     "deno",
     [
@@ -68,6 +70,7 @@ try {
         STAGING_SYNTHETIC_ONLY: "true",
         APPS_SERVICE_DATABASE_URL: registry.toString(),
         WALLET_SERVICE_DATABASE_URL: wallet.toString(),
+        CLIENT_ERRORS_DATABASE_URL: ops.toString(),
         WALLET_APP_ORIGIN: "https://wallet.fixture.example",
         APP_ARTIFACT_ORIGIN: "https://artifacts.example",
         TELEGRAM_BOT_TOKEN: "synthetic-fixture-bot-token",
@@ -112,7 +115,7 @@ try {
     await new Promise((resolve) => api?.on("exit", resolve));
   }
   await db.query(
-    "DROP ROLE IF EXISTS shell_fixture_auth; DROP ROLE IF EXISTS shell_fixture_service; DROP ROLE IF EXISTS shell_fixture_apps; DROP ROLE IF EXISTS shell_fixture_wallet;",
+    "DROP ROLE IF EXISTS shell_fixture_auth; DROP ROLE IF EXISTS shell_fixture_service; DROP ROLE IF EXISTS shell_fixture_apps; DROP ROLE IF EXISTS shell_fixture_wallet; DROP ROLE IF EXISTS shell_fixture_ops;",
   );
   await db.end();
 }

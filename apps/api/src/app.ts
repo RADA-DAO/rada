@@ -20,6 +20,7 @@ import {
   type PostgresPaymentStore,
   registerPaymentRoutes,
 } from "../../../modules/wallet/index.ts";
+import { registerClientErrorRoutes } from "../../../modules/ops/index.ts";
 import {
   createErrorReporter,
   registerErrorCounts,
@@ -70,6 +71,9 @@ export function createApp(
     }),
   );
   registerErrorCounts(app, reporter.counts, ops.token);
+  // Before the staging guard: browsers cannot sign beacons; the route is strict itself.
+  if (ops.clientErrors)
+    registerClientErrorRoutes(app, ops.clientErrors, ops.clientErrorLimiter);
   registerStagingGuard(app, authenticated, policy);
   app.get("/health", (c) => c.json({ status: "ok" }));
   if (registry && artifactOrigin)

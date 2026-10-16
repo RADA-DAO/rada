@@ -28,6 +28,7 @@ services:
       AUTH_PASSWORD: ${AUTH_PASSWORD:?Set separate auth login password}
       SERVICE_PASSWORD: ${SERVICE_PASSWORD:?Set separate service login password}
       WALLET_PASSWORD: ${WALLET_PASSWORD:?Set separate wallet login password}
+      OPS_PASSWORD: ${OPS_PASSWORD:?Set separate ops login password}
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
       STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
     networks: [database]
@@ -45,6 +46,7 @@ services:
       IDENTITY_AUTH_DATABASE_URL: postgresql://staging_auth:${AUTH_PASSWORD:?Set auth password}@postgres:5432/rada_staging
       IDENTITY_SERVICE_DATABASE_URL: postgresql://staging_service:${SERVICE_PASSWORD:?Set service password}@postgres:5432/rada_staging
       WALLET_SERVICE_DATABASE_URL: postgresql://staging_wallet:${WALLET_PASSWORD:?Set wallet password}@postgres:5432/rada_staging
+      CLIENT_ERRORS_DATABASE_URL: postgresql://staging_ops:${OPS_PASSWORD:?Set ops password}@postgres:5432/rada_staging
       WALLET_APP_ORIGIN: ${WALLET_APP_ORIGIN:?Set exact Worker HTTPS origin for proofs}
       STAGING_RUNTIME: "true"
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
