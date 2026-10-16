@@ -55,10 +55,15 @@ export function designSystemViolations(path, source) {
    * @param {string} html
    */
   function inspectHtml(html) {
-    const markup = html.replace(
-      /<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script\s*>/gi,
-      "",
-    );
+    // Strip until stable so overlapping fragments cannot reassemble a tag.
+    let markup = html;
+    for (let previous = ""; previous !== markup;) {
+      previous = markup;
+      markup = markup.replace(
+        /<!--[\s\S]*?--!?>|<script\b[\s\S]*?<\/script\b[^>]*>/gi,
+        "",
+      );
+    }
     for (const match of markup.matchAll(/<[a-z][^>]*>/gi)) {
       const tag = match[0];
       if (/^<style\b|\sstyle\s*=/i.test(tag))
@@ -69,7 +74,7 @@ export function designSystemViolations(path, source) {
         report("HTML stylesheet links must use the public @rada/ui import");
     }
     for (const script of html.matchAll(
-      /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi,
+      /<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi,
     )) {
       const type =
         /\btype\s*=\s*["']([^"']*)["']/i.exec(script[1] ?? "")?.[1] ?? "";
