@@ -109,6 +109,12 @@ privileged one-hour launch; reconciliation is self-only. `/me/payments` never
 accepts arbitrary transaction messages. The payment dialog shows exact amounts
 and the wallet estimates its own network fee before signing. A claim is
 single-use, including after an unknown wallet outcome.
+Every response carries a server-generated `request-id` header (client values are
+ignored). A failed request writes one JSON line to stdout with time, request id,
+method, matched route pattern, error class, optional error code and duration;
+nothing else (no URL, headers, bodies, messages or IPs). Failure counts per route
+since start are served at `GET /health/errors` with `Authorization: Bearer
+$API_OPS_TOKEN`; without a configured token, or with a wrong one, it returns 404.
 No logs contain raw initData, Telegram IDs, tokens or database errors.
 
 Run `npm run check` for API types, auth and HTTP unit tests. For the PostgreSQL 17

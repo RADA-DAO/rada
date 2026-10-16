@@ -96,6 +96,7 @@ if (import.meta.main) {
           new pg.Pool({ connectionString: walletUrl }),
         )
       : undefined,
+    { token: Deno.env.get("API_OPS_TOKEN")?.trim() || undefined },
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },

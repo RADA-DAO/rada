@@ -20,6 +20,12 @@ import {
   type PostgresPaymentStore,
   registerPaymentRoutes,
 } from "../../../modules/wallet/index.ts";
+import {
+  createErrorReporter,
+  registerErrorCounts,
+  registerRequestId,
+  type OpsOptions,
+} from "./observability.ts";
 
 export function createApp(
   token: string,
@@ -31,6 +37,7 @@ export function createApp(
   artifactOrigin?: string,
   wallet?: WalletStore,
   payments?: PostgresPaymentStore,
+  ops: OpsOptions = {},
 ) {
   const policy =
     typeof access === "boolean"
@@ -46,6 +53,8 @@ export function createApp(
       : access;
   const authenticated = telegramAuthenticator(token, policy);
   const app = new Hono();
+  const reporter = createErrorReporter(ops);
+  registerRequestId(app);
   app.use("*", async (c, next) => {
     c.header("Cache-Control", "no-store");
     await next();
@@ -60,6 +69,7 @@ export function createApp(
       credentials: false,
     }),
   );
+  registerErrorCounts(app, reporter.counts, ops.token);
   registerStagingGuard(app, authenticated, policy);
   app.get("/health", (c) => c.json({ status: "ok" }));
   if (registry && artifactOrigin)
@@ -74,16 +84,7 @@ export function createApp(
   if (wallet) registerWalletRoutes(app, wallet, authenticated);
   if (payments) registerPaymentRoutes(app, payments, authenticated);
   app.notFound((c) => c.json({ error: "not_found" }, 404));
-  // Never log credentials, raw initData, database errors or Telegram profile data.
-  app.onError(
-    () =>
-      new Response(JSON.stringify({ error: "unavailable" }), {
-        status: 503,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store",
-        },
-      }),
-  );
+  // Records hold only route pattern, error class and code; see observability.ts.
+  app.onError((error, c) => reporter.onError(error, c));
   return app;
 }
