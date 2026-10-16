@@ -1,8 +1,8 @@
 /** One entry per screen, sheet or running app. `leave` runs when the entry is removed by Back. */
 export type NavEntry = {
   key: string;
-  /** Edge swipe may pop this entry. Sheets and running apps own their own surface. */
-  swipe?: boolean;
+  /** Edge gesture may pop this entry. Sheets and running apps own their own surface. */
+  edgeBack?: boolean;
   leave?(): void;
   /** True once the entry's surface closed itself but its close event has not arrived yet. */
   stale?(): boolean;

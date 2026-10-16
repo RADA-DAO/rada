@@ -1,5 +1,9 @@
 import { Button, Sheet } from "../../../packages/ui/src/index.ts";
-import type { MessageKey } from "../../../packages/i18n/src/index.ts";
+import {
+  t,
+  type Locale,
+  type MessageKey,
+} from "../../../packages/i18n/src/index.ts";
 import type { initializePlatform } from "../../../packages/platform-sdk/src/index.ts";
 
 const permissionKeys = {
@@ -16,6 +20,22 @@ export function permissionLabel(
   return capability in permissionKeys
     ? text(permissionKeys[capability as keyof typeof permissionKeys])
     : "";
+}
+export function consentCopy(
+  locale: Locale,
+  permission: string,
+  appName: string,
+) {
+  const text = (key: MessageKey) => t(locale, key);
+  return {
+    title: text("shell.consentTitle"),
+    description: t(locale, "shell.consentDescription", {
+      app: appName,
+      permission: permissionLabel(permission, text),
+    }),
+    allow: text("shell.consentAllow"),
+    deny: text("shell.consentDeny"),
+  };
 }
 export async function openAppPermissions({
   text,

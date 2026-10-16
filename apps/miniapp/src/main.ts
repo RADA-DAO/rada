@@ -1,9 +1,10 @@
 import { settingsDialog } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
-import { openAppPermissions, permissionLabel } from "./permissions.ts";
+import { consentCopy, openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
+import { createRoutes, home, type Route } from "./routes.ts";
 import "@rada/ui/design-system.css";
 import {
   applyTheme,
@@ -23,7 +24,6 @@ import {
   type NavEntry,
   configurePageBack,
   pageBackNavigation,
-  createNavigation,
   installSwipeBack,
   setPageBackActive,
   deferPageBackRender,
@@ -34,7 +34,7 @@ import {
 } from "../../../packages/platform-sdk/src/app-host.ts";
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
-let route: "launcher" | "profile" | "review" = "launcher";
+let route: Route = "launcher";
 let reviewAuthorized = false;
 let reviewProbeFailed = false;
 let profileGeneration = 0;
@@ -49,23 +49,15 @@ let sheet: HTMLDialogElement | undefined;
 let activeAppDispose: (() => void) | undefined;
 let pendingAppMount: AbortController | undefined;
 let appHostGeneration = 0;
-const home: NavEntry = { key: "launcher" };
-const navigation = createNavigation(home);
+const routes = createRoutes();
+const { navigation } = routes;
+const back = () => void navigation.back();
 const sheetEntry: NavEntry = {
   key: "sheet",
   stale: () => !sheet?.open,
   leave: () => {
     sheet?.close();
   },
-};
-const routeOf = () =>
-  [...navigation.keys]
-    .reverse()
-    .find((key): key is "profile" | "review" =>
-      ["profile", "review"].includes(key),
-    ) ?? "launcher";
-const openRoute = (next: "profile" | "review") => {
-  navigation.push({ key: next, swipe: true });
 };
 function dismissApp() {
   closeActiveApp();
@@ -117,18 +109,8 @@ window.RadaAppHost = Object.freeze({
       container,
       artifactOrigin,
       locale,
-      consentCopy(permission, appName) {
-        const label = permissionLabel(permission, text);
-        return {
-          title: text("shell.consentTitle"),
-          description: t(locale, "shell.consentDescription", {
-            app: appName,
-            permission: label,
-          }),
-          allow: text("shell.consentAllow"),
-          deny: text("shell.consentDeny"),
-        };
-      },
+      consentCopy: (permission, appName) =>
+        consentCopy(locale, permission, appName),
       readConsent: (appId, permission) =>
         platform.readAppConsent(appId, permission),
       writeConsent: (appId, permission, granted) =>
@@ -140,9 +122,7 @@ window.RadaAppHost = Object.freeze({
       readWalletBalances: (appId, signal) =>
         platform.readAppWalletBalances(appId, signal),
       ...payment.paymentHostAdapter(platform, locale, payment.setPaymentBusy),
-      onNavigateBack: () => {
-        navigation.back();
-      },
+      onNavigateBack: back,
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
         pendingAppMount = undefined;
@@ -168,10 +148,8 @@ const swipe = installSwipeBack(screen, {
     !payment.paymentBusy &&
     !sheet?.open &&
     document.documentElement.dataset.appViewportReduced !== "true" &&
-    navigation.top.swipe === true,
-  back: () => {
-    navigation.back();
-  },
+    navigation.top.edgeBack === true,
+  back,
   preview: () => pageBackNavigation(screen).preview(),
   onActiveChange: (active) => {
     setPageBackActive(screen, active);
@@ -318,7 +296,7 @@ function render() {
       content.append(
         Button(text("review.title"), {
           onClick: () => {
-            openRoute("review");
+            routes.open("review");
           },
         }),
       );
@@ -370,7 +348,7 @@ function render() {
     }),
     Button(text("shell.profile"), {
       onClick: () => {
-        openRoute("profile");
+        routes.open("profile");
         if (platform.authenticatedLaunch) void loadProfile();
       },
     }),
@@ -399,7 +377,7 @@ function render() {
 }
 navigation.setGuard(() => payment.paymentBusy);
 navigation.subscribe(() => {
-  const next = routeOf();
+  const next = routes.current();
   if (next === route) return;
   route = next;
   render();
