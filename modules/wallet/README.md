@@ -23,6 +23,16 @@ receipt matching sender, recipient, token, exact amount and intent-bound purpose
 a wallet response alone never means paid. The receipt hash is unique across
 intents. Unknown claims cannot be signed again.
 
+Platform intents are created server-side by a platform module (for example
+SPLASH claims) with terms it fixed: amount, recipient and purpose. They need no
+app release grant, still need a linked sender wallet, and carry a signing
+deadline: the signed message never outlives it and signing stops 30 seconds
+before it. A paid intent records the recipient transaction time on chain.
+`wallet.platform_payment(app_id, intent_id)` publishes one platform intent to
+granted modules (only `splash_owner`). Wallet errors carry stable names
+(`PaymentDenied`, `PaymentConflict`, `PaymentExpired`); signing after the
+deadline answers `409 payment_expired`.
+
 Payment confirmation includes a numeric sender network fee estimate, obtained by
 read-only tonlib emulation of the exact outgoing message against current wallet
 state. Quotes expire after 60 seconds. Standard wallet code v1–v5 is pinned to

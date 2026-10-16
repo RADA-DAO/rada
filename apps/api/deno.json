@@ -2,7 +2,8 @@
   "imports": {
     "hono": "npm:hono@4.13.13",
     "pg": "npm:pg@8.23.1",
-    "@ton/ton": "npm:@ton/ton@16.3.0"
+    "@ton/ton": "npm:@ton/ton@16.3.0",
+    "drand-client": "npm:drand-client@1.4.2"
   },
   "compilerOptions": {
     "strict": true,

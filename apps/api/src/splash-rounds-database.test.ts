@@ -228,7 +228,7 @@ Deno.test(
           (f: { submission_id: string }) => f.submission_id === frogs[0],
         ).winner.frog_id === profileFrog,
       );
-      // The won name is permanent: nobody can bid it again.
+      // The won name is held for the claim: nobody can bid it again.
       const status = await admin.query<{ s: string }>(
         "SELECT jpegpe.username_status(upper($1)) AS s",
         [name],

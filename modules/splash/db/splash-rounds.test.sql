@@ -141,7 +141,7 @@ SELECT pg_temp.check((SELECT status = 'won' AND name_outcome = 'conflict' FROM s
 SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_c' AND amount = 60 AND username IS NULL
   FROM splash.pending_claim(:'f2')), 'pending claim');
 SELECT pg_temp.check((SELECT count(*) = 0 FROM splash.pending_claim(:'f4')), 'no claim');
--- Names are permanent: a won name cannot be bid again, in any case.
+-- A won name is held until the claim: it cannot be bid again, in any case.
 SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f4', 5, 'ALPHA') = 'name_taken', 'name permanent');
 SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f4', 5, 'Omega') = 'placed', 'next round bid');
 -- Least privilege.
@@ -150,19 +150,23 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Service read bids';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 DO $$ BEGIN
-  PERFORM jpegpe.reserve_username('Sneaky', gen_random_uuid());
-  RAISE EXCEPTION 'Service reserved a name';
+  PERFORM jpegpe.hold_username('Sneaky', gen_random_uuid());
+  RAISE EXCEPTION 'Service held a name';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+DO $$ BEGIN
+  PERFORM jpegpe.release_username(gen_random_uuid());
+  RAISE EXCEPTION 'Service released a name';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
 
--- JPEGPE keeps a reserved name for the reserved frog id only.
-SELECT pg_temp.check(jpegpe.username_status('alpha') = 'taken', 'reserved status');
+-- JPEGPE holds the won name for the won frog id only.
+SELECT pg_temp.check(jpegpe.username_status('alpha') = 'taken', 'held status');
+SELECT pg_temp.check(jpegpe.held_username(:'f1') = 'Alpha', 'held for f1');
 DO $$ BEGIN
   PERFORM jpegpe.create_frog(gen_random_uuid(), 'alpha', (SELECT subject_id FROM identity.subjects LIMIT 1));
-  RAISE EXCEPTION 'Reserved name used by another frog';
+  RAISE EXCEPTION 'Held name used by another frog';
 EXCEPTION WHEN unique_violation THEN NULL; END $$;
-SELECT jpegpe.create_frog(:'f1', 'Alpha', :'bidder_b');
-SELECT pg_temp.check(NOT jpegpe.reserve_username('Gamma2', :'f1'), 'one reservation per frog');
+SELECT pg_temp.check(NOT jpegpe.hold_username('Gamma2', :'f1'), 'one hold per frog');
 
 -- Decisions are immutable, even for the owner.
 SET LOCAL ROLE splash_owner;
@@ -181,8 +185,8 @@ EXCEPTION WHEN check_violation THEN NULL; END $$;
 RESET ROLE;
 SET LOCAL ROLE jpegpe_owner;
 DO $$ BEGIN
-  DELETE FROM jpegpe.username_reservations;
-  RAISE EXCEPTION 'Reservation released';
+  DELETE FROM jpegpe.username_holds;
+  RAISE EXCEPTION 'Hold deleted';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
 RESET ROLE;
 ROLLBACK;

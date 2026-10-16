@@ -3,6 +3,7 @@ import { Address } from "@ton/ton";
 import {
   PaymentConflict,
   PaymentDenied,
+  PaymentExpired,
   type PaymentInput,
   type PostgresPaymentStore,
 } from "./payments.ts";
@@ -108,6 +109,8 @@ export function registerPaymentRoutes(
     } catch (error) {
       if (error instanceof PaymentDenied)
         return c.json({ error: "forbidden" }, 403);
+      if (error instanceof PaymentExpired)
+        return c.json({ error: "payment_expired" }, 409);
       throw error;
     }
   });

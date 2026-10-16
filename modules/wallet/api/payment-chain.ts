@@ -11,6 +11,8 @@ export type PaymentRecord = {
   purpose: string;
   createdAt: string;
 };
+/** A finalized on-chain payment: receipt hash and the recipient transaction time (unix seconds). */
+export type PaymentConfirmation = { hash: string; onChainAt: number };
 export type SignRequest = {
   network: "-239";
   from: string;
@@ -46,6 +48,10 @@ function receiptHash(value: unknown): string | null {
   );
   return bytes.length === 32 ? bytes.toString("hex") : null;
 }
+const confirmed = (hash: unknown, now: unknown): PaymentConfirmation | null => {
+  const value = receiptHash(hash);
+  return value ? { hash: value, onChainAt: Number(now) } : null;
+};
 const comment = (intent: PaymentRecord) =>
   `RADA:${intent.intentId}:${intent.purpose}`;
 const after = (value: unknown, start: number) =>
@@ -125,8 +131,15 @@ export class PaymentChain {
     );
     return (await master.getWalletAddress(Address.parse(owner))).toRawString();
   }
-  async signRequest(intent: PaymentRecord): Promise<SignRequest> {
-    const validUntil = Math.floor(Date.now() / 1000) + 180;
+  /** `notAfter` (unix seconds) caps the signed message lifetime, e.g. a claim deadline. */
+  async signRequest(
+    intent: PaymentRecord,
+    notAfter?: number,
+  ): Promise<SignRequest> {
+    const validUntil = Math.min(
+      Math.floor(Date.now() / 1000) + 180,
+      notAfter ?? Number.MAX_SAFE_INTEGER,
+    );
     const from = Address.parse(intent.sender).toRawString();
     const address = Address.parse(intent.recipient).toString({
       bounceable: false,
@@ -180,6 +193,11 @@ export class PaymentChain {
     return await estimatePaymentFee(this.ton, await this.signRequest(intent));
   }
   async receipt(intent: PaymentRecord): Promise<string | null> {
+    return (await this.confirmation(intent))?.hash ?? null;
+  }
+  async confirmation(
+    intent: PaymentRecord,
+  ): Promise<PaymentConfirmation | null> {
     const start = Math.floor(new Date(intent.createdAt).getTime() / 1000);
     if (!Number.isSafeInteger(start) || start <= 0)
       throw new Error("invalid_intent");
@@ -213,7 +231,7 @@ export class PaymentChain {
           !receiptHash(tx.hash)
         )
           continue;
-        return receiptHash(tx.hash);
+        return confirmed(tx.hash, tx.now);
       }
       return null;
     }
@@ -281,7 +299,7 @@ export class PaymentChain {
           !receiptHash(tx.hash)
         )
           continue;
-        return receiptHash(tx.hash);
+        return confirmed(tx.hash, tx.now);
       }
     }
     return null;

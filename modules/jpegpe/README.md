@@ -27,12 +27,17 @@ fallback. This self-only metadata does not change the public identity projection
 
 Frog usernames are one platform-wide namespace: 1 to 32 characters, a letter
 first, then letters, digits or `_`, unique ignoring case, and immutable.
-`jpegpe.username_reservations` holds names promised to frogs that do not exist
-yet (a SPLASH auction win before its claim); reservations are permanent.
-`jpegpe.username_status(name)` returns `invalid`, `taken` or `available`, and
-`jpegpe.reserve_username(name, frog_id)` reserves an available name for one future
-frog id; both are granted to `splash_owner` only. `jpegpe.create_frog` refuses a
-reserved name unless the frog id matches the reservation.
+A hold keeps a name for a frog that does not exist yet (a SPLASH auction win
+before its paid claim). `jpegpe.hold_username(name, frog_id)` holds an available
+name, `jpegpe.held_username(frog_id)` reads it, `jpegpe.release_username(frog_id)`
+frees it again, and `jpegpe.issue_frog(...)` confirms it by issuing the frog
+under that name, created by the creator and transferred to the owner, with
+colours and Color Drop proofs. A frog name is permanent, so a confirmed name
+never returns. `jpegpe.username_status(name)` returns `invalid`, `taken` (a frog
+or an active hold) or `available`; all are granted to `splash_owner` only, and
+`jpegpe.create_frog` refuses held names. Holds and their single end
+(`confirmed` or `released`) are append-only. Earlier permanent reservations were
+converted to holds.
 
 ## Color Drop protocol
 
@@ -44,7 +49,8 @@ the product mapping combines the neutral classes into one faction. Both
 classifications happen after the exact colour is derived.
 
 The public `index.ts` exports the dependency-free derivation and classification
-API. `color-protocol/verify.ts` verifies issued proof fixtures offline,
+API, plus `drawFrogColors` and `committedColorRound` (`api/color-drop.ts`): both
+colours of a new frog from one committed round's quorum-verified beacon. `color-protocol/verify.ts` verifies issued proof fixtures offline,
 including the Quicknet BLS signature. `mirror-quorum.ts` retains the pinned
 three-relay, two-matching-verified-beacon rule used when a new proof is built.
 Tests use the published synthetic fixtures and injected relay results; they do

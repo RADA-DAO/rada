@@ -55,4 +55,28 @@ SELECT pg_temp.payment_assert((SELECT status='prepared' AND receipt_hash IS NULL
 SELECT set_config('rada.subject_id', '', true);
 SELECT pg_temp.payment_assert((SELECT count(*)=0 FROM wallet.payment_intents));
 RESET ROLE;
+-- Platform intents: only they carry a signing deadline, a paid time needs a paid
+-- status, and wallet.platform_payment publishes only platform rows of the named app.
+DO $$ BEGIN
+  INSERT INTO wallet.payment_intents(intent_id,subject_id,app_id,idempotency_key,token,amount,recipient,sender,purpose,sign_before)
+  SELECT '10000000-0000-4000-8000-000000000007',subject_id,'fixture.sql.platform','fixture_app_deadline','JPEGPE',1,'0:'||repeat('9',64),'0:'||repeat('7',64),'splash:x',now()
+  FROM identity.subjects LIMIT 1;
+  RAISE EXCEPTION 'Deadline on an app intent';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
+INSERT INTO wallet.payment_intents(intent_id,subject_id,app_id,idempotency_key,token,amount,recipient,sender,purpose,platform,sign_before)
+VALUES ('10000000-0000-4000-8000-000000000006',:'second_subject','fixture.sql.platform','fixture_platform','JPEGPE',5,'0:'||repeat('9',64),'0:'||repeat('7',64),'splash:x',true,now()+interval '1 hour');
+SELECT pg_temp.payment_assert((SELECT subject_id=:'second_subject' AND amount=5 AND status='prepared'
+  FROM wallet.platform_payment('fixture.sql.platform','10000000-0000-4000-8000-000000000006')));
+SELECT pg_temp.payment_assert((SELECT count(*)=0 FROM wallet.platform_payment('fixture.sql.other','10000000-0000-4000-8000-000000000006')));
+SELECT pg_temp.payment_assert((SELECT count(*)=0 FROM wallet.platform_payment('fixture.sql.other','10000000-0000-4000-8000-000000000003')));
+DO $$ BEGIN
+  UPDATE wallet.payment_intents SET paid_on_chain_at=now() WHERE intent_id='10000000-0000-4000-8000-000000000006';
+  RAISE EXCEPTION 'Paid time without payment';
+EXCEPTION WHEN check_violation THEN NULL; END $$;
+SET LOCAL ROLE wallet_service;
+DO $$ BEGIN
+  PERFORM * FROM wallet.platform_payment('fixture.sql.platform','10000000-0000-4000-8000-000000000006');
+  RAISE EXCEPTION 'Wallet service read platform payments of any subject';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+RESET ROLE;
 ROLLBACK;

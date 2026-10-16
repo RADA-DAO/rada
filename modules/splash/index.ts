@@ -18,3 +18,11 @@ export {
   type RoundResults,
   type RoundStore,
 } from "./api/rounds.ts";
+export {
+  ClaimService,
+  SPLASH_APP_ID,
+  type ClaimPayments,
+  type DrawColors,
+  type StartResult,
+} from "./api/claim-service.ts";
+export { PostgresClaimDb, type ClaimDb, type OwnClaim } from "./api/claims.ts";

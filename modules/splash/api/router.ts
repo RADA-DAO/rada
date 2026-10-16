@@ -1,5 +1,7 @@
 import type { Hono } from "hono";
 import { MAX_UPLOAD_BYTES, prepareImage, SubmissionRejected } from "./image.ts";
+import type { ClaimService } from "./claim-service.ts";
+import { registerClaimRoutes } from "./claims-router.ts";
 import { registerRoundRoutes, type Authenticated } from "./rounds-router.ts";
 import type { SplashStore } from "./store.ts";
 
@@ -41,6 +43,7 @@ export function registerSplashRoutes(
   app: Hono,
   store: SplashStore,
   authenticated: Authenticated,
+  claims?: ClaimService,
 ) {
   app.post("/v1/splash/submissions", async (c) => {
     const id = await authenticated(c, true);
@@ -129,4 +132,6 @@ export function registerSplashRoutes(
     return c.body(new Uint8Array(stored.bytes), 200);
   });
   registerRoundRoutes(app, store, authenticated);
+  // Claims need the wallet payment store; without it the routes do not exist.
+  if (claims) registerClaimRoutes(app, claims, authenticated);
 }

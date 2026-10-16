@@ -55,7 +55,12 @@ const result = spawnSync(command, args, {
   encoding: "utf8",
   stdio: ["pipe", "pipe", "pipe"],
 });
-if (result.error) throw result.error;
+// psql stops reading at the first failed statement; the unread input then ends
+// in EPIPE. That is a failed batch with psql's own error, not a runner fault.
+const pipeClosed =
+  /** @type {NodeJS.ErrnoException | undefined} */ (result.error)?.code ===
+    "EPIPE" && result.status !== 0;
+if (result.error && !pipeClosed) throw result.error;
 if (result.status !== 0) {
   process.stderr.write(result.stderr);
   process.exit(result.status ?? 1);

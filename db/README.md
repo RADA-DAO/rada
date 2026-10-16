@@ -14,7 +14,7 @@ credentials for these non-login roles outside migrations:
 | `jpegpe_service`    | Execute own-frog public projection only                                             |
 | `jpegpe_operator`   | Create and transfer frogs through checked functions                                 |
 | `wallet_service`    | Own proof challenges and identity-owned wallet link, revoke and consent functions   |
-| `splash_service`    | Execute SPLASH submission, pond, image, round, bid and result functions only        |
+| `splash_service`    | Execute SPLASH submission, pond, image, round, bid, result and claim functions only |
 | `ops_service`       | Execute `ops.record_client_error(...)` and `ops.purge_client_errors(interval)` only |
 
 `apps_owner` owns the registry schema and is `NOLOGIN`. The API must use a

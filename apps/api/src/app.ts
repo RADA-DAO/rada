@@ -21,6 +21,7 @@ import {
   registerPaymentRoutes,
 } from "../../../modules/wallet/index.ts";
 import {
+  type ClaimService,
   type SplashStore,
   registerSplashRoutes,
 } from "../../../modules/splash/index.ts";
@@ -44,6 +45,7 @@ export function createApp(
   payments?: PostgresPaymentStore,
   ops: OpsOptions = {},
   splash?: SplashStore,
+  claims?: ClaimService,
 ) {
   const policy =
     typeof access === "boolean"
@@ -92,7 +94,7 @@ export function createApp(
   );
   if (wallet) registerWalletRoutes(app, wallet, authenticated);
   if (payments) registerPaymentRoutes(app, payments, authenticated);
-  if (splash) registerSplashRoutes(app, splash, authenticated);
+  if (splash) registerSplashRoutes(app, splash, authenticated, claims);
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   // Records hold only route pattern, error class and code; see observability.ts.
   app.onError((error, c) => reporter.onError(error, c));
