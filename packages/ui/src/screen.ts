@@ -10,6 +10,8 @@ export function ScreenHost(root: HTMLElement): HTMLElement {
 
 export type ScreenOptions = {
   title: string;
+  /** Content above the title, such as the viewer's identity on the home screen. */
+  top?: Node;
   /** Wordmark shown in the header. */
   brand?: string;
   /** Header controls, such as Settings. */
@@ -32,6 +34,7 @@ export function Screen(options: ScreenOptions): HTMLElement {
     lead.append(element("strong", "rada-screen-brand", options.brand));
   header.append(lead, ...(options.actions ?? []));
   const body = element("section", "rada-screen-body");
+  if (options.top) body.append(options.top);
   body.append(
     element("h1", "rada-screen-title", options.title),
     ...(options.children ?? []),

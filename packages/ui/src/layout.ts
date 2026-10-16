@@ -48,9 +48,12 @@ export function Actions(children: Node[]): HTMLElement {
   return actions;
 }
 
-/** Mount point for embedded app content; hidden while empty. */
-export function Embed(): HTMLElement {
-  return element("div", "rada-embed");
+/** Mount point for embedded app content; hidden while empty. `fill` gives a running app the rest of the screen. */
+export function Embed(options: { fill?: boolean } = {}): HTMLElement {
+  return element(
+    "div",
+    options.fill ? "rada-embed rada-embed--fill" : "rada-embed",
+  );
 }
 
 /** Plain grouping container for content that needs a mount point or data hook. */

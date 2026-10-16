@@ -26,8 +26,6 @@
     "navigation": "Навігація",
     "done": "Готово",
     "dismissKeyboard": "Сховати клавіатуру",
-    "emptyTitle": "Простір спільноти",
-    "emptyDescription": "Тут з’являться апки спільноти.",
     "guest": "Гостьовий профіль",
     "guestDescription": "Відкрий RADA з Telegram, щоб перейти до приватного профілю.",
     "loading": "Відкриваємо профіль…",
@@ -230,6 +228,31 @@
     "sheetTitle": "Заголовок панелі",
     "sheetText": "Вміст відкритої панелі.",
     "sheetClose": "Закрити",
-    "sheetAction": "Підтвердити"
+    "sheetAction": "Підтвердити",
+    "launcher": "Лаунчер",
+    "gridLabel": "Тестові апки",
+    "appGovernance": "Управління",
+    "appTreasury": "Скарбниця",
+    "appWallet": "Гаманець",
+    "appGame": "Чемпіонат жаб'ячих перегонів",
+    "appDisabled": "Недоступна",
+    "identityName": "frog_fixture",
+    "identityCaption": "Публічний профіль"
+  },
+  "home": {
+    "gridLabel": "Встановлені апки",
+    "loading": "Завантажуємо апки…",
+    "emptyTitle": "Апок поки немає",
+    "emptyDescription": "Тут з’являться схвалені апки.",
+    "guestTitle": "Відкрий RADA з Telegram",
+    "guestDescription": "Твої апки з’являться, коли відкриєш RADA з Telegram.",
+    "opening": "Відкриваємо {{app}}…",
+    "openFailed": "Не вдалося відкрити {{app}}.",
+    "identityGuest": "Гість",
+    "identityMember": "Твій профіль",
+    "tier": {
+      "official": "Офіційна",
+      "community": "Спільнота"
+    }
   }
 }

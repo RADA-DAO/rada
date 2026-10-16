@@ -1,6 +1,6 @@
 # Mini app
 
-Vite and TypeScript shell with an empty launcher and guest or own profile.
+Vite and TypeScript shell with the home screen (app launcher) and guest or own profile.
 The profile lists verified TON wallets and exact TON/JPEGPE balances. Connecting
 uses the official TON Connect UI with a server-issued proof challenge; removing a
 link records revocation. Set `VITE_TON_CONNECT_APP_ORIGIN` to the exact HTTPS shell
@@ -36,3 +36,10 @@ publish a release. Preview reuses the SDK sandbox with no granted permissions;
 it cannot access identity, request personal-data consent, or perform privileged
 actions. Leaving the screen or changing language disposes its preview and ignores
 late responses. Reviewer authority comes from the API, independently of membership.
+
+The home screen shows the viewer's identity, then every published app as a tile in
+a four-column grid with its official or community mark. Signed-in launches read
+`/apps/published`; guests see how to open RADA from Telegram and make no request.
+Opening a tile pushes the app onto the platform stack with edge swipe enabled, so
+Telegram Back, browser Back, Escape and the swipe all return home. An app that
+fails integrity checks returns home with a retry.

@@ -24,8 +24,6 @@
     "navigation": "Navigation",
     "done": "Done",
     "dismissKeyboard": "Hide keyboard",
-    "emptyTitle": "Your community space",
-    "emptyDescription": "Community apps will appear here.",
     "guest": "Guest profile",
     "guestDescription": "Open RADA from Telegram to access your private profile.",
     "loading": "Opening your profile…",
@@ -228,6 +226,31 @@
     "sheetTitle": "Sheet title",
     "sheetText": "Content inside an open sheet.",
     "sheetClose": "Close",
-    "sheetAction": "Confirm"
+    "sheetAction": "Confirm",
+    "launcher": "Launcher",
+    "gridLabel": "Fixture apps",
+    "appGovernance": "Governance",
+    "appTreasury": "Treasury",
+    "appWallet": "Wallet",
+    "appGame": "Frog racing championship",
+    "appDisabled": "Unavailable",
+    "identityName": "frog_fixture",
+    "identityCaption": "Public profile"
+  },
+  "home": {
+    "gridLabel": "Installed apps",
+    "loading": "Loading apps…",
+    "emptyTitle": "No apps yet",
+    "emptyDescription": "Approved apps will appear here.",
+    "guestTitle": "Open RADA from Telegram",
+    "guestDescription": "Your apps appear after you open RADA from Telegram.",
+    "opening": "Opening {{app}}…",
+    "openFailed": "{{app}} could not be opened.",
+    "identityGuest": "Guest",
+    "identityMember": "Your profile",
+    "tier": {
+      "official": "Official",
+      "community": "Community"
+    }
   }
 }

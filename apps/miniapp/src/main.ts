@@ -1,17 +1,17 @@
 import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
-import { consentCopy, openAppPermissions } from "./permissions.ts";
+import { openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import { createRoutes, home, type Route } from "./routes.ts";
+import { createHome } from "./home.ts";
 import "@rada/ui/design-system.css";
 import {
   applyTheme,
   compileTheme,
   DEFAULT_THEME_BACKGROUND,
   Button,
-  EmptyState,
   ErrorState,
   Group,
   isSheetOpen,
@@ -33,10 +33,8 @@ import {
   setPageBackActive,
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
-import {
-  mountAppHost,
-  type AppRelease,
-} from "../../../packages/platform-sdk/src/app-host.ts";
+import type { AppRelease } from "../../../packages/platform-sdk/src/app-host.ts";
+import { createAppRunner } from "./app-runner.ts";
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
@@ -51,23 +49,9 @@ let selectedFrog: OwnProfile["profile"]["public"] = null;
 let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let settingsButton: HTMLElement | null = null;
-let activeAppDispose: (() => void) | undefined;
-let pendingAppMount: AbortController | undefined;
-let appHostGeneration = 0;
 const routes = createRoutes();
 const { navigation } = routes;
 const back = () => void navigation.back();
-function dismissApp() {
-  closeActiveApp();
-  navigation.drop("app");
-}
-function closeActiveApp() {
-  appHostGeneration++;
-  pendingAppMount?.abort();
-  pendingAppMount = undefined;
-  activeAppDispose?.();
-  activeAppDispose = undefined;
-}
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) throw new Error("Missing application root");
 const screen = ScreenHost(root);
@@ -81,61 +65,44 @@ const platform = initializePlatform({
     ? { apiOrigin: import.meta.env.VITE_API_ORIGIN as string }
     : {}),
 });
+const runner = createAppRunner({
+  navigation,
+  platform,
+  locale: () => locale,
+  back,
+  onClosed: () => {
+    launcher.close();
+  },
+  onLeave: () => {
+    render();
+  },
+});
+const dismissApp = () => {
+  runner.dismiss();
+};
 window.RadaAppHost = Object.freeze({
-  async mount(
-    release: AppRelease,
-    container: HTMLElement,
-    artifactOrigin: string,
-  ) {
-    closeActiveApp();
-    const generation = appHostGeneration;
-    const controller = new AbortController();
-    pendingAppMount = controller;
-    navigation.push({
-      key: "app",
-      leave: () => {
-        closeActiveApp();
-        render();
+  mount: (release: AppRelease, container: HTMLElement, origin: string) =>
+    runner.mount(release, container, origin),
+});
+const launcher = createHome({
+  locale: () => locale,
+  authenticated: platform.authenticatedLaunch,
+  read: (signal) => platform.readPublishedApps(signal),
+  mount: (app, container, origin) =>
+    runner.mount(
+      {
+        appId: app.appId,
+        manifest: app.manifest,
+        artifactUrl: app.artifactUrl,
+        artifactSha256: app.artifactSha256,
+        grantedPermissions: app.grantedPermissions,
       },
-    });
-    const dispose = await mountAppHost({
-      signal: controller.signal,
-      navigation,
-      release,
       container,
-      artifactOrigin,
-      locale,
-      consentCopy: (permission, appName) =>
-        consentCopy(locale, permission, appName),
-      readConsent: (appId, permission) =>
-        platform.readAppConsent(appId, permission),
-      writeConsent: (appId, permission, granted) =>
-        platform.writeAppConsent(appId, permission, granted),
-      ownSubject: async () =>
-        (await platform.readOwnProfile())?.subject_id ?? null,
-      readWalletAddress: (appId, signal) =>
-        platform.readAppWalletAddress(appId, signal),
-      readWalletBalances: (appId, signal) =>
-        platform.readAppWalletBalances(appId, signal),
-      ...payment.paymentHostAdapter(platform, locale, payment.setPaymentBusy),
-      onNavigateBack: back,
-    }).catch((error: unknown) => {
-      if (pendingAppMount === controller) {
-        pendingAppMount = undefined;
-        navigation.drop("app");
-      }
-      throw error;
-    });
-    if (generation !== appHostGeneration) {
-      dispose();
-      throw new Error("app_replaced");
-    }
-    activeAppDispose = dispose;
-    pendingAppMount = undefined;
-    return () => {
-      if (activeAppDispose !== dispose) return;
-      dismissApp();
-    };
+      origin,
+      true,
+    ),
+  render: () => {
+    render();
   },
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
@@ -220,16 +187,19 @@ function render() {
   profileDispose = undefined;
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
+  const running = route === "launcher" ? launcher.running : undefined;
   configurePageBack(screen, {
-    key: route,
-    ...(route !== "launcher" && navigation.below
-      ? {
-          parent: navigation.below.key,
-          back: () => {
-            navigation.back();
-          },
-        }
-      : {}),
+    key: running ? "app" : route,
+    ...(running
+      ? { parent: route, back: () => void navigation.back() }
+      : route !== "launcher" && navigation.below
+        ? {
+            parent: navigation.below.key,
+            back: () => {
+              navigation.back();
+            },
+          }
+        : {}),
     canSwipe: () => !isSheetOpen(),
   });
   settingsButton = Button(text("shell.settings"), {
@@ -237,14 +207,18 @@ function render() {
     onClick: showSettings,
   });
   const content: Node[] = [];
-  if (route === "launcher") {
-    content.push(
-      EmptyState({
-        title: text("shell.emptyTitle"),
-        message: text("shell.emptyDescription"),
+  if (running) {
+    screen.replaceChildren(
+      Screen({
+        title: running.name,
+        brand: text("shell.brand"),
+        children: [running.frame],
       }),
     );
-  } else if (route === "review") {
+    return;
+  }
+  if (route === "launcher") content.push(...launcher.content());
+  else if (route === "review") {
     const queue = Group();
     queue.dataset.reviewQueue = "true";
     content.push(queue);
@@ -304,6 +278,15 @@ function render() {
           : "shell.profile",
     ),
     brand: text("shell.brand"),
+    ...(route === "launcher"
+      ? {
+          top: launcher.identity({
+            authenticated: platform.authenticatedLaunch,
+            visibility: profile,
+            frog: selectedFrog,
+          }),
+        }
+      : {}),
     actions: [settingsButton],
     children: content,
     footer: Tabs({
@@ -353,11 +336,13 @@ navigation.subscribe(() => {
   render();
 });
 render();
+void launcher.load();
 window.addEventListener(
   "pagehide",
   (event) => {
     if (event.persisted) return;
     profileGeneration++;
+    launcher.dispose();
     profileDispose?.();
     reviewDispose?.();
     dismissApp();

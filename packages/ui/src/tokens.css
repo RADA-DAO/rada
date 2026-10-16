@@ -79,6 +79,11 @@
   --rada-avatar-size-small: 28px;
   --rada-spinner-size: 18px;
   --rada-duration-spin: 800ms;
+  --rada-app-grid-columns: 4;
+  --rada-app-tile-art-size: 78px;
+  --rada-radius-tile: 21px 13px 21px 13px;
+  --rada-font-size-monogram: 27px;
+  --rada-shadow-tile: inset 0 1px 0 var(--glass-glint);
 }
 
 /* Resolve collectible-local colors at the card, never at the document root. */
