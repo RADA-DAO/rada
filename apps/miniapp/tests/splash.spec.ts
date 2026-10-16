@@ -236,7 +236,11 @@ test("submit a frog: preview, stored result and the rate limit", async ({
     if (uploads > 1) {
       await route.fulfill({
         status: 429,
-        headers: { "Retry-After": "600" },
+        headers: {
+          "Retry-After": "600",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "Retry-After",
+        },
         json: { error: "rate_limited" },
       });
       return;

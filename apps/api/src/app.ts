@@ -74,6 +74,8 @@ export function createApp(
         allowedOrigins.includes(origin) ? origin : undefined,
       allowMethods: ["GET", "PUT", "POST"],
       allowHeaders: ["Authorization", "Content-Type"],
+      // Rate-limited clients show how long to wait (SPLASH submissions).
+      exposeHeaders: ["Retry-After"],
       credentials: false,
     }),
   );

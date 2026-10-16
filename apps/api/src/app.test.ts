@@ -89,6 +89,12 @@ Deno.test(
       );
       assert(!response.headers.has("access-control-allow-credentials"));
     }
+    const health = await app.request("/unknown", {
+      headers: { origin: "https://miniapp.example" },
+    });
+    assert(
+      health.headers.get("access-control-expose-headers") === "Retry-After",
+    );
   },
 );
 Deno.test(
