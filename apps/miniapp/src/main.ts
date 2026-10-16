@@ -100,6 +100,7 @@ window.RadaAppHost = Object.freeze({
     });
     const dispose = await mountAppHost({
       signal: controller.signal,
+      navigation,
       release,
       container,
       artifactOrigin,

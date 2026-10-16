@@ -1,3 +1,4 @@
+import type { SheetNavigation } from "../../ui/src/index.ts";
 import {
   windowConfirm,
   type Payment,
@@ -93,6 +94,7 @@ async function cancellable<T>(
 export function paymentAdapter(
   base: string,
   authHeaders: () => { Authorization: string } | null,
+  navigation?: SheetNavigation,
 ) {
   const endpoint = `${base}/payments`;
   let walletPromise: Promise<TonConnectUI> | undefined;
@@ -200,7 +202,7 @@ export function paymentAdapter(
         payment.feeEstimate.expiresAt <= Date.now() / 1000
       )
         throw new Error("fee_unavailable");
-      if (!(await windowConfirm(payment, copy, signal))) {
+      if (!(await windowConfirm(payment, copy, signal, navigation))) {
         signal.throwIfAborted();
         const cancelled = readPayment(
           (
