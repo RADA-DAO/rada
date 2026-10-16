@@ -1,0 +1,84 @@
+.jpegpe-card {
+  position: relative;
+  isolation: isolate;
+  width: var(--rada-frog-width);
+  margin: var(--rada-frog-margin);
+  color: var(--frog-card-ink);
+  container-type: inline-size;
+  border-radius: var(--rada-frog-radius);
+}
+.frog-card-plane {
+  position: absolute;
+  z-index: var(--rada-z-base);
+  inset: 0;
+  box-sizing: border-box;
+  border: var(--rada-frog-border);
+  border-radius: inherit;
+  background: var(--rada-frog-plane-fill);
+  box-shadow: var(--rada-frog-plane-shadow);
+  pointer-events: none;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+.frog-card-plane::before {
+  position: absolute;
+  inset: var(--rada-frog-inset);
+  border: var(--rada-frog-inner-border);
+  border-radius: var(--rada-frog-inner-radius);
+  background: var(--frog-card-bg, var(--surface-base));
+  box-shadow: var(--rada-frog-inner-shadow);
+  content: "";
+}
+
+.frog-card-artwork {
+  position: absolute;
+  inset: var(--rada-frog-inset);
+  z-index: var(--rada-z-artwork);
+  border-radius: var(--rada-frog-inner-radius);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.frog-card-overlay {
+  position: absolute;
+  z-index: var(--rada-z-overlay);
+  inset: var(--rada-frog-inset);
+  border-radius: var(--rada-frog-inner-radius);
+  background: var(--rada-frog-overlay-fill);
+  box-shadow: var(--rada-frog-overlay-shadow);
+  pointer-events: none;
+}
+
+.frog-card-art {
+  width: var(--rada-frog-art-width);
+  height: 100%;
+  object-fit: contain;
+}
+.frog-card-username {
+  z-index: var(--rada-z-label);
+  position: absolute;
+  top: var(--rada-frog-name-top);
+  left: var(--rada-frog-name-left);
+  right: var(--rada-frog-name-right);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--rada-frog-name-font);
+  text-shadow: var(--rada-frog-name-shadow);
+}
+.profile-collection {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--rada-collection-column)), 1fr)
+  );
+  gap: var(--rada-space-4);
+}
+.profile-collection .jpegpe-card {
+  margin: var(--rada-frog-collection-margin);
+}
+.profile-collection > div {
+  min-width: 0;
+}

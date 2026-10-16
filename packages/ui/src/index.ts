@@ -164,3 +164,12 @@ function state(
 }
 
 export { FrogCard, frogCardName } from "./frog-card.ts";
+
+export {
+  RADA_DESIGN_TOKEN_NAMES,
+  type DesignTokenName,
+  type DesignTokens,
+} from "./design-tokens.ts";
+export type ThemeTokenName = (typeof RADA_THEME_TOKEN_NAMES)[number];
+export type RadaTokenName =
+  ThemeTokenName | import("./design-tokens.ts").DesignTokenName;
