@@ -36,6 +36,8 @@ import {
 } from "../../../packages/platform-sdk/src/index.ts";
 import type { AppRelease } from "../../../packages/platform-sdk/src/app-host.ts";
 import { createAppRunner } from "./app-runner.ts";
+import { createSplashShell } from "./splash-shell.ts";
+import { isSplashRoute } from "../../../modules/splash/ui/index.ts";
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
@@ -78,6 +80,15 @@ const runner = createAppRunner({
     render();
   },
 });
+const splash = createSplashShell({
+  platform,
+  navigation,
+  locale: () => locale,
+  openWallet: () => {
+    routes.open("profile");
+    if (platform.authenticatedLaunch) void loadProfile();
+  },
+});
 const dismissApp = () => {
   runner.dismiss();
 };
@@ -106,6 +117,7 @@ const launcher = createHome({
   render: () => {
     render();
   },
+  builtIn: () => [{ name: text("splash.title"), onOpen: splash.open }],
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installSwipeBack(screen, {
@@ -197,6 +209,7 @@ function render() {
   reviewDispose = undefined;
   profileDispose?.();
   profileDispose = undefined;
+  splash.dispose();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -218,6 +231,13 @@ function render() {
     variant: "ghost",
     onClick: showSettings,
   });
+  if (isSplashRoute(route)) {
+    splash.render(screen, route, {
+      brand: text("shell.brand"),
+      actions: [settingsButton],
+    });
+    return;
+  }
   const content: Node[] = [];
   if (running) {
     screen.replaceChildren(
@@ -358,6 +378,7 @@ window.addEventListener(
     launcher.dispose();
     profileDispose?.();
     reviewDispose?.();
+    splash.dispose();
     dismissApp();
     swipe.dispose();
     platform.dispose();

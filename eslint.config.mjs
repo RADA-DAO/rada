@@ -36,11 +36,16 @@ export default defineConfig(
       "apps/miniapp/*config.ts",
       "modules/**/*.ts",
     ],
+    ignores: ["modules/*/ui/**"],
     languageOptions: { ...strict.languageOptions, globals: globals.node },
   },
   {
     ...strict,
-    files: ["packages/*/src/**/*.ts", "apps/miniapp/src/**/*.ts"],
+    files: [
+      "packages/*/src/**/*.ts",
+      "apps/miniapp/src/**/*.ts",
+      "modules/*/ui/**/*.ts",
+    ],
     ignores: ["packages/*/src/**/*.test.ts"],
     languageOptions: { ...strict.languageOptions, globals: globals.browser },
   },

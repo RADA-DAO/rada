@@ -62,10 +62,17 @@ export function moduleImportViolations(path, source) {
     const module = /^modules\/([^/]+)\/(.*)$/.exec(target);
     if (owner && target.startsWith("apps/"))
       errors.push(`${path}: modules cannot depend on application composition`);
-    if (module && module[1] !== owner && module[2] !== "index.ts")
+    // Public entries: index.ts (server) and ui/index.ts (screens for the shell).
+    if (
+      module &&
+      module[1] !== owner &&
+      !["index.ts", "ui/index.ts"].includes(module[2] ?? "")
+    )
       errors.push(
-        `${path}: import ${specifier} must use modules/${module[1] ?? ""}/index.ts`,
+        `${path}: import ${specifier} must use modules/${module[1] ?? ""}/index.ts or ui/index.ts`,
       );
+    if (owner && /^modules\/[^/]+\/ui\//.test(path) && /\/api\//.test(target))
+      errors.push(`${path}: module screens cannot import server code`);
     if (/^(?:file:|\/)/.test(specifier))
       errors.push(`${path}: filesystem imports must use relative public paths`);
     if (

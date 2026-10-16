@@ -53,6 +53,10 @@ a bid is a promise paid at claim):
 - `GET /v1/splash/bids/mine` (signed launch required): the caller's active bid per
   frog with `status` (`active`, `won`, `lost`); for wins also `granted_name`,
   `name_outcome` and `claim_deadline`.
+- `GET /v1/splash/names/:name` (signed launch required): `{ name, status }`
+  where `status` is `available`, `taken` or `invalid` under JPEGPE's rule
+  (`splash.name_status`). It is a hint for the bid sheet, not a hold: the name
+  can still be taken before the round closes.
 - `GET /v1/splash/rounds/:id/results` (public): decisions of a closed round; `404`
   for unknown or still-open rounds. Winners appear only as a public profile.
 
@@ -77,6 +81,27 @@ Claims (signed launch; starting needs one within the last hour):
 
 The routes exist only when `SPLASH_SERVICE_DATABASE_URL` names a login that holds
 `splash_service`; claim routes also need `WALLET_SERVICE_DATABASE_URL`.
+
+## Screens
+
+SPLASH is an official app whose screens are built into the shell, not a
+sandboxed artifact: it needs its own module API, the viewer's wallet and the
+platform payment window, which community artifacts cannot reach. The screens
+live in `ui/` (module = screens + API + tables + tests) and are reached only
+through `ui/index.ts`. They use `@rada/ui` components, `@rada/i18n` keys and a
+platform client limited to `/v1/splash/*` (`platform.moduleApi("splash")`), so
+launch credentials stay in the SDK. Screens never import `api/` code.
+
+- Pond: this round's frogs with images, top bid, bidders, time left in the
+  UTC day and the viewer's own bid; the bid sheet takes an amount in JPEGPE and
+  a permanent name with a live check (`GET /v1/splash/names/:name`), and says
+  that a bid is a promise paid at claim and that unpaid wins burn.
+- Submit: picks an image, converts it on the device to a PNG of at most
+  1024 px and 2 MiB, previews it, uploads it and shows the stored result.
+- My SPLASH: bids, wins with the claim countdown, and the claim through the
+  platform payment window (`platform.payIntent`). A payment the chain has not
+  confirmed is shown as unconfirmed, never as paid.
+- Past rounds: results of closed rounds, newest first.
 
 ## Rounds and bids
 

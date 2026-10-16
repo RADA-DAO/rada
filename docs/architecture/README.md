@@ -19,6 +19,11 @@ never writes to another module's tables.
 
 Decisions are recorded in [ADRs](../adr/README.md).
 
+Official apps keep their screens in the module (`modules/<name>/ui/`); the
+shell imports them only through `ui/index.ts`, and those screens never import
+the module's server code. They reach their own API through the SDK's
+`moduleApi`, which is limited to `/v1/<name>/*` and keeps launch credentials.
+
 Modules expose cross-domain operations through their public `index.ts` and
 owned SQL functions or views. New runtime SQL and migrations must not access
 another module's tables directly. The initial 0001–0003 migrations are immutable
