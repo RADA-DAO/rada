@@ -15,6 +15,8 @@ import {
   startDigestScheduler,
 } from "../../../modules/ops/index.ts";
 import {
+  ClaimService,
+  PostgresClaimDb,
   PostgresSplashStore,
   startRoundScheduler,
 } from "../../../modules/splash/index.ts";
@@ -93,12 +95,23 @@ if (import.meta.main) {
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
   const splashUrl = Deno.env.get("SPLASH_SERVICE_DATABASE_URL");
-  const splash = splashUrl
-    ? new PostgresSplashStore(
+  const splashPool = splashUrl
+    ? new pg.Pool({ connectionString: splashUrl })
+    : undefined;
+  const splash = splashPool
+    ? new PostgresSplashStore(auth, splashPool)
+    : undefined;
+  const payments = walletUrl
+    ? new PostgresPaymentStore(
         auth,
-        new pg.Pool({ connectionString: splashUrl }),
+        new pg.Pool({ connectionString: walletUrl }),
       )
     : undefined;
+  // SPLASH claims pay through wallet platform intents, so they need both logins.
+  const claims =
+    splashPool && payments
+      ? new ClaimService(new PostgresClaimDb(auth, splashPool), payments)
+      : undefined;
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const failureCounts = new Map<string, number>();
   const app = createApp(
@@ -110,12 +123,7 @@ if (import.meta.main) {
     registry ? new PostgresRegistryStore(auth, registry) : undefined,
     artifactOrigin,
     wallet,
-    walletUrl
-      ? new PostgresPaymentStore(
-          auth,
-          new pg.Pool({ connectionString: walletUrl }),
-        )
-      : undefined,
+    payments,
     {
       token: Deno.env.get("API_OPS_TOKEN")?.trim() || undefined,
       counts: failureCounts,
@@ -126,9 +134,10 @@ if (import.meta.main) {
         : undefined,
     },
     splash,
+    claims,
   );
-  // SPLASH rounds: close due rounds and open the next one, every minute.
-  if (splash) startRoundScheduler(splash);
+  // SPLASH: close due rounds, open the next one and settle claims, every minute.
+  if (splash) startRoundScheduler(splash, 60_000, console.log, claims);
   const alerts = alertConfig(Deno.env.toObject());
   if (Deno.env.get("ALERTS_ENABLED")?.trim() === "true" && !alerts)
     console.log("alert digest disabled: incomplete or invalid configuration");

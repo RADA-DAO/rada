@@ -49,6 +49,7 @@ export type BidResult =
       nameContested: boolean;
     }
   | { status: BidRefusal };
+/** `reserved`: the name is held for the winner until the paid claim makes it permanent. */
 export type NameOutcome = "reserved" | "conflict" | "unavailable";
 export type OwnBid = {
   roundId: number;
@@ -253,28 +254,36 @@ export async function readPendingClaim(
 }
 
 /**
- * Runs the round job now and then every `everyMs`, never overlapping itself.
- * The SQL job is idempotent and serialised, so several API processes are safe.
- * Failures log one line with the error class only.
+ * Runs the round job now and then every `everyMs`, never overlapping itself:
+ * close due rounds, then settle claims (complete paid ones, burn expired ones).
+ * Both SQL steps are idempotent and serialised, so several API processes are
+ * safe. Failures log one line with the error class only.
  */
 export function startRoundScheduler(
   store: Pick<RoundStore, "advanceRounds">,
   everyMs: number = 60_000,
   log: (line: string) => void = console.log,
+  claims?: { settle(): Promise<void> },
 ): () => void {
   let running = false;
+  const step = async (event: string, run: () => Promise<unknown>) => {
+    try {
+      await run();
+    } catch (error) {
+      log(
+        JSON.stringify({
+          event,
+          errorClass: error instanceof Error ? error.name : "unknown",
+        }),
+      );
+    }
+  };
   const tick = async () => {
     if (running) return;
     running = true;
     try {
-      await store.advanceRounds();
-    } catch (error) {
-      log(
-        JSON.stringify({
-          event: "splash_round_job_failed",
-          errorClass: error instanceof Error ? error.name : "unknown",
-        }),
-      );
+      await step("splash_round_job_failed", () => store.advanceRounds());
+      if (claims) await step("splash_claim_job_failed", () => claims.settle());
     } finally {
       running = false;
     }

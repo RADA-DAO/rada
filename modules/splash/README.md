@@ -1,9 +1,9 @@
 # SPLASH
 
 Owns frog submissions to the pond (the image, the author's subject id, the
-append-only state history and the per-author submission limit) and the 24-hour
-auction rounds with their bids and decisions. Claims and payment are a later
-change and will extend this module.
+append-only state history and the per-author submission limit), the 24-hour
+auction rounds with their bids and decisions, and the paid claims and burns of
+won frogs.
 
 ## Why a separate module
 
@@ -11,11 +11,14 @@ JPEGPE owns frogs (colour, ownership, public projections). A submission is not a
 frog yet: it is an author's artwork waiting in the auction pond, with its own
 lifecycle (`in_pond`, later won, claimed, burned), image storage and abuse
 limits. Keeping that in SPLASH leaves JPEGPE's tables, roles and colour protocol
-untouched. SPLASH reaches other modules only through published SQL functions:
-`identity.current_subject()`, `jpegpe.public_profile_frog(subject)`,
-`jpegpe.username_status(name)` and `jpegpe.reserve_username(name, frog_id)`, all
-granted to `splash_owner` alone. Frog usernames are JPEGPE's namespace, so SPLASH
-never stores its own copy of the naming rule.
+untouched. SPLASH reaches other modules only through published SQL functions,
+all granted to `splash_owner` alone: `identity.current_subject()`,
+`identity.can_steward_splash()`, `jpegpe.public_profile_frog(subject)`,
+`jpegpe.username_status(name)`, `jpegpe.hold_username(name, frog_id)`,
+`jpegpe.held_username(frog_id)`, `jpegpe.release_username(frog_id)`,
+`jpegpe.issue_frog(...)` and `wallet.platform_payment(app_id, intent_id)`. Frog
+usernames are JPEGPE's namespace, so SPLASH never stores its own copy of the
+naming rule.
 
 ## API
 
@@ -53,8 +56,27 @@ a bid is a promise paid at claim):
 - `GET /v1/splash/rounds/:id/results` (public): decisions of a closed round; `404`
   for unknown or still-open rounds. Winners appear only as a public profile.
 
+Claims (signed launch; starting needs one within the last hour):
+
+- `POST /v1/splash/claims/:frogId`: JSON `{ "sender", "name" }`. `sender` is one
+  of the caller's linked wallets; `name` is needed only when the win has no name.
+  `200` with `status` (`ready`, or `paid` when the payment already landed) and
+  `payment`, the wallet intent to open in the payment window
+  (`/me/payments/:intentId/claim?appId=splash`). Errors: `400` (`invalid_body`,
+  `invalid_name`, `name_required`), `401`, `403` (`not_winner`,
+  `wallet_not_linked`), `404`, `409` (`already_claimed`, `burned`,
+  `claim_expired`, `name_fixed`, `name_taken`, `payment_pending` with the signed
+  `payment`, `conflict`), `413`, `503` (`recipient_unset`).
+- `GET /v1/splash/claims/:frogId`: the caller's claim after checking its latest
+  payment on chain; completes it when paid. `state` is `open`, `expired`,
+  `claimed` (with `frog`) or `burned`.
+- `GET /v1/splash/claims/mine`: the caller's wins with their claim state.
+- `PUT /v1/splash/settings/recipient` (`splash.steward` only): JSON
+  `{ "address" }`, a mainnet basechain address that receives claim payments.
+  `403` for everyone else.
+
 The routes exist only when `SPLASH_SERVICE_DATABASE_URL` names a login that holds
-`splash_service`.
+`splash_service`; claim routes also need `WALLET_SERVICE_DATABASE_URL`.
 
 ## Rounds and bids
 
@@ -73,12 +95,14 @@ The routes exist only when `SPLASH_SERVICE_DATABASE_URL` names a login that hold
   case).
 - Closing: per frog the highest amount wins; on a tie the bidder who reached that
   amount first wins. Winners then claim names in order of amount (higher first),
-  then earlier name choice, then earlier bid. Each name is reserved permanently in
-  JPEGPE for the frog id (`jpegpe.username_reservations`). A winner whose name is
-  already taken still wins the frog, without a name: `name_outcome` is `conflict`
-  when another winner of the same round took it and `unavailable` otherwise; the
-  name is then chosen at claim. This follows the old SPLASH settlement, where a
-  losing username left the frog "needs choice".
+  then earlier name choice, then earlier bid. Each name is held in JPEGPE for the
+  frog id (`name_outcome` `reserved`); it becomes permanent only when the paid
+  claim completes and is released if the frog burns, so an unpaid bid cannot take
+  a name for good. A winner whose name is already taken still wins the frog,
+  without a name: `name_outcome` is `conflict` when another winner of the same
+  round took it and `unavailable` otherwise; the name is then chosen at claim.
+  This follows the old SPLASH settlement, where a losing username left the frog
+  "needs choice".
 - A win is a pending claim until the end of the next round (`claim_deadline` =
   round end + 24 hours). The frog leaves the pond (state `won`) and its image stays
   public. `readPendingClaim` gives the claim change the winner, amount, name and
@@ -90,6 +114,37 @@ The routes exist only when `SPLASH_SERVICE_DATABASE_URL` names a login that hold
   double-close. Each decision is written once to `splash.lot_results`. The API
   runs it at startup and every minute (`startRoundScheduler`); only the service
   login can call it.
+
+## Claims and burns
+
+- Only the winner claims, by paying exactly the winning bid in JPEGPE through a
+  wallet platform intent: app `splash`, purpose `splash:<frog id>`, recipient the
+  address the `splash.steward` set last (kept in `splash.recipient_settings`;
+  never in code). No prizes, no SPARK; the recipient is the only destination.
+- Each start reuses the open unsigned intent when the wallet and recipient are
+  unchanged, otherwise cancels it first. A signed intent blocks a new one until
+  it is resolved, so at most one attempt can be paid. Every attempt is kept with
+  its terms (`splash.claim_attempts`).
+- Deadline: the end of the next round (`claim_deadline`). Starting closes 5
+  minutes before it and the wallet stops signing 2 minutes before it.
+- A payment counts when the wallet verified it final on chain (`paid`) and its
+  recipient transaction time is strictly before the deadline, with the exact
+  winner, token, amount, recipient, sender and purpose. When it is processed does
+  not matter: a payment confirmed at 23:59:59 completes even if seen at 00:20.
+- Completion (`splash.complete_claim`) runs once under a per-frog lock and the
+  outcome primary key: JPEGPE issues the frog under the held name (now
+  permanent), created by the author and transferred to the winner, with Color
+  Drop background and accent colours. Their committed round is the first
+  Quicknet round after the payment's on-chain time, the request id is the intent
+  id, and the proofs are stored with the frog.
+- Burn (`splash.burn_claim`): no earlier than 30 minutes after the deadline (time
+  for late chain confirmation), never while a payment confirmed before the
+  deadline exists. The frog's state becomes `burned`, the held name is released,
+  history stays. Before burning, the service re-checks every signed attempt on
+  chain; if the chain cannot be read, the burn waits.
+- The round timer (`startRoundScheduler`) runs claim settlement right after the
+  round job every minute; double or concurrent runs settle each frog once.
+- Claimed and burned frogs keep a public image, so round results stay complete.
 
 ## Background removal
 
@@ -125,6 +180,7 @@ implementation and that table, not the routes or the submission flow.
   author; the check itself belongs to the bidding change.
 - History is append-only: triggers reject `UPDATE` and `DELETE` on submissions,
   images and events, even for the owner. The state is the latest event.
-- History is append-only for rounds, lots, bids, closures and results too.
+- History is append-only for rounds, lots, bids, closures and results too, and
+  for recipient settings, claim attempts and claim outcomes.
 - `splash_service` has no table privileges and can execute only the published
   functions listed in the migrations.
