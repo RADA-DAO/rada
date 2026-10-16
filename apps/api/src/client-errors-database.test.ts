@@ -64,7 +64,7 @@ Deno.test(
         [build],
       );
       assert(rows.rowCount === 1);
-      assert(rows.rows[0].message === "balance # for <email>");
+      assert(rows.rows[0].message === "balance <hex> for <email>");
       assert(rows.rows[0].frames[0] === "main.js:3:4");
       // The first insert purged the 31-day-old row.
       const old = await admin.query(
