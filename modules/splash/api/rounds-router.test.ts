@@ -120,6 +120,10 @@ function build(
             }
           : null,
       ),
+    nameStatus: (name) =>
+      Promise.resolve(
+        name === "Taken" ? "taken" : name === "Alpha" ? "available" : "invalid",
+      ),
     advanceRounds: () => Promise.resolve(0),
   };
   const app = new Hono();
@@ -303,6 +307,24 @@ test("own bids require login; results are public for closed rounds only", async 
   assert.equal(results.frogs[1].outcome, "no_bids");
   assert.equal(results.frogs[1].winner, null);
   assert.ok(!JSON.stringify(results).includes("subject"));
+});
+
+test("name availability needs a signed launch and relays JPEGPE's rule", async () => {
+  const { app } = build();
+  const status = async (name: string, authorization = "tma old") => {
+    const response = await app.request(
+      `/v1/splash/names/${encodeURIComponent(name)}`,
+      { headers: { authorization } },
+    );
+    return [
+      response.status,
+      response.status === 200 ? (await response.json()).status : null,
+    ];
+  };
+  assert.deepEqual(await status("Alpha"), [200, "available"]);
+  assert.deepEqual(await status("Taken"), [200, "taken"]);
+  assert.deepEqual(await status("x".repeat(33)), [200, "invalid"]);
+  assert.deepEqual(await status("Alpha", "tma none"), [401, null]);
 });
 
 test("the round scheduler never overlaps and logs only the error class", async () => {

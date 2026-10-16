@@ -18,6 +18,7 @@ const idleRounds = {
   placeBid: () => Promise.reject(new Error("unused")),
   myBids: () => Promise.resolve([]),
   roundResults: () => Promise.resolve(null),
+  nameStatus: () => Promise.resolve("available" as const),
   advanceRounds: () => Promise.resolve(0),
 };
 const own: OwnSubmission = {

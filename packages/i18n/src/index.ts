@@ -2,6 +2,7 @@ import en from "../locales/en.json" with { type: "json" };
 import uk from "../locales/uk.json" with { type: "json" };
 
 export type Locale = "en" | "uk";
+export { displayAmount, parseUnits } from "./amount.ts";
 type PluralForms = { other: string } & Partial<
   Record<Intl.LDMLPluralRule, string>
 >;

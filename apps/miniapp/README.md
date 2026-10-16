@@ -37,6 +37,8 @@ it cannot access identity, request personal-data consent, or perform privileged
 actions. Leaving the screen or changing language disposes its preview and ignores
 late responses. Reviewer authority comes from the API, independently of membership.
 
+SPLASH, the official auction app, is a built-in tile shown first for everyone;
+its screens come from `modules/splash/ui` and open on the platform stack.
 The home screen shows the viewer's identity, then every published app as a tile in
 a four-column grid with its official or community mark. Signed-in launches read
 `/apps/published`; guests see how to open RADA from Telegram and make no request.

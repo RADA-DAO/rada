@@ -5,6 +5,7 @@ import {
   insertBid,
   queryCurrentRound,
   queryOwnBids,
+  queryNameStatus,
   queryRoundResults,
   runAdvanceRounds,
   type RoundStore,
@@ -190,6 +191,9 @@ export class PostgresSplashStore implements SplashStore {
   }
   async roundResults(roundId: number) {
     return await queryRoundResults(this.service, roundId);
+  }
+  async nameStatus(name: string) {
+    return await queryNameStatus(this.service, name);
   }
   async advanceRounds() {
     return await runAdvanceRounds(this.service);

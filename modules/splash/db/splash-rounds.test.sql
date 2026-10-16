@@ -189,4 +189,10 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Hold deleted';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
 RESET ROLE;
+-- The bid sheet's live name check relays JPEGPE's rule to the service role.
+SET LOCAL ROLE splash_service;
+SELECT pg_temp.check(splash.name_status('taken_name') = 'taken', 'name taken');
+SELECT pg_temp.check(splash.name_status('Fresh_Name') = 'available', 'name free');
+SELECT pg_temp.check(splash.name_status('1bad') = 'invalid', 'name invalid');
+RESET ROLE;
 ROLLBACK;

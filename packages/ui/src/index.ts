@@ -92,6 +92,8 @@ export { List, ListItem } from "./list.ts";
 export { Field, type FieldOptions } from "./field.ts";
 export { Tabs, type Tab } from "./tabs.ts";
 export { Avatar } from "./avatar.ts";
+export { FilePicker, Picture } from "./media.ts";
+export { Badge, Countdown, Facts } from "./facts.ts";
 export {
   AppGrid,
   AppTile,

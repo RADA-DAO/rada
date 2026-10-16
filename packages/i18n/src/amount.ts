@@ -1,7 +1,8 @@
-import type { Locale } from "../../../packages/i18n/src/index.ts";
+import type { Locale } from "./index.ts";
 
 type Amount = { raw: string; decimals: number } | null;
 
+/** Formats an exact integer amount of smallest units for the locale. */
 export function displayAmount(
   amount: Amount,
   locale: Locale,
@@ -23,4 +24,19 @@ export function displayAmount(
     formatter.formatToParts(1.1).find((part) => part.type === "decimal")
       ?.value ?? ".";
   return formatter.format(whole) + (fraction ? separator + fraction : "");
+}
+
+/**
+ * Parses a typed decimal amount (either `.` or `,` as separator, spaces
+ * ignored) into smallest units as a decimal string. Returns null for anything
+ * that is not a positive amount with at most `decimals` fraction digits.
+ */
+export function parseUnits(input: string, decimals: number): string | null {
+  const text = input.replace(/[\s\u00a0\u202f]/g, "").replace(",", ".");
+  const match = /^(\d{1,30})(?:\.(\d+))?$/.exec(text);
+  if (!match) return null;
+  const fraction = match[2] ?? "";
+  if (fraction.length > decimals) return null;
+  const units = BigInt((match[1] ?? "0") + fraction.padEnd(decimals, "0"));
+  return units > 0n ? units.toString() : null;
 }

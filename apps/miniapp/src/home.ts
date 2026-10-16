@@ -36,6 +36,8 @@ export function createHome(options: {
     origin: string,
   ): Promise<() => void>;
   render(): void;
+  /** Official apps built into the shell, shown before registry apps for everyone. */
+  builtIn(): { name: string; onOpen(): void }[];
 }) {
   const lifecycle = new AbortController();
   let status: Status = options.authenticated ? "loading" : "guest";
@@ -115,21 +117,34 @@ export function createHome(options: {
   }
 
   function tiles(): Node {
+    const shown = status === "ready" ? apps : [];
     return AppGrid({
       label: text("home.gridLabel"),
-      tiles: apps.map((app) =>
-        AppTile({
-          name: app.manifest.name,
-          tier: app.tier,
-          tierLabel: text(`home.tier.${app.tier}`),
-          ...(app.iconUrl && icons.has(app.iconUrl)
-            ? { iconUrl: icons.get(app.iconUrl) as string }
-            : {}),
-          onOpen: () => {
-            open(app);
-          },
-        }),
-      ),
+      tiles: [
+        ...options.builtIn().map((app) =>
+          AppTile({
+            name: app.name,
+            tier: "official",
+            tierLabel: text("home.tier.official"),
+            onOpen: () => {
+              app.onOpen();
+            },
+          }),
+        ),
+        ...shown.map((app) =>
+          AppTile({
+            name: app.manifest.name,
+            tier: app.tier,
+            tierLabel: text(`home.tier.${app.tier}`),
+            ...(app.iconUrl && icons.has(app.iconUrl)
+              ? { iconUrl: icons.get(app.iconUrl) as string }
+              : {}),
+            onOpen: () => {
+              open(app);
+            },
+          }),
+        ),
+      ],
     });
   }
 
@@ -177,6 +192,7 @@ export function createHome(options: {
           }),
         );
       }
+      content.push(tiles());
       if (status === "guest")
         content.push(
           EmptyState({
@@ -186,15 +202,16 @@ export function createHome(options: {
         );
       else if (status === "loading")
         content.push(Loading({ message: text("home.loading") }));
-      else if (status === "ready" && apps.length) content.push(tiles());
-      else if (status === "ready")
-        content.push(
-          EmptyState({
-            title: text("home.emptyTitle"),
-            message: text("home.emptyDescription"),
-          }),
-        );
-      else
+      else if (status === "ready") {
+        // Registry apps join the grid above; say so only when there are none.
+        if (!apps.length)
+          content.push(
+            EmptyState({
+              title: text("home.emptyTitle"),
+              message: text("home.emptyDescription"),
+            }),
+          );
+      } else
         content.push(
           ErrorState({
             message: text(

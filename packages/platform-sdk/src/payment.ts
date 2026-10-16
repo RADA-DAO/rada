@@ -137,19 +137,19 @@ export function paymentAdapter(
       );
     return object(await response.json());
   }
+  async function status(
+    appId: string,
+    intentId: string,
+  ): Promise<PaymentResult> {
+    if (!/^[a-f0-9-]{36}$/i.test(intentId)) throw new Error("invalid_request");
+    const payment = readPayment(
+      (await call(`/${intentId}?appId=${encodeURIComponent(appId)}`, "GET"))
+        .payment,
+    );
+    return { intentId: payment.intentId, status: payment.status };
+  }
   return {
-    async paymentStatus(
-      appId: string,
-      intentId: string,
-    ): Promise<PaymentResult> {
-      if (!/^[a-f0-9-]{36}$/i.test(intentId))
-        throw new Error("invalid_request");
-      const payment = readPayment(
-        (await call(`/${intentId}?appId=${encodeURIComponent(appId)}`, "GET"))
-          .payment,
-      );
-      return { intentId: payment.intentId, status: payment.status };
-    },
+    paymentStatus: status,
     async requestPayment(
       appId: string,
       input: unknown,
@@ -195,76 +195,121 @@ export function paymentAdapter(
       const payment = readPayment(
         (await call("", "POST", { ...request, appId, sender }, signal)).payment,
       );
-      if (payment.status !== "prepared")
-        return { intentId: payment.intentId, status: payment.status };
-      if (
-        !payment.feeEstimate ||
-        payment.feeEstimate.expiresAt <= Date.now() / 1000
-      )
-        throw new Error("fee_unavailable");
-      if (!(await windowConfirm(payment, copy, signal, navigation))) {
-        signal.throwIfAborted();
-        const cancelled = readPayment(
-          (
-            await call(
-              `/${payment.intentId}/cancel?appId=${encodeURIComponent(appId)}`,
-              "POST",
-              undefined,
-              signal,
-            )
-          ).payment,
-        );
-        return { intentId: cancelled.intentId, status: cancelled.status };
-      }
-      signal.throwIfAborted();
-      if (payment.feeEstimate.expiresAt <= Date.now() / 1000)
-        throw new Error("fee_expired");
-      const currentAccount: unknown = wallet.account;
-      const current = object(currentAccount);
-      if (current.chain !== "-239" || current.address !== sender)
-        throw new Error("wallet_changed");
-      const claimed = await call(
-        `/${payment.intentId}/claim?appId=${encodeURIComponent(appId)}`,
-        "POST",
-        undefined,
-        signal,
-      );
-      signal.throwIfAborted();
-      if (claimed.signRequest === null)
-        return {
-          intentId: payment.intentId,
-          status: readPayment(claimed.payment).status,
-        };
-      const tx = object(claimed.signRequest);
-      if (
-        tx.network !== "-239" ||
-        tx.from !== payment.sender ||
-        !Array.isArray(tx.messages) ||
-        tx.messages.length !== 1
-      )
-        throw new Error("unavailable");
-      const latest: unknown = wallet.account;
-      const latestAccount = object(latest);
-      if (latestAccount.chain !== "-239" || latestAccount.address !== sender)
-        throw new Error("wallet_changed");
-      signal.throwIfAborted();
-      const abortWallet = () => {
-        try {
-          wallet.closeModal();
-        } catch {
-          /* Reconciliation remains available. */
-        }
-      };
-      signal.addEventListener("abort", abortWallet, { once: true });
-      try {
-        await cancellable(wallet.sendTransaction(tx as SignRequest), signal);
-      } catch {
-        /* The wallet may have sent it; reconciliation is the only safe next step. */
-      } finally {
-        signal.removeEventListener("abort", abortWallet);
-      }
-      signal.throwIfAborted();
-      return this.paymentStatus(appId, payment.intentId);
+      return await confirmAndSign(appId, payment, copy, signal);
+    },
+    /**
+     * The address of the wallet connected through TON Connect, or null when no
+     * mainnet wallet is connected. Linking itself stays in the wallet screen.
+     */
+    async connectedWallet(signal: AbortSignal): Promise<string | null> {
+      const wallet = await connector();
+      await cancellable(wallet.connectionRestored, signal);
+      return wallet.connected && wallet.account?.chain === "-239"
+        ? wallet.account.address
+        : null;
+    },
+    /**
+     * Opens the payment window for an intent a platform module already
+     * prepared on the server (for example a SPLASH claim). The terms come from
+     * the server; the person still confirms them here.
+     */
+    async payIntent(
+      appId: string,
+      intent: unknown,
+      copy: PaymentCopy,
+      signal: AbortSignal,
+    ): Promise<PaymentResult> {
+      if (!/^[a-z][a-z0-9_.:-]{0,127}$/.test(appId))
+        throw new Error("invalid_request");
+      return await confirmAndSign(appId, readPayment(intent), copy, signal);
     },
   };
+  async function confirmAndSign(
+    appId: string,
+    payment: Payment,
+    copy: PaymentCopy,
+    signal: AbortSignal,
+  ): Promise<PaymentResult> {
+    if (payment.status !== "prepared")
+      return { intentId: payment.intentId, status: payment.status };
+    const wallet = await connector();
+    await cancellable(wallet.connectionRestored, signal);
+    signal.throwIfAborted();
+    // The connected wallet must be the intent's sender (raw form ignores case).
+    const sender = wallet.account?.address ?? "";
+    if (
+      !wallet.connected ||
+      wallet.account?.chain !== "-239" ||
+      sender.toLowerCase() !== payment.sender.toLowerCase()
+    )
+      throw new Error("wallet_unavailable");
+    if (
+      !payment.feeEstimate ||
+      payment.feeEstimate.expiresAt <= Date.now() / 1000
+    )
+      throw new Error("fee_unavailable");
+    if (!(await windowConfirm(payment, copy, signal, navigation))) {
+      signal.throwIfAborted();
+      const cancelled = readPayment(
+        (
+          await call(
+            `/${payment.intentId}/cancel?appId=${encodeURIComponent(appId)}`,
+            "POST",
+            undefined,
+            signal,
+          )
+        ).payment,
+      );
+      return { intentId: cancelled.intentId, status: cancelled.status };
+    }
+    signal.throwIfAborted();
+    if (payment.feeEstimate.expiresAt <= Date.now() / 1000)
+      throw new Error("fee_expired");
+    const currentAccount: unknown = wallet.account;
+    const current = object(currentAccount);
+    if (current.chain !== "-239" || current.address !== sender)
+      throw new Error("wallet_changed");
+    const claimed = await call(
+      `/${payment.intentId}/claim?appId=${encodeURIComponent(appId)}`,
+      "POST",
+      undefined,
+      signal,
+    );
+    signal.throwIfAborted();
+    if (claimed.signRequest === null)
+      return {
+        intentId: payment.intentId,
+        status: readPayment(claimed.payment).status,
+      };
+    const tx = object(claimed.signRequest);
+    if (
+      tx.network !== "-239" ||
+      String(tx.from).toLowerCase() !== payment.sender.toLowerCase() ||
+      !Array.isArray(tx.messages) ||
+      tx.messages.length !== 1
+    )
+      throw new Error("unavailable");
+    const latest: unknown = wallet.account;
+    const latestAccount = object(latest);
+    if (latestAccount.chain !== "-239" || latestAccount.address !== sender)
+      throw new Error("wallet_changed");
+    signal.throwIfAborted();
+    const abortWallet = () => {
+      try {
+        wallet.closeModal();
+      } catch {
+        /* Reconciliation remains available. */
+      }
+    };
+    signal.addEventListener("abort", abortWallet, { once: true });
+    try {
+      await cancellable(wallet.sendTransaction(tx as SignRequest), signal);
+    } catch {
+      /* The wallet may have sent it; reconciliation is the only safe next step. */
+    } finally {
+      signal.removeEventListener("abort", abortWallet);
+    }
+    signal.throwIfAborted();
+    return status(appId, payment.intentId);
+  }
 }

@@ -102,7 +102,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
   const grid = page.getByRole("list", { name: t("en", "home.gridLabel") });
-  await expect(grid.getByRole("listitem")).toHaveCount(2);
+  await expect(grid.getByRole("listitem")).toHaveCount(3);
   const official = tile(page, "Governance fixture");
   const community = tile(page, "Game fixture");
   await expect(official).toHaveAccessibleDescription(
@@ -127,7 +127,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   const returned = async () => {
     await expect(appsHeading(page)).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await expect(grid.getByRole("listitem")).toHaveCount(2);
+    await expect(grid.getByRole("listitem")).toHaveCount(3);
   };
 
   await official.click();
@@ -179,7 +179,8 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   ).toBeVisible();
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(0);
+  // Only the built-in official SPLASH tile remains.
+  await expect(page.getByRole("listitem")).toHaveCount(1);
 });
 
 test("a guest sees how to sign in and no catalog request is made", async ({
@@ -281,7 +282,7 @@ test("home keeps a generic identity when the profile cannot be read", async ({
   await expect(
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByRole("listitem")).toHaveCount(3);
 });
 
 test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({

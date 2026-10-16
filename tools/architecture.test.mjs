@@ -105,6 +105,26 @@ await test("cross-module imports require public index for static, re-export and 
       'import x from "@rada/jpegpe/private";',
     ).length,
   );
+  assert.deepEqual(
+    moduleImportViolations(
+      "apps/miniapp/src/main.ts",
+      'import { createSplash } from "../../../modules/splash/ui/index.ts";',
+    ),
+    [],
+  );
+  assert.ok(
+    moduleImportViolations(
+      "apps/miniapp/src/main.ts",
+      'import { x } from "../../../modules/splash/ui/pond.ts";',
+    ).length,
+  );
+  assert.ok(
+    moduleImportViolations(
+      "modules/splash/ui/api.ts",
+      'import type { X } from "../api/rounds.ts";',
+    ).length,
+    "screens never import server code",
+  );
 });
 
 await test("SQL boundary rejects foreign table queries including quoted names and embedded SQL", () => {

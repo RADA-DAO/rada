@@ -217,8 +217,9 @@ await test("Field labels its control and reports errors accessibly", () => {
   assert.equal(label.child(1), control);
   assert.equal(control.maxLength, 500);
   assert.equal(control.required, true);
-  const error = fake(area.element).child(1);
+  const error = fake(area.element).child(2);
   assert.equal(error.hidden, true);
+  assert.equal(fake(area.element).child(1).hidden, true, "no hint yet");
   area.setError("Required");
   assert.equal(error.hidden, false);
   assert.equal(error.textContent, "Required");
@@ -230,6 +231,30 @@ await test("Field labels its control and reports errors accessibly", () => {
   control.value = "ok";
   control.dispatch("change");
   assert.deepEqual(changes, ["ok"]);
+
+  const typed: string[] = [];
+  const name = Field({
+    label: "Name",
+    inputMode: "decimal",
+    hint: "Checking",
+    onInput: (value) => typed.push(value),
+  });
+  const nameControl = fake(name.control);
+  const hint = fake(name.element).child(1);
+  assert.equal(nameControl.getAttribute("inputmode"), "decimal");
+  assert.equal(hint.getAttribute("aria-live"), "polite");
+  assert.equal(nameControl.getAttribute("aria-describedby"), hint.id);
+  name.setError("Taken");
+  assert.equal(
+    nameControl.getAttribute("aria-describedby"),
+    `${hint.id} ${fake(name.element).child(2).id}`,
+  );
+  name.setHint();
+  name.setError();
+  assert.equal(nameControl.getAttribute("aria-describedby"), null);
+  nameControl.value = "Al";
+  nameControl.dispatch("input");
+  assert.deepEqual(typed, ["Al"]);
 
   const select = Field({
     label: "Language",
@@ -247,7 +272,7 @@ await test("Field labels its control and reports errors accessibly", () => {
   );
   assert.equal(fake(select.control).value, "uk");
   assert.equal(
-    fake(Field({ label: "Name", error: "Bad" }).element).child(1).textContent,
+    fake(Field({ label: "Name", error: "Bad" }).element).child(2).textContent,
     "Bad",
   );
 });
