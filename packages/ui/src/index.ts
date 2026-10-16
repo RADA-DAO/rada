@@ -92,6 +92,13 @@ export { List, ListItem } from "./list.ts";
 export { Field, type FieldOptions } from "./field.ts";
 export { Tabs, type Tab } from "./tabs.ts";
 export { Avatar } from "./avatar.ts";
+export {
+  AppGrid,
+  AppTile,
+  Identity,
+  type AppTier,
+  type AppTileOptions,
+} from "./launcher.ts";
 export { Screen, ScreenHost, type ScreenOptions } from "./screen.ts";
 
 export { FrogCard, frogCardName } from "./frog-card.ts";

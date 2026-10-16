@@ -1,0 +1,81 @@
+import { Avatar } from "./avatar.ts";
+import { element, uniqueId } from "./dom.ts";
+
+/** Who stands behind an app. Platform entries are RADA itself and carry no mark. */
+export type AppTier = "platform" | "official" | "community";
+
+export type AppTileOptions = {
+  name: string;
+  tier: AppTier;
+  /** Visible, translated tier mark; required for official and community apps. */
+  tierLabel?: string;
+  onOpen: () => void;
+  disabled?: boolean;
+};
+
+const monogram = (name: string): string =>
+  Array.from(new Intl.Segmenter().segment(name.trim()), (part) => part.segment)
+    .slice(0, 1)
+    .join("")
+    .toUpperCase();
+
+/**
+ * One launcher icon: art, name and tier mark. The whole tile is the button, so
+ * its accessible name is the app name and the tier is read as its description.
+ */
+export function AppTile(options: AppTileOptions): HTMLButtonElement {
+  const tile = element("button", "rada-app-tile");
+  tile.type = "button";
+  tile.dataset.tier = options.tier;
+  tile.disabled = options.disabled ?? false;
+  const art = element("span", "rada-app-tile-art", monogram(options.name));
+  art.setAttribute("aria-hidden", "true");
+  const name = element("span", "rada-app-tile-name", options.name);
+  name.id = uniqueId("rada-app-tile");
+  tile.setAttribute("aria-labelledby", name.id);
+  tile.append(art, name);
+  if (options.tier !== "platform" && options.tierLabel) {
+    const mark = element("span", "rada-app-tile-tier", options.tierLabel);
+    mark.id = uniqueId("rada-app-tier");
+    tile.setAttribute("aria-describedby", mark.id);
+    tile.append(mark);
+  }
+  tile.addEventListener("click", options.onOpen);
+  return tile;
+}
+
+/** A labelled four-column grid of tiles, in reading and focus order. */
+export function AppGrid(options: {
+  label: string;
+  tiles: HTMLElement[];
+}): HTMLUListElement {
+  const grid = element("ul", "rada-app-grid");
+  grid.setAttribute("aria-label", options.label);
+  for (const tile of options.tiles) {
+    const item = element("li", "rada-app-grid-item");
+    item.append(tile);
+    grid.append(item);
+  }
+  return grid;
+}
+
+/** The viewer's identity: frog avatar, name and a short status line. */
+export function Identity(options: {
+  name: string;
+  caption?: string;
+  imageUrl?: string;
+}): HTMLElement {
+  const identity = element("div", "rada-identity");
+  const text = element("div", "rada-identity-text");
+  text.append(element("p", "rada-identity-name", options.name));
+  if (options.caption)
+    text.append(element("p", "rada-identity-caption", options.caption));
+  identity.append(
+    Avatar({
+      name: options.name,
+      ...(options.imageUrl ? { imageUrl: options.imageUrl } : {}),
+    }),
+    text,
+  );
+  return identity;
+}

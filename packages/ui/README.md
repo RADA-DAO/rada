@@ -17,6 +17,11 @@ tokens, controls show focus rings, and motion honors reduced-motion preferences.
   entry in the platform navigation stack, so Back, swipe and Escape close it
   and focus returns to the opener.
 - `EmptyState`, `ErrorState` (with retry) and `Loading`.
+- `AppTile`, `AppGrid` and `Identity`: the home screen launcher. A tile is one
+  button named by the app, with its tier mark (official or community; platform
+  apps carry none) as its accessible description. `Screen({ top })` places the
+  identity above the title, and `Embed({ fill: true })` gives a running app the
+  rest of the screen.
 
 Applications compose screens only from these components. The design gate in
 `tools/design-system.mjs` rejects `createElement` for elements a component
@@ -59,7 +64,7 @@ exact authored colors and AA contrast across sampled themes, and
 
 `src/catalog.ts` renders every component in every variant and state (buttons with
 loading and disabled, fields with an error, selected tab, loading, empty and error
-states, avatars with a picture and with initials, list, card, section, frog cards
+states, avatars with a picture and with initials, launcher tiles of every tier with an identity, list, card, section, frog cards
 with and without artwork, and an open sheet) from fixed data and i18n keys. Open it
 at `/catalog.html?theme=guest|light|dark` (add `&sheet=open` for the sheet) from
 `npm run dev:miniapp`. The page is a separate Vite entry that only exists when

@@ -6,6 +6,7 @@ import "./architecture.test.mjs";
 import "./staging-config.test.mjs";
 import "../packages/ui/scripts/test-theme-compiler.ts";
 import "../packages/ui/scripts/test-components.ts";
+import "../packages/ui/scripts/test-launcher.ts";
 import "../packages/ui/scripts/test-guest-palette.ts";
 import "../packages/i18n/scripts/test-keys.ts";
 

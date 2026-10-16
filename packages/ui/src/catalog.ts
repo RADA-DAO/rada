@@ -3,6 +3,8 @@
 import "./design-system.css";
 import {
   Actions,
+  AppGrid,
+  AppTile,
   applyTheme,
   Avatar,
   Button,
@@ -14,6 +16,7 @@ import {
   Field,
   FrogCard,
   Group,
+  Identity,
   List,
   ListItem,
   Loading,
@@ -168,6 +171,49 @@ function lists(): Node {
   });
 }
 
+function launcher(): Node {
+  const tier = (key: "official" | "community") => t("en", `home.tier.${key}`);
+  const tiles = [
+    AppTile({
+      name: text("appGovernance"),
+      tier: "official",
+      tierLabel: tier("official"),
+      onOpen: noop,
+    }),
+    AppTile({
+      name: text("appTreasury"),
+      tier: "official",
+      tierLabel: tier("official"),
+      onOpen: noop,
+    }),
+    AppTile({ name: text("appWallet"), tier: "platform", onOpen: noop }),
+    AppTile({
+      name: text("appGame"),
+      tier: "community",
+      tierLabel: tier("community"),
+      onOpen: noop,
+    }),
+    AppTile({
+      name: text("appDisabled"),
+      tier: "community",
+      tierLabel: tier("community"),
+      onOpen: noop,
+      disabled: true,
+    }),
+  ];
+  return Section({
+    title: text("launcher"),
+    children: [
+      Identity({
+        name: text("identityName"),
+        caption: text("identityCaption"),
+        imageUrl: AVATAR_IMAGE,
+      }),
+      AppGrid({ label: text("gridLabel"), tiles }),
+    ],
+  });
+}
+
 function frogCards(): Node {
   const art = { url: CATALOG_ARTWORK_PATH, alt: text("frogArt") };
   const options = { missingArtLabel: text("frogMissing") };
@@ -201,7 +247,15 @@ ScreenHost(root).append(
     title: text("title"),
     brand: text("brand"),
     actions: [Button(text("settings"), { variant: "ghost" })],
-    children: [buttons(), fields(), states(), avatars(), lists(), frogCards()],
+    children: [
+      buttons(),
+      fields(),
+      states(),
+      avatars(),
+      launcher(),
+      lists(),
+      frogCards(),
+    ],
     footer: Tabs({
       label: text("tabsLabel"),
       selected: "profile",
