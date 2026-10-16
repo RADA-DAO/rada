@@ -28,6 +28,7 @@ import {
   Text,
 } from "./index.ts";
 import { t, type MessageKey } from "../../i18n/src/index.ts";
+import { mediaSection } from "./catalog-media.ts";
 
 /** Fixed themes: the guest palette plus one light and one dark profile. */
 const themes = {
@@ -266,6 +267,7 @@ ScreenHost(root).append(
       launcher(),
       lists(),
       frogCards(),
+      mediaSection(),
     ],
     footer: Tabs({
       label: text("tabsLabel"),

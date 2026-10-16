@@ -17,6 +17,11 @@ tokens, controls show focus rings, and motion honors reduced-motion preferences.
   entry in the platform navigation stack, so Back, swipe and Escape close it
   and focus returns to the opener.
 - `EmptyState`, `ErrorState` (with retry) and `Loading`.
+- `Picture` (artwork with alt text and a missing-image fallback; `thumb` or
+  full size), `FilePicker` (a native file input drawn as a button),
+  `Facts` (labelled values as a description list), `Badge` and `Countdown`
+  (a `role="timer"` that redraws every second and reports the end once).
+  `Field` also takes `inputMode`, a polite `hint` (`setHint`) and `onInput`.
 - `AppTile`, `AppGrid` and `Identity`: the home screen launcher. A tile is one
   button named by the app, with its tier mark (official or community; platform
   apps carry none) as its accessible description. A tile shows `iconUrl` when
