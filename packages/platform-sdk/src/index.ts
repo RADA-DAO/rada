@@ -206,7 +206,7 @@ export function initializePlatform(options: {
     },
     ...profileAdapter(profileUrl, authHeaders),
     ...walletAdapter(profileUrl, authHeaders),
-    ...paymentAdapter(profileUrl, authHeaders),
+    ...paymentAdapter(profileUrl, authHeaders, options.navigation),
     async readAppConsents(): Promise<AppConsent[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");

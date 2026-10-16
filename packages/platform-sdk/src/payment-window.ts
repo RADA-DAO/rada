@@ -1,4 +1,11 @@
-import { Button, Sheet } from "../../ui/src/index.ts";
+import {
+  Button,
+  List,
+  ListItem,
+  Text,
+  openSheet,
+  type SheetNavigation,
+} from "../../ui/src/index.ts";
 
 export type PaymentCopy = {
   locale: "en" | "uk";
@@ -35,10 +42,12 @@ function units(raw: string, locale: "en" | "uk"): string {
   );
   return `${whole}${fractional ? (locale === "uk" ? "," : ".") + fractional : ""}`;
 }
+/** Confirm a payment in a platform sheet; Back, Escape and swipe cancel. */
 export function windowConfirm(
   payment: Payment,
   copy: PaymentCopy,
   signal: AbortSignal,
+  navigation?: SheetNavigation,
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (signal.aborted) {
@@ -53,20 +62,18 @@ export function windowConfirm(
       [copy.purpose, payment.purpose],
       [copy.fee, `${units(payment.feeEstimate?.nano ?? "0", copy.locale)} TON`],
     ];
-    const estimateNote = document.createElement("p");
-    estimateNote.textContent = copy.feeWallet;
     if (payment.gasBudget)
       lines.push([
         copy.gasBudget,
         `${units(payment.gasBudget, copy.locale)} TON`,
       ]);
-    const fields = lines.map(([label, value]) => {
-      const p = document.createElement("p");
-      const strong = document.createElement("strong");
-      strong.textContent = `${label}: `;
-      p.append(strong, document.createTextNode(value));
-      p.style.overflowWrap = "anywhere";
-      return p;
+    const fields = List({
+      children: lines.map(([label, value]) =>
+        ListItem({
+          title: label,
+          children: [Text(value, { breakAnywhere: true })],
+        }),
+      ),
     });
     const allow = Button(copy.confirm, {
       onClick: () => {
@@ -74,25 +81,19 @@ export function windowConfirm(
         dialog.close();
       },
     });
-    const dialog = Sheet({
-      title: copy.title,
-      closeLabel: copy.cancel,
-      children: [...fields, estimateNote, allow],
-    });
-    dialog.addEventListener(
-      "close",
-      () => {
-        signal.removeEventListener("abort", abort);
-        dialog.remove();
-        resolve(accepted && !signal.aborted);
-      },
-      { once: true },
-    );
-    document.body.append(dialog);
     const abort = () => {
       dialog.close();
     };
+    const dialog = openSheet({
+      title: copy.title,
+      closeLabel: copy.cancel,
+      children: [fields, Text(copy.feeWallet), allow],
+      ...(navigation ? { navigation } : {}),
+      onClose: () => {
+        signal.removeEventListener("abort", abort);
+        resolve(accepted && !signal.aborted);
+      },
+    });
     signal.addEventListener("abort", abort, { once: true });
-    dialog.showModal();
   });
 }

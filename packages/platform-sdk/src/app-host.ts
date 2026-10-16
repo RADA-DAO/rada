@@ -1,3 +1,4 @@
+import type { SheetNavigation } from "../../ui/src/index.ts";
 import { consentWindow } from "./app-host-consent.ts";
 import {
   APP_PERMISSIONS,
@@ -44,6 +45,8 @@ export type AppHostOptions = {
   ): Promise<unknown>;
   paymentStatus?(appId: string, intentId: string): Promise<unknown>;
   onNavigateBack?(): void;
+  /** Platform stack, so permission prompts close with Back, Escape and swipe. */
+  navigation?: SheetNavigation;
   onError?(code: string): void;
 };
 const maxArtifactBytes = 1024 * 1024;
@@ -331,6 +334,7 @@ export async function mountAppHost(
           const accepted = await consentWindow(
             options.consentCopy(permission, manifest.name),
             controller.signal,
+            options.navigation,
           );
           if (isAborted() || isDisposed() || !isActive())
             throw new Error("timeout");
