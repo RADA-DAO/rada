@@ -222,14 +222,18 @@ test("payment dialog displays exact values and cancellation never claims or send
   await f.request();
   const dialog = page.getByRole("dialog", { name: en.payment.title });
   await expect(dialog).toBeVisible();
+  const row = (label: string) =>
+    dialog.getByRole("listitem").filter({
+      has: page.getByText(label, { exact: true }),
+    });
   await expect(
-    dialog.getByText(`${en.payment.amount}: 1.000000001 TON`, { exact: true }),
+    row(en.payment.amount).getByText("1.000000001 TON", { exact: true }),
   ).toBeVisible();
   await expect(
-    dialog.getByText(`${en.payment.recipient}: ${recipient}`, { exact: true }),
+    row(en.payment.recipient).getByText(recipient, { exact: true }),
   ).toBeVisible();
   await expect(
-    dialog.getByText(`${en.payment.fee}: 0.001234567 TON`, { exact: true }),
+    row(en.payment.fee).getByText("0.001234567 TON", { exact: true }),
   ).toBeVisible();
   await dialog
     .getByRole("button", { name: en.payment.cancel, exact: true })
