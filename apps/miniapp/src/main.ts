@@ -1,9 +1,10 @@
 import { settingsDialog } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
-import { openAppPermissions, permissionLabel } from "./permissions.ts";
+import { consentCopy, openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
+import { createRoutes, home, type Route } from "./routes.ts";
 import "@rada/ui/design-system.css";
 import {
   applyTheme,
@@ -20,6 +21,7 @@ import {
 } from "../../../packages/i18n/src/index.ts";
 import {
   initializePlatform,
+  type NavEntry,
   configurePageBack,
   pageBackNavigation,
   installSwipeBack,
@@ -32,7 +34,7 @@ import {
 } from "../../../packages/platform-sdk/src/app-host.ts";
 
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
-let route: "launcher" | "profile" | "review" = "launcher";
+let route: Route = "launcher";
 let reviewAuthorized = false;
 let reviewProbeFailed = false;
 let profileGeneration = 0;
@@ -47,6 +49,20 @@ let sheet: HTMLDialogElement | undefined;
 let activeAppDispose: (() => void) | undefined;
 let pendingAppMount: AbortController | undefined;
 let appHostGeneration = 0;
+const routes = createRoutes();
+const { navigation } = routes;
+const back = () => void navigation.back();
+const sheetEntry: NavEntry = {
+  key: "sheet",
+  stale: () => !sheet?.open,
+  leave: () => {
+    sheet?.close();
+  },
+};
+function dismissApp() {
+  closeActiveApp();
+  navigation.drop("app");
+}
 function closeActiveApp() {
   appHostGeneration++;
   pendingAppMount?.abort();
@@ -61,25 +77,10 @@ const screen = document.createElement("main");
 screen.className = "screen";
 root.append(screen);
 const text = (key: MessageKey) => t(locale, key);
-const back = () => {
-  if (payment.paymentBusy) return;
-  if (sheet?.open) {
-    sheet.close();
-    return;
-  }
-
-  if (activeAppDispose || pendingAppMount) {
-    closeActiveApp();
-    route = route === "review" ? "review" : "launcher";
-    render();
-    return;
-  }
-  pageBackNavigation(screen).back();
-};
 const platform = initializePlatform({
   doneLabel: () => text("shell.done"),
   dismissLabel: () => text("shell.dismissKeyboard"),
-  onBack: back,
+  navigation,
   themeColor: DEFAULT_THEME_BACKGROUND,
   ...(typeof (import.meta.env.VITE_API_ORIGIN as unknown) === "string"
     ? { apiOrigin: import.meta.env.VITE_API_ORIGIN as string }
@@ -95,25 +96,21 @@ window.RadaAppHost = Object.freeze({
     const generation = appHostGeneration;
     const controller = new AbortController();
     pendingAppMount = controller;
-    platform.setBackVisible(true);
+    navigation.push({
+      key: "app",
+      leave: () => {
+        closeActiveApp();
+        render();
+      },
+    });
     const dispose = await mountAppHost({
       signal: controller.signal,
       release,
       container,
       artifactOrigin,
       locale,
-      consentCopy(permission, appName) {
-        const label = permissionLabel(permission, text);
-        return {
-          title: text("shell.consentTitle"),
-          description: t(locale, "shell.consentDescription", {
-            app: appName,
-            permission: label,
-          }),
-          allow: text("shell.consentAllow"),
-          deny: text("shell.consentDeny"),
-        };
-      },
+      consentCopy: (permission, appName) =>
+        consentCopy(locale, permission, appName),
       readConsent: (appId, permission) =>
         platform.readAppConsent(appId, permission),
       writeConsent: (appId, permission, granted) =>
@@ -129,7 +126,7 @@ window.RadaAppHost = Object.freeze({
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
         pendingAppMount = undefined;
-        platform.setBackVisible(route !== "launcher");
+        navigation.drop("app");
       }
       throw error;
     });
@@ -139,11 +136,9 @@ window.RadaAppHost = Object.freeze({
     }
     activeAppDispose = dispose;
     pendingAppMount = undefined;
-    platform.setBackVisible(true);
     return () => {
       if (activeAppDispose !== dispose) return;
-      closeActiveApp();
-      platform.setBackVisible(route !== "launcher");
+      dismissApp();
     };
   },
 });
@@ -153,7 +148,7 @@ const swipe = installSwipeBack(screen, {
     !payment.paymentBusy &&
     !sheet?.open &&
     document.documentElement.dataset.appViewportReduced !== "true" &&
-    pageBackNavigation(screen).canSwipe(),
+    navigation.top.edgeBack === true,
   back,
   preview: () => pageBackNavigation(screen).preview(),
   onActiveChange: (active) => {
@@ -176,12 +171,14 @@ function openSettings() {
       openSettings();
     },
     (dialog) => {
-      if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(Boolean(sheet?.open) || route !== "launcher");
+      if (sheet === dialog) {
+        sheet = undefined;
+        navigation.drop("sheet");
+      }
       if (!sheet?.open) opener?.focus();
     },
   );
-  platform.setBackVisible(true);
+  navigation.push(sheetEntry);
 }
 function showAppPermissions() {
   return openAppPermissions({
@@ -189,10 +186,13 @@ function showAppPermissions() {
     platform,
     onOpen: (dialog) => {
       sheet = dialog;
+      navigation.push(sheetEntry);
     },
     onClose: (dialog) => {
-      if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(route !== "launcher");
+      if (sheet === dialog) {
+        sheet = undefined;
+        navigation.drop("sheet");
+      }
     },
   });
 }
@@ -252,12 +252,11 @@ function render() {
   document.title = text("shell.brand");
   configurePageBack(screen, {
     key: route,
-    ...(route !== "launcher"
+    ...(route !== "launcher" && navigation.below
       ? {
-          parent: "launcher",
+          parent: navigation.below.key,
           back: () => {
-            route = "launcher";
-            render();
+            navigation.back();
           },
         }
       : {}),
@@ -297,8 +296,7 @@ function render() {
       content.append(
         Button(text("review.title"), {
           onClick: () => {
-            route = "review";
-            render();
+            routes.open("review");
           },
         }),
       );
@@ -345,14 +343,12 @@ function render() {
   footer.append(
     Button(text("shell.apps"), {
       onClick: () => {
-        route = "launcher";
-        render();
+        navigation.push(home);
       },
     }),
     Button(text("shell.profile"), {
       onClick: () => {
-        route = "profile";
-        render();
+        routes.open("profile");
         if (platform.authenticatedLaunch) void loadProfile();
       },
     }),
@@ -376,10 +372,16 @@ function render() {
       read: (signal) => platform.readReviewQueue(signal),
       decide: (appId, versionId, decision, reason, signal) =>
         platform.reviewAppVersion(appId, versionId, decision, reason, signal),
-      closePreview: closeActiveApp,
+      closePreview: dismissApp,
     });
-  platform.setBackVisible(route !== "launcher");
 }
+navigation.setGuard(() => payment.paymentBusy);
+navigation.subscribe(() => {
+  const next = routes.current();
+  if (next === route) return;
+  route = next;
+  render();
+});
 render();
 window.addEventListener(
   "pagehide",
@@ -388,9 +390,10 @@ window.addEventListener(
     profileGeneration++;
     profileDispose?.();
     reviewDispose?.();
-    closeActiveApp();
+    dismissApp();
     swipe.dispose();
     platform.dispose();
+    navigation.dispose();
   },
   { once: true },
 );
