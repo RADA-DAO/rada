@@ -188,7 +188,7 @@ test("a focused field stays visible above the on-screen keyboard", async ({
     const field = document.createElement("input");
     field.id = "low-field";
     field.type = "text";
-    document.querySelector(".workspace")?.append(spacer, field);
+    document.querySelector(".rada-screen-body")?.append(spacer, field);
   });
   await page.evaluate(() => {
     (window as unknown as { fixtureHost: Fixture }).fixtureHost.resize(420);
