@@ -51,6 +51,7 @@ await test("one public entry supplies all recipes with resolvable token referenc
   assert.deepEqual(imports, [
     "tokens.css",
     "primitives.css",
+    "components.css",
     "frog-card.css",
     "shell.css",
   ]);
@@ -68,6 +69,7 @@ await test("one public entry supplies all recipes with resolvable token referenc
   assert.match(tokensCss, /\.jpegpe-card\s*\{[\s\S]*--rada-frog-plane-fill:/);
   assert.match(recipes[1] ?? "", /prefers-reduced-motion: reduce/);
   assert.match(recipes[1] ?? "", /var\(--rada-duration-reduced\)/);
+  assert.match(recipes[2] ?? "", /prefers-reduced-motion: reduce/);
   for (const css of recipes.slice(1))
     assert.doesNotMatch(
       css,

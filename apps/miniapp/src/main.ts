@@ -1,4 +1,4 @@
-import { settingsDialog } from "./settings.ts";
+import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { consentCopy, openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
@@ -13,6 +13,12 @@ import {
   Button,
   EmptyState,
   ErrorState,
+  Group,
+  isSheetOpen,
+  Screen,
+  ScreenHost,
+  Tabs,
+  Text,
 } from "../../../packages/ui/src/index.ts";
 import {
   t,
@@ -21,7 +27,6 @@ import {
 } from "../../../packages/i18n/src/index.ts";
 import {
   initializePlatform,
-  type NavEntry,
   configurePageBack,
   pageBackNavigation,
   installSwipeBack,
@@ -45,20 +50,13 @@ let profile:
 let selectedFrog: OwnProfile["profile"]["public"] = null;
 let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
-let sheet: HTMLDialogElement | undefined;
+let settingsButton: HTMLElement | null = null;
 let activeAppDispose: (() => void) | undefined;
 let pendingAppMount: AbortController | undefined;
 let appHostGeneration = 0;
 const routes = createRoutes();
 const { navigation } = routes;
 const back = () => void navigation.back();
-const sheetEntry: NavEntry = {
-  key: "sheet",
-  stale: () => !sheet?.open,
-  leave: () => {
-    sheet?.close();
-  },
-};
 function dismissApp() {
   closeActiveApp();
   navigation.drop("app");
@@ -72,10 +70,7 @@ function closeActiveApp() {
 }
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) throw new Error("Missing application root");
-root.className = "screen-wrap";
-const screen = document.createElement("main");
-screen.className = "screen";
-root.append(screen);
+const screen = ScreenHost(root);
 const text = (key: MessageKey) => t(locale, key);
 const platform = initializePlatform({
   doneLabel: () => text("shell.done"),
@@ -146,7 +141,7 @@ applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installSwipeBack(screen, {
   canStart: () =>
     !payment.paymentBusy &&
-    !sheet?.open &&
+    !isSheetOpen() &&
     document.documentElement.dataset.appViewportReduced !== "true" &&
     navigation.top.edgeBack === true,
   back,
@@ -155,46 +150,20 @@ const swipe = installSwipeBack(screen, {
     setPageBackActive(screen, active);
   },
 });
-function paragraph(key: MessageKey) {
-  const node = document.createElement("p");
-  node.textContent = text(key);
-  return node;
-}
-function openSettings() {
-  const opener = screen.querySelector<HTMLButtonElement>("header button");
-  sheet = settingsDialog(
+function showSettings() {
+  openSettings({
     locale,
-    (value) => {
+    navigation,
+    opener: settingsButton,
+    change: (value) => {
       locale = value;
-      sheet?.close();
       render();
-      openSettings();
-    },
-    (dialog) => {
-      if (sheet === dialog) {
-        sheet = undefined;
-        navigation.drop("sheet");
-      }
-      if (!sheet?.open) opener?.focus();
-    },
-  );
-  navigation.push(sheetEntry);
-}
-function showAppPermissions() {
-  return openAppPermissions({
-    text,
-    platform,
-    onOpen: (dialog) => {
-      sheet = dialog;
-      navigation.push(sheetEntry);
-    },
-    onClose: (dialog) => {
-      if (sheet === dialog) {
-        sheet = undefined;
-        navigation.drop("sheet");
-      }
+      showSettings();
     },
   });
+}
+function showAppPermissions(opener: HTMLElement | null) {
+  return openAppPermissions({ text, platform, navigation, opener });
 }
 const onProfileRoute = () => route === "profile";
 async function loadProfile() {
@@ -260,40 +229,27 @@ function render() {
           },
         }
       : {}),
-    canSwipe: () => !sheet?.open,
+    canSwipe: () => !isSheetOpen(),
   });
-  const header = document.createElement("header");
-  const brand = document.createElement("strong");
-  brand.textContent = text("shell.brand");
-  header.append(
-    brand,
-    Button(text("shell.settings"), { onClick: openSettings }),
-  );
-  const content = document.createElement("section");
-  content.className = "workspace";
-  const heading = document.createElement("h1");
-  heading.textContent = text(
-    route === "launcher"
-      ? "shell.apps"
-      : route === "review"
-        ? "review.title"
-        : "shell.profile",
-  );
-  content.append(heading);
+  settingsButton = Button(text("shell.settings"), {
+    variant: "ghost",
+    onClick: showSettings,
+  });
+  const content: Node[] = [];
   if (route === "launcher") {
-    content.append(
+    content.push(
       EmptyState({
         title: text("shell.emptyTitle"),
         message: text("shell.emptyDescription"),
       }),
     );
   } else if (route === "review") {
-    const queue = document.createElement("div");
-    content.append(queue);
+    const queue = Group();
     queue.dataset.reviewQueue = "true";
+    content.push(queue);
   } else {
     if (reviewAuthorized)
-      content.append(
+      content.push(
         Button(text("review.title"), {
           onClick: () => {
             routes.open("review");
@@ -301,32 +257,32 @@ function render() {
         }),
       );
     if (reviewProbeFailed)
-      content.append(
+      content.push(
         ErrorState({
           message: text("review.accessUnavailable"),
           retryLabel: text("common.retry"),
           onRetry: () => void loadProfile(),
         }),
       );
-    content.append(paragraph(`shell.${profile}`));
+    content.push(Text(text(`shell.${profile}`)));
     if (["private", "public"].includes(profile)) {
-      const own = document.createElement("div");
+      const own = Group();
       own.dataset.profileCollection = "true";
-      const wallet = document.createElement("div");
+      const wallet = Group();
       wallet.dataset.profileWallet = "true";
-      content.append(
+      const permissions = Button(text("shell.appPermissions"), {
+        onClick: () => void showAppPermissions(permissions),
+      });
+      content.push(
         own,
         wallet,
-        paragraph(`shell.membership.${membership}`),
-        Button(text("shell.appPermissions"), {
-          onClick: () => void showAppPermissions(),
-        }),
+        Text(text(`shell.membership.${membership}`)),
+        permissions,
       );
     }
-    if (profile === "guest")
-      content.append(paragraph("shell.guestDescription"));
+    if (profile === "guest") content.push(Text(text("shell.guestDescription")));
     if (profile === "expired" || profile === "unavailable")
-      content.append(
+      content.push(
         ErrorState({
           message: text(
             profile === "expired"
@@ -338,34 +294,47 @@ function render() {
         }),
       );
   }
-  const footer = document.createElement("nav");
-  footer.setAttribute("aria-label", text("shell.navigation"));
-  footer.append(
-    Button(text("shell.apps"), {
-      onClick: () => {
-        navigation.push(home);
-      },
+  const view = Screen({
+    title: text(
+      route === "launcher"
+        ? "shell.apps"
+        : route === "review"
+          ? "review.title"
+          : "shell.profile",
+    ),
+    brand: text("shell.brand"),
+    actions: [settingsButton],
+    children: content,
+    footer: Tabs({
+      label: text("shell.navigation"),
+      selected: route === "launcher" ? "apps" : "profile",
+      tabs: [
+        {
+          id: "apps",
+          label: text("shell.apps"),
+          onSelect: () => {
+            navigation.push(home);
+          },
+        },
+        {
+          id: "profile",
+          label: text("shell.profile"),
+          onSelect: () => {
+            routes.open("profile");
+            if (platform.authenticatedLaunch) void loadProfile();
+          },
+        },
+      ],
     }),
-    Button(text("shell.profile"), {
-      onClick: () => {
-        routes.open("profile");
-        if (platform.authenticatedLaunch) void loadProfile();
-      },
-    }),
-  );
-  for (const [index, node] of [...footer.children].entries())
-    node.setAttribute(
-      "aria-current",
-      (route === "launcher" ? index === 0 : index === 1) ? "page" : "false",
-    );
-  screen.replaceChildren(header, content, footer);
-  profileDispose = mountProfilePanel(content, {
+  });
+  screen.replaceChildren(view);
+  profileDispose = mountProfilePanel(view, {
     locale,
     selected: selectedFrog,
     platform,
     refresh: () => void loadProfile(),
   });
-  const queue = content.querySelector<HTMLElement>("[data-review-queue]");
+  const queue = view.querySelector<HTMLElement>("[data-review-queue]");
   if (queue)
     reviewDispose = mountReview(queue, {
       locale,

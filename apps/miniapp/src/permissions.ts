@@ -1,4 +1,15 @@
-import { Button, Sheet } from "../../../packages/ui/src/index.ts";
+import {
+  Avatar,
+  Button,
+  List,
+  ListItem,
+  LiveRegion,
+  Loading,
+  openSheet,
+  setButtonLoading,
+  Text,
+  type SheetNavigation,
+} from "../../../packages/ui/src/index.ts";
 import {
   t,
   type Locale,
@@ -40,68 +51,55 @@ export function consentCopy(
 export async function openAppPermissions({
   text,
   platform,
-  onOpen,
-  onClose,
+  navigation,
+  opener,
 }: {
   text: (key: MessageKey) => string;
   platform: ReturnType<typeof initializePlatform>;
-  onOpen: (dialog: HTMLDialogElement) => void;
-  onClose: (dialog: HTMLDialogElement) => void;
+  navigation: SheetNavigation;
+  opener: HTMLElement | null;
 }) {
-  function paragraph(key: MessageKey) {
-    const node = document.createElement("p");
-    node.textContent = text(key);
-    return node;
-  }
-  const title = text("shell.appPermissions");
-  const content = document.createElement("div");
-  content.append(paragraph("common.loading"));
-  const dialog = Sheet({
-    title,
+  const content = LiveRegion([Loading({ message: text("common.loading") })]);
+  const dialog = openSheet({
+    title: text("shell.appPermissions"),
     closeLabel: text("common.close"),
     children: [content],
+    navigation,
+    opener,
   });
-  dialog.addEventListener(
-    "close",
-    () => {
-      dialog.remove();
-      onClose(dialog);
-    },
-    { once: true },
-  );
-  onOpen(dialog);
-  document.body.append(dialog);
-  dialog.showModal();
+  const unavailable = () => {
+    content.replaceChildren(Text(text("shell.unavailableDescription")));
+  };
   async function refresh() {
     try {
       const items = await platform.readAppConsents();
       if (!dialog.open) return;
       content.replaceChildren();
-      if (!items.length) content.append(paragraph("shell.noAppPermissions"));
-      for (const item of items) {
+      if (!items.length) content.append(Text(text("shell.noAppPermissions")));
+      const rows = items.flatMap((item) => {
         const label = permissionLabel(item.capability, text);
-        if (!label) continue;
-        const row = document.createElement("p");
-        row.textContent = `${item.app_id}: ${label} `;
-        row.append(
-          Button(text("shell.revokePermission"), {
-            onClick: () => {
-              void platform
-                .writeAppConsent(item.app_id, item.capability, false)
-                .then(refresh)
-                .catch(() => {
-                  content.replaceChildren(
-                    paragraph("shell.unavailableDescription"),
-                  );
-                });
-            },
+        if (!label) return [];
+        const revoke = Button(text("shell.revokePermission"), {
+          onClick: () => {
+            setButtonLoading(revoke, true);
+            void platform
+              .writeAppConsent(item.app_id, item.capability, false)
+              .then(refresh)
+              .catch(unavailable);
+          },
+        });
+        return [
+          ListItem({
+            leading: Avatar({ name: item.app_id, size: "small" }),
+            title: item.app_id,
+            description: label,
+            actions: [revoke],
           }),
-        );
-        content.append(row);
-      }
+        ];
+      });
+      if (rows.length) content.append(List({ children: rows }));
     } catch {
-      if (dialog.open)
-        content.replaceChildren(paragraph("shell.unavailableDescription"));
+      if (dialog.open) unavailable();
     }
   }
   await refresh();

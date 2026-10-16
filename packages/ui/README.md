@@ -2,7 +2,26 @@
 
 Shared design system for platform shells and applications. Import `@rada/ui/design-system.css` for first paint, then call `compileTheme` and `applyTheme` with the viewer's profile colors. Authored background and accent HEX values remain exact; semantic text and controls meet WCAG AA contrast.
 
-The package exports framework-neutral DOM primitives (`Button`, `Card`, `Sheet`, `EmptyState`, and `ErrorState`). Callers provide visible labels and messages, usually from `@rada/i18n`. The components use native elements and honor reduced-motion preferences in the shared stylesheet.
+The package exports framework-neutral DOM components. Callers provide visible
+labels and messages, usually from `@rada/i18n`; every visual value comes from
+tokens, controls show focus rings, and motion honors reduced-motion preferences.
+
+- `ScreenHost` and `Screen`: the scrolling surface and one screen (header,
+  title, content, footer). Screens never draw Back: the platform owns it
+  (Telegram BackButton, browser Back, Escape, swipe).
+- `Button` (`primary`, `secondary`, `ghost`; `loading` and `disabled`),
+  `setButtonLoading`, `Field` (input, textarea or select with label and error),
+  `Tabs`, `List` and `ListItem`, `Card`, `Section`, `Text`, `Actions`, `Group`,
+  `LiveRegion`, `Embed`, `Avatar`.
+- `Sheet` and `openSheet`: modal bottom sheet. `openSheet` registers one shared
+  entry in the platform navigation stack, so Back, swipe and Escape close it
+  and focus returns to the opener.
+- `EmptyState`, `ErrorState` (with retry) and `Loading`.
+
+Applications compose screens only from these components. The design gate in
+`tools/design-system.mjs` rejects `createElement` for elements a component
+already provides (button, dialog, input, select, textarea, label, nav, header,
+lists and headings) outside this package.
 
 `FrogCard` adapts the canonical JPEGPE card renderer with the shared 4:5 cutout
 geometry and uppercase `frogCardName`. Authored colours use the shared theme
@@ -34,4 +53,4 @@ Run `node --test packages/ui/scripts/test-design-tokens.ts` to verify the typed
 foundation/CSS contract, canonical anchors, token references and reduced motion.
 Run `node packages/ui/scripts/test-theme-compiler.ts` for guest first-paint parity,
 exact authored colors and AA contrast across sampled themes, and
-`node packages/ui/scripts/test-ui-behavior.ts` for existing DOM behavior.
+`node packages/ui/scripts/test-components.ts` for component behavior (a DOM double, no browser) and `node packages/ui/scripts/test-guest-palette.ts` for the `:root` first-paint palette; all run from `npm run test:unit`.

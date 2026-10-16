@@ -131,7 +131,7 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
       ).status(),
     ).toBe(401);
     await launch(page);
-    const row = page.locator(".review-row").filter({ hasText: appId });
+    const row = page.getByRole("listitem").filter({ hasText: appId });
     await expect(row).toBeVisible();
     await expect(
       row.getByText("Official (requested)", { exact: false }),
@@ -154,8 +154,8 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
         .evaluate((element) => element.scrollHeight > element.clientHeight),
     ).toBe(true);
     const actionsClearFooter = () =>
-      row.locator(".review-actions").evaluate((actions) => {
-        const footer = document.querySelector(".screen > nav");
+      row.locator(".rada-actions").evaluate((actions) => {
+        const footer = document.querySelector(".screen nav");
         if (!footer) throw new Error("Footer missing");
         return (
           footer.getBoundingClientRect().top >=
@@ -245,7 +245,7 @@ test("denied, expired, unavailable and empty queues recover with translated copy
   status = 200;
   versions = [{ ...version(), sha256: "invalid" }];
   await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.locator(".review-row")).toHaveCount(0);
+  await expect(page.getByRole("listitem")).toHaveCount(0);
   versions = [];
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByText("Queue is clear")).toBeVisible();
@@ -311,7 +311,7 @@ test("late queue response cannot replace a destination after Back", async ({
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".review-row")).toHaveCount(0);
+  await expect(page.getByRole("listitem")).toHaveCount(0);
 });
 
 test("non-reviewer profile has no admin entry", async ({ page, request }) => {

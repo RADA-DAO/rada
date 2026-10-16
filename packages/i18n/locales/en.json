@@ -67,6 +67,7 @@
     "previewNotice": "Preview has no permissions. Approval does not publish this version.",
     "previewFailed": "Preview could not be verified or loaded.",
     "reason": "Decision reason",
+    "reasonRequired": "Enter a reason.",
     "approve": "Approve",
     "reject": "Reject",
     "declarations": "Requested level: {{trust}} · Design: {{design}}",
