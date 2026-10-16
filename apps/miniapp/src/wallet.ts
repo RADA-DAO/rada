@@ -1,5 +1,12 @@
 import type { TonConnectUI } from "@tonconnect/ui";
-import { Button } from "../../../packages/ui/src/index.ts";
+import {
+  Button,
+  List,
+  ListItem,
+  Section,
+  setButtonLoading,
+  Text,
+} from "../../../packages/ui/src/index.ts";
 import { t, type Locale } from "../../../packages/i18n/src/index.ts";
 import type {
   LinkedWallet,
@@ -29,15 +36,18 @@ export function mountWallet(
   let challenge: string | null = null;
   let connector: TonConnectUI | undefined;
   let unsubscribe: (() => void) | undefined;
-  const heading = document.createElement("h2");
-  heading.textContent = text("wallet.title");
-  const status = document.createElement("p");
-  status.setAttribute("aria-live", "polite");
-  const list = document.createElement("div");
+  const status = Text("", { live: "polite" });
+  const list = List({ label: text("wallet.title") });
   const connectButton = Button(text("wallet.connect"), {
+    variant: "primary",
     onClick: () => void connect(),
   });
-  container.append(heading, connectButton, status, list);
+  container.append(
+    Section({
+      title: text("wallet.title"),
+      children: [connectButton, status, list],
+    }),
+  );
   async function refresh() {
     status.textContent = text("wallet.loading");
     try {
@@ -49,31 +59,28 @@ export function mountWallet(
       list.replaceChildren();
       status.textContent = wallets.length ? "" : text("wallet.empty");
       for (const wallet of wallets) {
-        const row = document.createElement("section");
-        const address = document.createElement("p");
-        address.className = "wallet-address";
-        address.title = wallet.address;
-        address.textContent = `${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}`;
         const value = balances.find(
           (item) => item.address === wallet.address,
         )?.balances;
-        const balance = document.createElement("p");
         const tonDigits =
           value?.gram && BigInt(value.gram.raw) >= 1000n * 10n ** 9n ? 2 : 4;
         const ton = displayAmount(value?.gram ?? null, locale, 2, tonDigits);
         const jpegpe = displayAmount(value?.jpegpe ?? null, locale, 2);
-        balance.textContent = `${text("wallet.ton")}: ${ton ?? text("wallet.balanceUnknown")} · ${text("wallet.jpegpe")}: ${jpegpe ?? text("wallet.balanceUnknown")}`;
-        row.append(
-          address,
-          Button(text("wallet.copyAddress"), {
-            onClick: () => void copyAddress(wallet.address),
-          }),
-          balance,
-          Button(text("wallet.revoke"), {
-            onClick: () => void revoke(wallet.address),
+        list.append(
+          ListItem({
+            title: `${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}`,
+            titleHint: wallet.address,
+            description: `${text("wallet.ton")}: ${ton ?? text("wallet.balanceUnknown")} · ${text("wallet.jpegpe")}: ${jpegpe ?? text("wallet.balanceUnknown")}`,
+            actions: [
+              Button(text("wallet.copyAddress"), {
+                onClick: () => void copyAddress(wallet.address),
+              }),
+              Button(text("wallet.revoke"), {
+                onClick: () => void revoke(wallet.address),
+              }),
+            ],
           }),
         );
-        list.append(row);
       }
     } catch {
       if (!isDisposed()) status.textContent = text("wallet.unavailable");
@@ -118,6 +125,7 @@ export function mountWallet(
   async function connect() {
     if (busy || isDisposed()) return;
     busy = true;
+    setButtonLoading(connectButton, true);
     status.textContent = text("wallet.linking");
     try {
       if (
@@ -174,6 +182,7 @@ export function mountWallet(
       if (!isDisposed()) status.textContent = text("wallet.unavailable");
     } finally {
       busy = false;
+      setButtonLoading(connectButton, false);
     }
   }
   void refresh();

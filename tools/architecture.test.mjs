@@ -261,6 +261,40 @@ await test("design gate locates gesture handlers and history calls in syntax", (
     );
 });
 
+await test("design gate rejects elements that duplicate a platform component", () => {
+  for (const source of [
+    'document.createElement("button");',
+    'document.createElement("dialog");',
+    "document[`createElement`]('input');",
+    'const nav = doc.createElement("NAV");',
+    'node.ownerDocument.createElement("h1");',
+  ])
+    assert.ok(
+      designSystemViolations("apps/miniapp/src/view.ts", source).length,
+      source,
+    );
+  for (const source of [
+    'document.createElement("div");',
+    'document.createElement("iframe");',
+    'document.createElement("canvas");',
+    'const tag = "button"; document.createElement(tag);',
+  ])
+    assert.deepEqual(
+      designSystemViolations("modules/game/ui/view.ts", source),
+      [],
+      source,
+    );
+  for (const path of [
+    "packages/ui/src/button.ts",
+    "packages/platform-sdk/src/payment-window.ts",
+    "apps/miniapp/tests/view.spec.ts",
+  ])
+    assert.deepEqual(
+      designSystemViolations(path, 'document.createElement("button");'),
+      [],
+    );
+});
+
 await test("design gate permits tokens, domain data and existing exemption locations", () => {
   const good = `
     import "@rada/ui/design-system.css";

@@ -1,7 +1,14 @@
 import {
+  Actions,
   Button,
+  Embed,
   EmptyState,
   ErrorState,
+  Field,
+  List,
+  ListItem,
+  Loading,
+  Text,
 } from "../../../packages/ui/src/index.ts";
 import {
   t,
@@ -35,11 +42,7 @@ export function mountReview(
     previewDispose = undefined;
     options.closePreview();
   };
-  const para = (key: MessageKey) => {
-    const p = document.createElement("p");
-    p.textContent = text(key);
-    return p;
-  };
+  const para = (key: MessageKey) => Text(text(key));
   const current = (id: number) =>
     !lifecycle.signal.aborted && generation === id;
   const errorState = (error: unknown) => {
@@ -61,10 +64,131 @@ export function mountReview(
       }),
     );
   };
+  function versionItem(version: ReviewVersion) {
+    const requested = List({
+      marked: true,
+      children: version.manifest.permissions.map((permission) =>
+        ListItem({ title: text(`review.permissions.${permission}`) }),
+      ),
+    });
+    const declarations = Text(
+      t(options.locale, "review.declarations", {
+        trust: text(
+          version.manifest.trustLevel === "official"
+            ? "review.officialRequested"
+            : "review.communityRequested",
+        ),
+        design: text(
+          version.manifest.designRoute === "standard"
+            ? "review.standard"
+            : "review.freeStyle",
+        ),
+      }),
+    );
+    const preview = Embed();
+    const previewButton = Button(text("review.preview"), {
+      onClick: () => {
+        if (busy) return;
+        const appHost = window.RadaAppHost;
+        if (!appHost) {
+          errorState(new Error("unavailable"));
+          return;
+        }
+        closePreview();
+        preview.replaceChildren(Loading({ message: text("common.loading") }));
+        const previewId = ++generation;
+        void appHost
+          .mount(
+            {
+              appId: version.appId,
+              manifest: version.manifest,
+              artifactUrl: version.artifactUrl,
+              artifactSha256: version.artifactSha256,
+              grantedPermissions: [],
+            },
+            preview,
+            new URL(version.artifactUrl).origin,
+          )
+          .then((dispose) => {
+            if (!current(previewId)) {
+              dispose();
+              return;
+            }
+            previewDispose = dispose;
+          })
+          .catch(() => {
+            if (current(previewId))
+              preview.replaceChildren(
+                ErrorState({ message: text("review.previewFailed") }),
+              );
+          });
+      },
+    });
+    const reason = Field({
+      label: text("review.reason"),
+      kind: "textarea",
+      maxLength: 500,
+      rows: 3,
+      required: true,
+    });
+    reason.control.addEventListener("input", () => {
+      reason.setError();
+    });
+    const decisions = (["approve", "reject"] as const).map((decision) =>
+      Button(text(`review.${decision}`), {
+        variant: decision === "approve" ? "primary" : "secondary",
+        onClick: () => {
+          if (busy || !reason.control.reportValidity()) return;
+          if (!reason.control.value.trim()) {
+            reason.setError(text("review.reasonRequired"));
+            reason.control.focus();
+            return;
+          }
+          busy = true;
+          closePreview();
+          const actionId = ++generation;
+          for (const button of container.querySelectorAll("button"))
+            button.disabled = true;
+          void options
+            .decide(
+              version.appId,
+              version.versionId,
+              decision,
+              reason.control.value,
+              lifecycle.signal,
+            )
+            .then(() => {
+              if (current(actionId)) return load();
+            })
+            .catch((error: unknown) => {
+              if (current(actionId)) errorState(error);
+            })
+            .finally(() => {
+              busy = false;
+            });
+        },
+      }),
+    );
+    return ListItem({
+      title: version.manifest.name,
+      heading: true,
+      description: `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`,
+      children: [
+        declarations,
+        para("review.requested"),
+        requested,
+        para("review.previewNotice"),
+        previewButton,
+        preview,
+        reason.element,
+        Actions(decisions),
+      ],
+    });
+  }
   async function load() {
     const id = ++generation;
     closePreview();
-    container.replaceChildren(para("common.loading"));
+    container.replaceChildren(Loading({ message: text("common.loading") }));
     try {
       const versions = await options.read(lifecycle.signal);
       if (!current(id)) return;
@@ -76,129 +200,13 @@ export function mountReview(
             message: text("review.emptyDescription"),
           }),
         );
-      for (const version of versions) {
-        const row = document.createElement("article");
-        row.className = "review-row";
-        const heading = document.createElement("h2");
-        heading.textContent = version.manifest.name;
-        const meta = document.createElement("p");
-        meta.textContent = `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`;
-        const requested = document.createElement("ul");
-        for (const permission of version.manifest.permissions) {
-          const li = document.createElement("li");
-          li.textContent = text(`review.permissions.${permission}`);
-          requested.append(li);
-        }
-        const declarations = document.createElement("p");
-        declarations.textContent = t(options.locale, "review.declarations", {
-          trust: text(
-            version.manifest.trustLevel === "official"
-              ? "review.officialRequested"
-              : "review.communityRequested",
-          ),
-          design: text(
-            version.manifest.designRoute === "standard"
-              ? "review.standard"
-              : "review.freeStyle",
-          ),
-        });
-        const preview = document.createElement("div");
-        preview.className = "review-preview";
-        const previewButton = Button(text("review.preview"), {
-          onClick: () => {
-            if (busy) return;
-            const appHost = window.RadaAppHost;
-            if (!appHost) {
-              errorState(new Error("unavailable"));
-              return;
-            }
-            closePreview();
-            preview.replaceChildren(para("common.loading"));
-            const previewId = ++generation;
-            void appHost
-              .mount(
-                {
-                  appId: version.appId,
-                  manifest: version.manifest,
-                  artifactUrl: version.artifactUrl,
-                  artifactSha256: version.artifactSha256,
-                  grantedPermissions: [],
-                },
-                preview,
-                new URL(version.artifactUrl).origin,
-              )
-              .then((dispose) => {
-                if (!current(previewId)) {
-                  dispose();
-                  return;
-                }
-                previewDispose = dispose;
-              })
-              .catch(() => {
-                if (current(previewId))
-                  preview.replaceChildren(
-                    ErrorState({ message: text("review.previewFailed") }),
-                  );
-              });
-          },
-        });
-        const label = document.createElement("label");
-        label.textContent = text("review.reason");
-        const reason = document.createElement("textarea");
-        reason.maxLength = 500;
-        reason.rows = 3;
-        reason.required = true;
-        label.append(reason);
-        const actions = document.createElement("div");
-        actions.className = "review-actions";
-        for (const decision of ["approve", "reject"] as const)
-          actions.append(
-            Button(text(`review.${decision}`), {
-              onClick: () => {
-                if (busy || !reason.reportValidity()) return;
-                if (!reason.value.trim()) {
-                  reason.focus();
-                  return;
-                }
-                busy = true;
-                closePreview();
-                const actionId = ++generation;
-                for (const button of container.querySelectorAll("button"))
-                  button.disabled = true;
-                void options
-                  .decide(
-                    version.appId,
-                    version.versionId,
-                    decision,
-                    reason.value,
-                    lifecycle.signal,
-                  )
-                  .then(() => {
-                    if (current(actionId)) return load();
-                  })
-                  .catch((error: unknown) => {
-                    if (current(actionId)) errorState(error);
-                  })
-                  .finally(() => {
-                    busy = false;
-                  });
-              },
-            }),
-          );
-        row.append(
-          heading,
-          meta,
-          declarations,
-          para("review.requested"),
-          requested,
-          para("review.previewNotice"),
-          previewButton,
-          preview,
-          label,
-          actions,
+      if (versions.length)
+        container.append(
+          List({
+            label: text("review.title"),
+            children: versions.map(versionItem),
+          }),
         );
-        container.append(row);
-      }
     } catch (error) {
       if (current(id)) errorState(error);
     }

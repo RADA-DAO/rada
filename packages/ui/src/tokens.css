@@ -75,6 +75,10 @@
   --rada-shell-control-height: 44px;
   --rada-radius-legacy: 1rem;
   --rada-zero-length: 0px;
+  --rada-avatar-size: 40px;
+  --rada-avatar-size-small: 28px;
+  --rada-spinner-size: 18px;
+  --rada-duration-spin: 800ms;
 }
 
 /* Resolve collectible-local colors at the card, never at the document root. */

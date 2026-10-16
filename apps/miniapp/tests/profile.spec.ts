@@ -154,8 +154,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     ).toBeVisible();
     await expect(
       page
-        .locator("[data-profile-collection] > div")
-        .first()
+        .locator("[data-selected-frog]")
         .getByRole("img", { name: name.toUpperCase() }),
     ).toBeVisible();
     await expect
@@ -182,7 +181,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       .click();
     const row = page
       .getByRole("dialog")
-      .locator("p")
+      .getByRole("listitem")
       .filter({ hasText: appId });
     await row.getByRole("button", { name: "Revoke", exact: true }).click();
     await expect(row).toHaveCount(0);

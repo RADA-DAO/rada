@@ -11,6 +11,9 @@ const visualProperty =
 const paletteProperty = /^(?:color|background(?:Color|-color)?|fill|stroke)$/i;
 const semanticColor =
   /^(?:var\([\s\S]+\)|transparent|currentColor|inherit|initial|unset|none)$/i;
+/** Elements a platform component already provides; apps compose those instead. */
+const platformElements =
+  /^(?:button|dialog|input|select|textarea|label|nav|header|ul|ol|li|h[1-3]|img)$/i;
 const gesture = /^(?:on)?(?:touchstart|pointerdown|swipe\w*)$/i;
 
 /** @param {import('typescript').Node | undefined} node @returns {string | undefined} */
@@ -190,6 +193,11 @@ export function designSystemViolations(path, source) {
         if (attribute === "style")
           report("local style injection is owned by @rada/ui");
       }
+      if (
+        method === "createElement" &&
+        platformElements.test(literal(node.arguments[0]) ?? "")
+      )
+        report("use the @rada/ui component instead of creating this element");
       if (
         (method === "createElement" &&
           literal(node.arguments[0]) === "style") ||

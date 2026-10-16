@@ -88,7 +88,7 @@ test("collectible material tokens retain each frog's own palette", async ({
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
-  const cards = page.locator(".profile-collection .jpegpe-card");
+  const cards = page.locator("[data-profile-collection] li .jpegpe-card");
   await expect(cards).toHaveCount(2);
   const ownBackgrounds = await cards.evaluateAll((nodes) =>
     nodes.map((node) =>
@@ -100,12 +100,14 @@ test("collectible material tokens retain each frog's own palette", async ({
     second.background_color,
   ]);
   const materials = () =>
-    page.locator(".profile-collection .frog-card-plane").evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const style = getComputedStyle(node);
-        return { fill: style.backgroundImage, shadow: style.boxShadow };
-      }),
-    );
+    page
+      .locator("[data-profile-collection] li .frog-card-plane")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const style = getComputedStyle(node);
+          return { fill: style.backgroundImage, shadow: style.boxShadow };
+        }),
+      );
   const before = await materials();
   expect(before[0]).not.toEqual(before[1]);
   await page.evaluate(() => {
