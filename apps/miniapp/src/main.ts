@@ -4,8 +4,7 @@ import { openAppPermissions, permissionLabel } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
-import "../../../packages/ui/src/design-system.css";
-import "./shell.css";
+import "@rada/ui/design-system.css";
 import {
   applyTheme,
   compileTheme,

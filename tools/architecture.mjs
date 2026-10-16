@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { dirname, posix } from "node:path";
 import ts from "typescript";
+import { designSystemViolations } from "./design-system.mjs";
+export { designSystemViolations } from "./design-system.mjs";
 
 // These deployed migrations may move, but their SQL and ledger checksums cannot change.
 const historicalMigrations = new Map([
@@ -66,7 +68,10 @@ export function moduleImportViolations(path, source) {
       );
     if (/^(?:file:|\/)/.test(specifier))
       errors.push(`${path}: filesystem imports must use relative public paths`);
-    if (specifier.startsWith("@rada/"))
+    if (
+      specifier.startsWith("@rada/") &&
+      !["@rada/ui", "@rada/ui/design-system.css"].includes(specifier)
+    )
       errors.push(
         `${path}: use explicit module index.ts paths instead of aliases`,
       );
@@ -180,6 +185,7 @@ export function moduleSqlViolations(path, source, publicViews = new Set()) {
 export function architectureViolations(path, source, publicViews = new Set()) {
   return [
     ...codeSizeViolations(path, source),
+    ...designSystemViolations(path, source),
     ...moduleImportViolations(path, source),
     ...moduleSqlViolations(path, source, publicViews),
   ];

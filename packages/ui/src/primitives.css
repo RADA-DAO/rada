@@ -1,0 +1,38 @@
+.rada-button {
+  color: var(--control-secondary-ink);
+  background: var(--control-secondary-bg);
+  border: var(--rada-border-width) solid var(--control-secondary-border);
+}
+.rada-button:focus-visible {
+  outline: var(--rada-focus-width) solid var(--theme-ring);
+  outline-offset: var(--rada-focus-offset);
+}
+.rada-button:disabled {
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-bg);
+}
+.rada-card,
+.rada-sheet,
+.rada-empty-state,
+.rada-error-state {
+  color: var(--text-primary);
+  background: var(--surface-base);
+}
+.rada-card {
+  border-radius: var(--rada-radius-legacy);
+  padding: var(--rada-space-4);
+}
+.rada-sheet {
+  border: var(--rada-border-width) solid var(--glass-edge);
+  border-radius: var(--rada-radius-legacy);
+  max-width: min(var(--rada-sheet-width), calc(100vw - var(--rada-space-8)));
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: var(--rada-duration-reduced) !important;
+    transition-duration: var(--rada-duration-reduced) !important;
+  }
+}

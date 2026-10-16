@@ -1,0 +1,167 @@
+:root {
+  --rada-reading-width: 740px;
+  --rada-space: 8px;
+  --rada-font-body: Onest, ui-sans-serif, system-ui, sans-serif;
+  --rada-font-heading: Outfit, Onest, ui-sans-serif, system-ui, sans-serif;
+  --rada-font-size-small: 12px;
+  --rada-font-size-body: 14px;
+  --rada-font-size-field: 16px;
+  --rada-font-size-section: 22px;
+  --rada-font-size-title: clamp(27px, 7vw, 35px);
+  --rada-font-weight-body: 500;
+  --rada-font-weight-control: 720;
+  --rada-font-weight-heading: 750;
+  --rada-line-height-body: 1.5;
+  --rada-line-height-control: 1.35;
+  --rada-line-height-heading: 1.13;
+  --rada-tracking-heading: -0.035em;
+  --rada-space-1: 4px;
+  --rada-space-2: 8px;
+  --rada-space-3: 12px;
+  --rada-space-4: 16px;
+  --rada-space-5: 20px;
+  --rada-space-6: 24px;
+  --rada-space-7: 28px;
+  --rada-space-8: 32px;
+  --rada-space-10: 40px;
+  --rada-space-12: 48px;
+  --rada-radius-panel: 28px 16px 28px 16px;
+  --rada-radius-control: 16px 11px 16px 11px;
+  --rada-radius-small: 12px 8px 12px 8px;
+  --rada-control-height: 46px;
+  --rada-border-width: 1px;
+  --rada-focus-width: 2px;
+  --rada-focus-offset: 2px;
+  --rada-panel-fill: var(--surface-raised);
+  --rada-panel-edge: var(--control-secondary-border);
+  --rada-rule: var(--rada-border-width) solid var(--rada-panel-edge);
+  --rada-shadow-panel:
+    inset 0 1px 0 var(--glass-glint), 0 24px 70px rgb(var(--shadow-rgb) / 0.34);
+  --rada-shadow-raised:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 16px 34px rgb(var(--shadow-rgb) / 0.14);
+  --rada-duration-fast: 120ms;
+  --rada-duration-control: 140ms;
+  --rada-duration-normal: 200ms;
+  --rada-duration-transition: 240ms;
+  --rada-duration-reduced: 0.01ms;
+  --rada-ease-standard: ease;
+  --rada-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rada-z-base: 0;
+  --rada-z-artwork: 1;
+  --rada-z-overlay: 2;
+  --rada-z-label: 5;
+  --rada-z-header: 10;
+  --rada-z-sheet: 100;
+  --rada-z-platform: 1000;
+  --rada-control-press-offset: 1px;
+  --rada-sheet-width: 32rem;
+  --rada-collection-column: 9rem;
+  --rada-viewport-height: 100dvh;
+  --rada-shell-wordmark-size: 26px;
+  --rada-shell-wordmark-tracking: 0.15em;
+  --rada-shell-workspace-min: 220px;
+  --rada-shell-title-size: clamp(32px, 7vw, 44px);
+  --rada-shell-title-tracking: -0.04em;
+  --rada-shell-prose-width: 440px;
+  --rada-shell-prose-leading: 1.6;
+  --rada-shell-section-size: 21px;
+  --rada-shell-nav-space: 18px;
+  --rada-shell-list-leading: 1.8;
+  --rada-shell-preview-height: 360px;
+  --rada-button-padding: 11px 17px;
+  --rada-shell-font: ui-sans-serif, system-ui, sans-serif;
+  --rada-shell-width: 760px;
+  --rada-shell-control-height: 44px;
+  --rada-radius-legacy: 1rem;
+  --rada-zero-length: 0px;
+}
+
+/* Resolve collectible-local colors at the card, never at the document root. */
+.jpegpe-card {
+  --rada-frog-width: min(100%, 20rem);
+  --rada-frog-margin: 1.25rem auto;
+  --rada-frog-radius: clamp(5px, 6.111cqw, 25px);
+  --rada-frog-border: max(1px, 0.278cqw) solid
+    var(--frog-card-accent, var(--glass-edge));
+  --rada-frog-plane-fill:
+    radial-gradient(
+      ellipse 28% 8% at 18% 0%,
+      rgb(255 255 255 / 0.42),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 25% 16% at 91% 100%,
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 72%,
+        transparent
+      ),
+      transparent 76%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 66%,
+          var(--surface-raised) 34%
+        )
+        0 28%,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 78%,
+          var(--surface-base) 22%
+        )
+        48% 62%,
+      color-mix(
+          in srgb,
+          var(--frog-card-accent, var(--glass-edge)) 60%,
+          var(--surface-shadow) 40%
+        )
+        100%
+    );
+  --rada-frog-plane-shadow:
+    inset 0 0 0 max(1px, 0.278cqw)
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 58%,
+        transparent
+      ),
+    inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.22),
+    inset 0 max(-1px, -0.278cqw) 0 rgb(var(--shadow-rgb) / 0.16),
+    0 5px 14px rgb(var(--shadow-rgb) / 0.11);
+  --rada-frog-inset: 1.667cqw;
+  --rada-frog-inner-border: max(1px, 0.278cqw) solid
+    color-mix(
+      in srgb,
+      var(--frog-card-accent, var(--glass-edge)) 54%,
+      transparent
+    );
+  --rada-frog-inner-radius: max(
+    4px,
+    calc(clamp(5px, 6.111cqw, 25px) - 1.667cqw)
+  );
+  --rada-frog-inner-shadow: inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.14);
+  --rada-frog-overlay-fill: linear-gradient(
+    180deg,
+    rgb(var(--shadow-rgb) / 0.04),
+    transparent 50%,
+    rgb(var(--shadow-rgb) / 0.28)
+  );
+  --rada-frog-overlay-shadow:
+    inset 0 0 0 max(1px, 0.278cqw)
+      color-mix(
+        in srgb,
+        var(--frog-card-accent, var(--glass-edge)) 62%,
+        transparent
+      ),
+    inset 0 max(1px, 0.278cqw) 0 rgb(255 255 255 / 0.16);
+  --rada-frog-art-width: 100%;
+  --rada-frog-name-top: calc(10.099cqw - 0.47em);
+  --rada-frog-name-left: 5.556cqw;
+  --rada-frog-name-right: 25.556cqw;
+  --rada-frog-name-font: 800 clamp(10px, 7.75cqw, 26px)/0.94 system-ui;
+  --rada-frog-name-shadow:
+    0 0 0.833cqw var(--frog-card-bg), 0 0.278cqw 1.667cqw var(--frog-card-bg);
+  --rada-frog-collection-margin: 0 0 0.75rem;
+}

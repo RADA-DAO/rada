@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   codeSizeViolations,
+  designSystemViolations,
   moduleImportViolations,
   moduleSqlViolations,
   missingHistoricalMigrations,
@@ -158,4 +159,198 @@ await test("SQL boundary rejects foreign table queries including quoted names an
     ).length,
   );
   assert.equal(missingHistoricalMigrations([]).length, 3);
+});
+
+await test("public UI entrypoints are exact and preserve module alias boundaries", () => {
+  for (const entry of ["@rada/ui", "@rada/ui/design-system.css"])
+    assert.deepEqual(
+      moduleImportViolations(
+        "modules/profile/ui/view.ts",
+        `import "${entry}";`,
+      ),
+      [],
+    );
+  for (const entry of [
+    "@rada/ui/private",
+    "@rada/ui/../secret",
+    "@rada/ui/design-system.css?inline",
+    "@rada/identity",
+  ])
+    assert.ok(
+      moduleImportViolations("modules/profile/ui/view.ts", `import "${entry}";`)
+        .length,
+    );
+});
+
+await test("design gate rejects raw styles and foreign CSS through each import form", () => {
+  for (const source of [
+    'const color = "#abc";',
+    'const color = "#abcd";',
+    'const color = "#12345678";',
+    'const style = {padding: "var(--space-4)", background: "#abcd"};',
+    'node.style.background = "linear-gradient(45deg, #abcd, #12345678)";',
+    "const css = `background: ${color}`;",
+    "const css = `.x { background: ${color}; }`;",
+    "node.innerHTML = `<style>${css}</style>`;",
+    'const color = "rgb(1 2 3)";',
+    'const color = "hsl(2 3% 4%)";',
+    'node.style.boxShadow = "0 0 #fff";',
+    'const css = ".x { color: red; }";',
+    `const css = '@import "foreign.css";';`,
+    'import("data:text/css,.x{}");',
+    'node.style.margin = "12px";',
+    'const space = "1rem";',
+    "const style = { fontSize: 18, padding: 8 };",
+    '<p style={{margin: "2em", color: "#abcdef"}} />;',
+    'node.style["fontSize"] = 16;',
+    'node.style.setProperty("padding", "2rem");',
+    'node.setAttribute("style", "color: red");',
+    "node.style.cssText = css;",
+    'document.createElement("style");',
+    "<style>{css}</style>;",
+    "const sheet = new CSSStyleSheet();",
+    "sheet.insertRule(rule);",
+    "const styles = css`.x { margin: 1rem; }`;",
+    'import "./local.css";',
+    'export * from "third-party/theme.css";',
+    'import("./local.css?inline");',
+    'require("./local.css");',
+    'import styles = require("./local.css");',
+    'import "@rada/ui/design-system.css?inline";',
+  ])
+    assert.ok(
+      designSystemViolations("apps/miniapp/src/view.tsx", source).length,
+      source,
+    );
+  assert.ok(
+    designSystemViolations(
+      "modules/profile/ui/local.css",
+      ".x { color: var(--color-text); }",
+    ).length,
+  );
+  for (const source of [
+    "<style>.x{color:red}</style>",
+    '<div style="color:red"></div>',
+    '<link rel="stylesheet" href="local.css">',
+  ])
+    assert.ok(
+      designSystemViolations("apps/miniapp/index.html", source).length,
+      source,
+    );
+});
+
+await test("design gate locates gesture handlers and history calls in syntax", () => {
+  for (const source of [
+    'node.addEventListener("touchstart", handler);',
+    'node["addEventListener"]("pointerdown", handler);',
+    "node.ontouchstart = handler;",
+    'node["onpointerdown"] = handler;',
+    'node.setAttribute("ontouchstart", handler);',
+    "<div onTouchStart={handler} />;",
+    "<div onPointerDown={handler} />;",
+    'const props = { ["onSwipeRight"]: handler };',
+    "const props = { onTouchStart() {} };",
+    "history.back();",
+    "window.history.back();",
+    'globalThis["history"]["back"]();',
+    "self.history.back();",
+  ])
+    assert.ok(
+      designSystemViolations("modules/profile/ui/view.tsx", source).length,
+      source,
+    );
+});
+
+await test("design gate permits tokens, domain data and existing exemption locations", () => {
+  const good = `
+    import "@rada/ui/design-system.css";
+    const color = "var(--color-text)";
+    node.style.padding = "var(--space-4)";
+    node.style.display = "none";
+    node.hidden = true;
+    const style = { fontSize: typography.body, padding: 0 };
+    const url = "https://example.org/page#abcdef";
+    const sql = "SELECT '#abcdef' AS id";
+    const protocol = "CHROMATIC_RED";
+    const description = "A document discussing 12px text";
+    const message = "history.back() touchstart #abcdef";
+    const business = { history: { back() {} } }; business.history.back();
+    node.addEventListener("click", handler);
+    // node.addEventListener("touchstart", handler); color = "#fff";
+  `;
+  assert.deepEqual(
+    designSystemViolations("modules/profile/ui/view.ts", good),
+    [],
+  );
+  for (const path of [
+    "packages/ui/src/view.ts",
+    "packages/platform-sdk/src/navigation.ts",
+    "apps/miniapp/tests/view.ts",
+    "modules/jpegpe/color-protocol/test.ts",
+    "modules/profile/fixtures/view.ts",
+    "apps/miniapp/generated/view.ts",
+    "modules/profile/ui/view.test.ts",
+  ])
+    assert.deepEqual(
+      designSystemViolations(path, 'const c = "#fff"; history.back();'),
+      [],
+    );
+});
+
+await test("design gate checks rendered markup, inline scripts and named style palettes", () => {
+  for (const source of [
+    `node.innerHTML = '<div style="color:red">x</div>';`,
+    'node.innerHTML = `<div style="color:${color}">x</div>`;',
+    `node.outerHTML = '<div onTouchStart="swipe()">x</div>';`,
+    'node.innerHTML = `<div onpointerdown="${handler}">x</div>`;',
+    `node.insertAdjacentHTML("beforeend", '<div style="color:red"></div>');`,
+    'node.style.color = "red";',
+    'node.style.backgroundColor = "blue";',
+    'node.style["fill"] = "gold";',
+    'node.style.stroke = "rebeccapurple";',
+    'node.style.setProperty("background-color", "red");',
+    '<div style={{color: "red"}} />;',
+    'const style = {backgroundColor: "red"};',
+  ])
+    assert.ok(
+      designSystemViolations("apps/miniapp/src/view.tsx", source).length,
+      source,
+    );
+  for (const html of [
+    "<script>history.back()</script>",
+    '<script type="module">window.addEventListener("pointerdown", handler)</script>',
+    '<script type="text/javascript">globalThis.history.back()</script>',
+  ])
+    assert.ok(
+      designSystemViolations("apps/miniapp/index.html", html).length,
+      html,
+    );
+  for (const html of [
+    '<script type="application/json">{"example":"history.back()"}</script>',
+    '<script type="application/ld+json">{"event":"pointerdown"}</script>',
+    '<p>The style="color:red" example appears in documentation.</p>',
+    '<!-- <div style="color:red"></div> --><p>Example</p>',
+  ])
+    assert.deepEqual(
+      designSystemViolations("apps/miniapp/index.html", html),
+      [],
+      html,
+    );
+  assert.deepEqual(
+    designSystemViolations(
+      "apps/miniapp/src/view.tsx",
+      `
+    node.innerHTML = "<p>Ordinary markup</p>";
+    const prose = 'The style="color:red" example';
+    const metadata = { color: "red", backgroundColor: "blue" };
+    node.style.display = "none";
+    node.style.color = "transparent";
+    node.style.backgroundColor = "var(--color-surface)";
+    node.style.fill = "currentColor";
+    node.style.stroke = "none";
+    const style = { color: "inherit", backgroundColor: "unset" };
+  `,
+    ),
+    [],
+  );
 });

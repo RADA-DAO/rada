@@ -1,18 +1,33 @@
 import { defineConfig } from "vite";
 export default defineConfig({
   root: "apps/miniapp",
-  ...(process.env.E2E_TONCONNECT_MOCK === "true"
-    ? {
-        resolve: {
-          alias: {
-            "@tonconnect/ui": new URL(
-              "./tests/fixtures/tonconnect-ui.ts",
-              import.meta.url,
-            ).pathname,
-          },
-        },
-      }
-    : {}),
+  resolve: {
+    alias: [
+      {
+        find: /^@rada\/ui\/design-system\.css$/,
+        replacement: new URL(
+          "../../packages/ui/src/design-system.css",
+          import.meta.url,
+        ).pathname,
+      },
+      {
+        find: /^@rada\/ui$/,
+        replacement: new URL("../../packages/ui/src/index.ts", import.meta.url)
+          .pathname,
+      },
+      ...(process.env.E2E_TONCONNECT_MOCK === "true"
+        ? [
+            {
+              find: "@tonconnect/ui",
+              replacement: new URL(
+                "./tests/fixtures/tonconnect-ui.ts",
+                import.meta.url,
+              ).pathname,
+            },
+          ]
+        : []),
+    ],
+  },
   plugins: [
     {
       name: "wallet-manifest",
