@@ -13,6 +13,8 @@ import {
 } from "./review-registry.ts";
 export type { ReviewVersion } from "./review-registry.ts";
 import { installAppKeyboard } from "./keyboard.ts";
+import { installEscapeBack } from "./escape-back.ts";
+import type { Navigation } from "./navigation.ts";
 import { CONSENT_PERMISSIONS } from "./app-manifest.ts";
 export {
   configurePageBack,
@@ -21,6 +23,8 @@ export {
   deferPageBackRender,
 } from "./page-back.ts";
 export { installSwipeBack } from "./swipe-back.ts";
+export { createNavigation } from "./navigation.ts";
+export type { Navigation, NavEntry } from "./navigation.ts";
 
 type Insets = { top?: number; right?: number; bottom?: number; left?: number };
 type TelegramHost = {
@@ -52,7 +56,7 @@ declare global {
 export function initializePlatform(options: {
   doneLabel: () => string;
   dismissLabel: () => string;
-  onBack: () => void;
+  navigation: Navigation;
   themeColor: string;
   apiOrigin?: string;
 }) {
@@ -108,15 +112,21 @@ export function initializePlatform(options: {
     "--telegram-keyboard-edge",
     options.themeColor,
   );
-  host?.BackButton.onClick(options.onBack);
+  const onBack = () => {
+    options.navigation.back();
+  };
+  const syncBack = () => {
+    if (options.navigation.canGoBack) host?.BackButton.show();
+    else host?.BackButton.hide();
+  };
+  host?.BackButton.onClick(onBack);
+  const unsubscribe = options.navigation.subscribe(syncBack);
+  const disposeEscape = installEscapeBack(options.navigation);
+  syncBack();
   for (const event of events) host?.onEvent(event, sync);
   sync();
   return {
     authenticatedLaunch: Boolean(host?.initData),
-    setBackVisible(visible: boolean) {
-      if (visible) host?.BackButton.show();
-      else host?.BackButton.hide();
-    },
     async readReviewQueue(signal?: AbortSignal): Promise<ReviewVersion[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");
@@ -266,7 +276,9 @@ export function initializePlatform(options: {
     },
     dispose() {
       keyboard.dispose();
-      host?.BackButton.offClick(options.onBack);
+      unsubscribe();
+      disposeEscape();
+      host?.BackButton.offClick(onBack);
       host?.BackButton.hide();
       for (const event of events) host?.offEvent(event, sync);
     },

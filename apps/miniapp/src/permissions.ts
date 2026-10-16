@@ -52,7 +52,6 @@ export async function openAppPermissions({
   onOpen(dialog);
   document.body.append(dialog);
   dialog.showModal();
-  platform.setBackVisible(true);
   async function refresh() {
     try {
       const items = await platform.readAppConsents();

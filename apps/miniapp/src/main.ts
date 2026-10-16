@@ -20,8 +20,10 @@ import {
 } from "../../../packages/i18n/src/index.ts";
 import {
   initializePlatform,
+  type NavEntry,
   configurePageBack,
   pageBackNavigation,
+  createNavigation,
   installSwipeBack,
   setPageBackActive,
   deferPageBackRender,
@@ -47,6 +49,28 @@ let sheet: HTMLDialogElement | undefined;
 let activeAppDispose: (() => void) | undefined;
 let pendingAppMount: AbortController | undefined;
 let appHostGeneration = 0;
+const home: NavEntry = { key: "launcher" };
+const navigation = createNavigation(home);
+const sheetEntry: NavEntry = {
+  key: "sheet",
+  stale: () => !sheet?.open,
+  leave: () => {
+    sheet?.close();
+  },
+};
+const routeOf = () =>
+  [...navigation.keys]
+    .reverse()
+    .find((key): key is "profile" | "review" =>
+      ["profile", "review"].includes(key),
+    ) ?? "launcher";
+const openRoute = (next: "profile" | "review") => {
+  navigation.push({ key: next, swipe: true });
+};
+function dismissApp() {
+  closeActiveApp();
+  navigation.drop("app");
+}
 function closeActiveApp() {
   appHostGeneration++;
   pendingAppMount?.abort();
@@ -61,25 +85,10 @@ const screen = document.createElement("main");
 screen.className = "screen";
 root.append(screen);
 const text = (key: MessageKey) => t(locale, key);
-const back = () => {
-  if (payment.paymentBusy) return;
-  if (sheet?.open) {
-    sheet.close();
-    return;
-  }
-
-  if (activeAppDispose || pendingAppMount) {
-    closeActiveApp();
-    route = route === "review" ? "review" : "launcher";
-    render();
-    return;
-  }
-  pageBackNavigation(screen).back();
-};
 const platform = initializePlatform({
   doneLabel: () => text("shell.done"),
   dismissLabel: () => text("shell.dismissKeyboard"),
-  onBack: back,
+  navigation,
   themeColor: DEFAULT_THEME_BACKGROUND,
   ...(typeof (import.meta.env.VITE_API_ORIGIN as unknown) === "string"
     ? { apiOrigin: import.meta.env.VITE_API_ORIGIN as string }
@@ -95,7 +104,13 @@ window.RadaAppHost = Object.freeze({
     const generation = appHostGeneration;
     const controller = new AbortController();
     pendingAppMount = controller;
-    platform.setBackVisible(true);
+    navigation.push({
+      key: "app",
+      leave: () => {
+        closeActiveApp();
+        render();
+      },
+    });
     const dispose = await mountAppHost({
       signal: controller.signal,
       release,
@@ -125,11 +140,13 @@ window.RadaAppHost = Object.freeze({
       readWalletBalances: (appId, signal) =>
         platform.readAppWalletBalances(appId, signal),
       ...payment.paymentHostAdapter(platform, locale, payment.setPaymentBusy),
-      onNavigateBack: back,
+      onNavigateBack: () => {
+        navigation.back();
+      },
     }).catch((error: unknown) => {
       if (pendingAppMount === controller) {
         pendingAppMount = undefined;
-        platform.setBackVisible(route !== "launcher");
+        navigation.drop("app");
       }
       throw error;
     });
@@ -139,11 +156,9 @@ window.RadaAppHost = Object.freeze({
     }
     activeAppDispose = dispose;
     pendingAppMount = undefined;
-    platform.setBackVisible(true);
     return () => {
       if (activeAppDispose !== dispose) return;
-      closeActiveApp();
-      platform.setBackVisible(route !== "launcher");
+      dismissApp();
     };
   },
 });
@@ -153,8 +168,10 @@ const swipe = installSwipeBack(screen, {
     !payment.paymentBusy &&
     !sheet?.open &&
     document.documentElement.dataset.appViewportReduced !== "true" &&
-    pageBackNavigation(screen).canSwipe(),
-  back,
+    navigation.top.swipe === true,
+  back: () => {
+    navigation.back();
+  },
   preview: () => pageBackNavigation(screen).preview(),
   onActiveChange: (active) => {
     setPageBackActive(screen, active);
@@ -176,12 +193,14 @@ function openSettings() {
       openSettings();
     },
     (dialog) => {
-      if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(Boolean(sheet?.open) || route !== "launcher");
+      if (sheet === dialog) {
+        sheet = undefined;
+        navigation.drop("sheet");
+      }
       if (!sheet?.open) opener?.focus();
     },
   );
-  platform.setBackVisible(true);
+  navigation.push(sheetEntry);
 }
 function showAppPermissions() {
   return openAppPermissions({
@@ -189,10 +208,13 @@ function showAppPermissions() {
     platform,
     onOpen: (dialog) => {
       sheet = dialog;
+      navigation.push(sheetEntry);
     },
     onClose: (dialog) => {
-      if (sheet === dialog) sheet = undefined;
-      platform.setBackVisible(route !== "launcher");
+      if (sheet === dialog) {
+        sheet = undefined;
+        navigation.drop("sheet");
+      }
     },
   });
 }
@@ -252,12 +274,11 @@ function render() {
   document.title = text("shell.brand");
   configurePageBack(screen, {
     key: route,
-    ...(route !== "launcher"
+    ...(route !== "launcher" && navigation.below
       ? {
-          parent: "launcher",
+          parent: navigation.below.key,
           back: () => {
-            route = "launcher";
-            render();
+            navigation.back();
           },
         }
       : {}),
@@ -297,8 +318,7 @@ function render() {
       content.append(
         Button(text("review.title"), {
           onClick: () => {
-            route = "review";
-            render();
+            openRoute("review");
           },
         }),
       );
@@ -345,14 +365,12 @@ function render() {
   footer.append(
     Button(text("shell.apps"), {
       onClick: () => {
-        route = "launcher";
-        render();
+        navigation.push(home);
       },
     }),
     Button(text("shell.profile"), {
       onClick: () => {
-        route = "profile";
-        render();
+        openRoute("profile");
         if (platform.authenticatedLaunch) void loadProfile();
       },
     }),
@@ -376,10 +394,16 @@ function render() {
       read: (signal) => platform.readReviewQueue(signal),
       decide: (appId, versionId, decision, reason, signal) =>
         platform.reviewAppVersion(appId, versionId, decision, reason, signal),
-      closePreview: closeActiveApp,
+      closePreview: dismissApp,
     });
-  platform.setBackVisible(route !== "launcher");
 }
+navigation.setGuard(() => payment.paymentBusy);
+navigation.subscribe(() => {
+  const next = routeOf();
+  if (next === route) return;
+  route = next;
+  render();
+});
 render();
 window.addEventListener(
   "pagehide",
@@ -388,9 +412,10 @@ window.addEventListener(
     profileGeneration++;
     profileDispose?.();
     reviewDispose?.();
-    closeActiveApp();
+    dismissApp();
     swipe.dispose();
     platform.dispose();
+    navigation.dispose();
   },
   { once: true },
 );

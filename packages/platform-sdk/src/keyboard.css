@@ -14,7 +14,7 @@
   pointer-events: none;
 }
 :root[data-app-viewport-reduced="true"] .screen-wrap {
-  height: min(100%, var(--app-visible-height));
+  height: min(100dvh, var(--app-visible-height));
 }
 :root[data-app-viewport-reduced="true"] .screen-wrap > .screen {
   min-height: 0;

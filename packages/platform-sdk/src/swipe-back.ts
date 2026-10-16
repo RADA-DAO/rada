@@ -308,6 +308,9 @@ export function installSwipeBack(
   function interrupt() {
     if (active()) reset();
   }
+  // Vertical pan stays native; horizontal motion is ours, so the engine never cancels it.
+  const previousTouchAction = screen.style.touchAction;
+  screen.style.touchAction = "pan-y";
   screen.addEventListener("pointerdown", down);
   screen.addEventListener("pointermove", move, { passive: false });
   screen.addEventListener("lostpointercapture", lostCapture);
@@ -324,6 +327,7 @@ export function installSwipeBack(
     dispose() {
       disposed = true;
       reset();
+      screen.style.touchAction = previousTouchAction;
       screen.removeEventListener("pointerdown", down);
       screen.removeEventListener("pointermove", move);
       screen.removeEventListener("lostpointercapture", lostCapture);
