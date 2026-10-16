@@ -7,13 +7,16 @@ import {
   setButtonLoading,
   Text,
 } from "../../../packages/ui/src/index.ts";
-import { t, type Locale } from "../../../packages/i18n/src/index.ts";
+import {
+  displayAmount,
+  t,
+  type Locale,
+} from "../../../packages/i18n/src/index.ts";
 import type {
   LinkedWallet,
   WalletBalances,
   WalletProof,
 } from "../../../packages/platform-sdk/src/index.ts";
-import { displayAmount } from "./amount.ts";
 
 type WalletPlatform = {
   readOwnWallets(signal?: AbortSignal): Promise<LinkedWallet[]>;

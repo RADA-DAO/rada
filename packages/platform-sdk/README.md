@@ -17,6 +17,17 @@ predicate. Native, header and swipe Back share that callback. Active editors and
 dialogs retain gesture ownership. A blocked route consumes Back without falling
 through. No navigation action submits or writes data.
 
+## Official app modules
+
+`moduleApi(name)` gives an official module built into the shell (currently
+`splash`) a client limited to plain `/v1/<name>/...` paths. The SDK adds the
+launch credential; the module sees only status, parsed body and `Retry-After`.
+`connectedWallet()` reports the TON Connect address, and `payIntent(appId,
+intent, copy, signal)` opens the platform payment window for an intent the
+module's server already prepared: the person still confirms the exact terms,
+the connected wallet must be the intent's sender, and the result follows the
+same reconciliation rules as payment requests below.
+
 ## Community app host v1
 
 `rada.app.json` follows `rada.app.schema.json`; `parseAppManifest` also validates

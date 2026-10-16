@@ -3,6 +3,13 @@ import { profileAdapter } from "./profile.ts";
 import { walletAdapter } from "./wallet.ts";
 import { paymentAdapter } from "./payment.ts";
 import { publishedAppsAdapter } from "./published-apps.ts";
+import { moduleApiAdapter } from "./module-api.ts";
+export type {
+  ModuleApi,
+  ModuleBody,
+  ModuleResponse,
+  OfficialModule,
+} from "./module-api.ts";
 export type { PublishedApp } from "./published-apps.ts";
 export type { PaymentRequest, PaymentResult, PaymentCopy } from "./payment.ts";
 export type { LinkedWallet, WalletBalances, WalletProof } from "./wallet.ts";
@@ -213,6 +220,7 @@ export function initializePlatform(options: {
     },
     ...profileAdapter(profileUrl, authHeaders),
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
+    ...moduleApiAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...walletAdapter(profileUrl, authHeaders),
     ...paymentAdapter(profileUrl, authHeaders, options.navigation),
     async readAppConsents(): Promise<AppConsent[]> {
