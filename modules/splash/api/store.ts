@@ -117,7 +117,7 @@ export class PostgresSplashStore implements SplashStore {
     } catch (error) {
       // The same processed image (sha256) cannot be submitted twice.
       if ((error as { code?: string }).code === "23505")
-        return { status: "duplicate" };
+        return { status: "duplicate" as const };
       throw error;
     }
   }

@@ -73,7 +73,7 @@ Deno.test(
     assert(created.status === 201);
     const body = await created.json();
     assert(body.state === "in_pond" && body.background_removed === true);
-    assert(submitted.length === 1 && submitted[0] === "101");
+    assert(submitted.join(",") === "101");
     assert((await app.request("/v1/splash/submissions/mine")).status === 401);
     const mine = await app.request("/v1/splash/submissions/mine", {
       headers: { authorization },

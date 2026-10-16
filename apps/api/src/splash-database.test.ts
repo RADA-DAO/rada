@@ -56,7 +56,7 @@ Deno.test(
         store,
       );
       const headers = { authorization: `tma ${await signed()}` };
-      const submit = (bytes: Uint8Array, extra: Record<string, string> = {}) =>
+      const submit = (bytes: ArrayBuffer, extra: Record<string, string> = {}) =>
         app.request("/v1/splash/submissions", {
           method: "POST",
           headers: { "content-type": "image/png", ...headers, ...extra },
