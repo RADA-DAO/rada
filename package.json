@@ -21,7 +21,7 @@
     "db:down": "docker compose --env-file .env -f infra/compose/local.yaml down",
     "db:migrate": "node tools/db-migrate.mjs",
     "test:db": "node tools/db-test.mjs",
-    "check:api": "deno check --config apps/api/deno.json modules/*/index.ts apps/api/src/main.ts apps/api/src/*test.ts && deno test --allow-env --config apps/api/deno.json apps/api/src/auth.test.ts apps/api/src/app.test.ts apps/api/src/membership.test.ts apps/api/src/wallet.test.ts",
+    "check:api": "deno check --config apps/api/deno.json modules/*/index.ts apps/api/src/main.ts apps/api/src/*test.ts && deno test --allow-env --config apps/api/deno.json apps/api/src/auth.test.ts apps/api/src/app.test.ts apps/api/src/membership.test.ts apps/api/src/wallet.test.ts apps/api/src/observability.test.ts",
     "test:api:db": "deno test --allow-env --allow-net --config apps/api/deno.json apps/api/src/database.test.ts apps/api/src/registry.test.ts apps/api/src/wallet-database.test.ts apps/api/src/payments-database.test.ts",
     "dev:miniapp": "vite --config apps/miniapp/vite.config.ts",
     "test:visual": "playwright test --config apps/miniapp/playwright.visual.config.ts",
