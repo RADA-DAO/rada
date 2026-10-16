@@ -1,4 +1,8 @@
 import type { Context, Hono } from "hono";
+import type {
+  ClientErrorStore,
+  TokenBucket,
+} from "../../../modules/ops/index.ts";
 
 // Failure records carry only: time, request id, method, route pattern, error
 // class, optional stable code and duration. Never headers, bodies, URLs,
@@ -16,6 +20,9 @@ export interface FailureRecord {
 export interface OpsOptions {
   token?: string | undefined;
   log?: ((line: string) => void) | undefined;
+  /** Enables POST /v1/client-errors when present. */
+  clientErrors?: ClientErrorStore | undefined;
+  clientErrorLimiter?: TokenBucket | undefined;
 }
 
 const MAX_ROUTES = 256;

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Disposable local containers only; no proxy listeners or ACME requests.
 set -eu
-export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password
+export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password OPS_PASSWORD=synthetic-ops-password
 export TELEGRAM_BOT_TOKEN=synthetic-fixture-bot-token
 export STAGING_AUTH_MODE=synthetic STAGING_SYNTHETIC_ONLY=true STAGING_API_HOSTNAME=api.staging.example.invalid
 unset STAGING_ALLOWED_TELEGRAM_IDS

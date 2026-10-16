@@ -117,6 +117,12 @@ since start are served at `GET /health/errors` with `Authorization: Bearer
 $API_OPS_TOKEN`; without a configured token, or with a wrong one, it returns 404.
 No logs contain raw initData, Telegram IDs, tokens or database errors.
 
+`POST /v1/client-errors` receives sanitized failure reports from the mini app
+(see [ops](../../modules/ops/README.md)). It needs no authentication, accepts at
+most 4 KB, is limited globally to 60 per minute and is enabled by a separate
+`CLIENT_ERRORS_DATABASE_URL` login holding only `ops_service`. Reports are kept
+30 days.
+
 Run `npm run check` for API types, auth and HTTP unit tests. For the PostgreSQL 17
 integration test, apply migrations to an isolated disposable database, set
 `API_TEST_DATABASE_URL` to its administrator connection URL, and run

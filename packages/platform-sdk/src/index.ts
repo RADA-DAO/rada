@@ -16,6 +16,7 @@ import {
 export type { ReviewVersion } from "./review-registry.ts";
 import { installAppKeyboard } from "./keyboard.ts";
 import { installEscapeBack } from "./escape-back.ts";
+import { installClientErrors } from "./client-errors.ts";
 import type { Navigation } from "./navigation.ts";
 import { CONSENT_PERMISSIONS } from "./app-manifest.ts";
 export {
@@ -124,6 +125,10 @@ export function initializePlatform(options: {
   host?.BackButton.onClick(onBack);
   const unsubscribe = options.navigation.subscribe(syncBack);
   const disposeEscape = installEscapeBack(options.navigation);
+  const disposeErrors = installClientErrors({
+    endpoint: `${apiOrigin?.origin ?? "/api"}/v1/client-errors`,
+    route: () => options.navigation.top.key,
+  });
   syncBack();
   for (const event of events) host?.onEvent(event, sync);
   sync();
@@ -281,6 +286,7 @@ export function initializePlatform(options: {
       keyboard.dispose();
       unsubscribe();
       disposeEscape();
+      disposeErrors();
       host?.BackButton.offClick(onBack);
       host?.BackButton.hide();
       for (const event of events) host?.offEvent(event, sync);

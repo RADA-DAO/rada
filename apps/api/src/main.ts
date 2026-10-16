@@ -7,6 +7,7 @@ import {
 } from "../../../modules/identity/index.ts";
 import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
 import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
+import { PostgresClientErrorStore } from "../../../modules/ops/index.ts";
 import {
   PostgresWalletStore,
   PostgresPaymentStore,
@@ -81,6 +82,7 @@ if (import.meta.main) {
     policy.mode === "production" && chatId
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
+  const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -96,7 +98,14 @@ if (import.meta.main) {
           new pg.Pool({ connectionString: walletUrl }),
         )
       : undefined,
-    { token: Deno.env.get("API_OPS_TOKEN")?.trim() || undefined },
+    {
+      token: Deno.env.get("API_OPS_TOKEN")?.trim() || undefined,
+      clientErrors: clientErrorsUrl
+        ? new PostgresClientErrorStore(
+            new pg.Pool({ connectionString: clientErrorsUrl }),
+          )
+        : undefined,
+    },
   );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },
