@@ -6,7 +6,6 @@
   "required": [
     "name",
     "author",
-    "trustLevel",
     "designRoute",
     "permissions",
     "minPlatformVersion"
@@ -14,7 +13,10 @@
   "properties": {
     "name": { "type": "string", "minLength": 1, "maxLength": 64 },
     "author": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "trustLevel": { "enum": ["community", "official"] },
+    "trustLevel": {
+      "const": "community",
+      "description": "Retired. Official status is a registry decision and cannot be declared."
+    },
     "designRoute": { "enum": ["standard", "free-style"] },
     "permissions": {
       "type": "array",

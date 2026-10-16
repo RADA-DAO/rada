@@ -75,11 +75,6 @@ export function mountReview(
     });
     const declarations = Text(
       t(options.locale, "review.declarations", {
-        trust: text(
-          version.manifest.trustLevel === "official"
-            ? "review.officialRequested"
-            : "review.communityRequested",
-        ),
         design: text(
           version.manifest.designRoute === "standard"
             ? "review.standard"

@@ -60,7 +60,15 @@ within one hour.
 - `POST /apps/:appId/versions/:versionId/publish`: `{}`.
 - `POST /apps/:appId/rollback`: `{ "versionId": "approved earlier version UUID" }`.
 - `POST /apps/:appId/withdraw`: `{ "reason": "..." }`.
+- `POST /apps/:appId/tier`: `{ "tier": "official" | "community", "reason": "..." }`, steward only.
+- `GET /apps/:appId/tier-history`: steward-only list of who changed the tier, when and why.
 - `GET /apps/published`: approved live releases for a future launcher.
+
+Official status is a registry decision, not a manifest field: every app is
+`community` until a holder of the separate `apps.steward` grant records
+`official` with a reason; the change and its actor are kept in an append-only
+history, and a manifest declaring `official` is rejected. Published rows carry
+the registry `tier`. The steward grant is not implied by `apps.reviewer`.
 
 Review and publication require the `apps.reviewer` grant in
 `identity.role_grants`. The registry login cannot issue role grants. A review

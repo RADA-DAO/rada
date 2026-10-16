@@ -15,6 +15,9 @@ await test("manifest rejects unknown, coercible and future declarations", () => 
   assert.deepEqual(parseAppManifest(valid).permissions, valid.permissions);
   for (const change of [
     { trustLevel: ["official"] },
+    // An author cannot declare official status; it is a registry decision.
+    { trustLevel: "official" },
+    { trustLevel: "platform" },
     { designRoute: ["free-style"] },
     { permissions: ["wallet.address.read", "wallet.address.read"] },
     { permissions: ["admin"] },
@@ -23,6 +26,12 @@ await test("manifest rejects unknown, coercible and future declarations", () => 
     { extra: true },
   ])
     assert.throws(() => parseAppManifest({ ...valid, ...change }));
+});
+await test("a community declaration is accepted but dropped, and none is required", () => {
+  assert.equal("trustLevel" in parseAppManifest(valid), false);
+  const without: Record<string, unknown> = { ...valid };
+  delete without.trustLevel;
+  assert.deepEqual(parseAppManifest(without), without);
 });
 await test("manifest icon is an optional relative image path inside the artifact", () => {
   for (const icon of ["icon.png", "img/icon.webp", "a/b/c.svg", "x-1_2.png"])

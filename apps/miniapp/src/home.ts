@@ -120,8 +120,8 @@ export function createHome(options: {
       tiles: apps.map((app) =>
         AppTile({
           name: app.manifest.name,
-          tier: app.manifest.trustLevel,
-          tierLabel: text(`home.tier.${app.manifest.trustLevel}`),
+          tier: app.tier,
+          tierLabel: text(`home.tier.${app.tier}`),
           ...(app.iconUrl && icons.has(app.iconUrl)
             ? { iconUrl: icons.get(app.iconUrl) as string }
             : {}),

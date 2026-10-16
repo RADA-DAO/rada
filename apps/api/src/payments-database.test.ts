@@ -180,7 +180,6 @@ Deno.test(
           manifest: {
             name: "Payment fixture",
             author: "Fixture",
-            trustLevel: "official",
             designRoute: "free-style",
             permissions: ["money.transfer"],
             minPlatformVersion: "1.0.0",
@@ -315,7 +314,6 @@ Deno.test(
           manifest: {
             name: "Payment fixture",
             author: "Fixture",
-            trustLevel: "official",
             designRoute: "free-style",
             permissions: ["money.transfer"],
             minPlatformVersion: "1.0.0",

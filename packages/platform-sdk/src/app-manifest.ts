@@ -31,7 +31,6 @@ export type ConsentPermission = (typeof CONSENT_PERMISSIONS)[number];
 export type AppManifest = {
   name: string;
   author: string;
-  trustLevel: "community" | "official";
   designRoute: "standard" | "free-style";
   permissions: AppPermission[];
   minPlatformVersion: string;
@@ -41,12 +40,13 @@ export type AppManifest = {
 const requiredKeys = [
   "name",
   "author",
-  "trustLevel",
   "designRoute",
   "permissions",
   "minPlatformVersion",
 ];
-const keys = [...requiredKeys, "icon"];
+// `trustLevel` is a retired declaration: official status is a registry decision,
+// so an author may still write "community" but nothing else, and it is dropped.
+const keys = [...requiredKeys, "icon", "trustLevel"];
 export const APP_ICON_MAX_BYTES = 64 * 1024;
 /** Relative, lower-case path of at most three segments; never absolute, hidden or climbing. */
 export const APP_ICON_PATH =
@@ -80,8 +80,7 @@ export function parseAppManifest(value: unknown): AppManifest {
       (typeof input.icon !== "string" || !APP_ICON_PATH.test(input.icon))) ||
     !text(input.name, 64) ||
     !text(input.author, 64) ||
-    typeof input.trustLevel !== "string" ||
-    !["community", "official"].includes(input.trustLevel) ||
+    ("trustLevel" in input && input.trustLevel !== "community") ||
     typeof input.designRoute !== "string" ||
     !["standard", "free-style"].includes(input.designRoute) ||
     !Array.isArray(input.permissions) ||
@@ -108,5 +107,7 @@ export function parseAppManifest(value: unknown): AppManifest {
       (minor > hostMinor || (minor === hostMinor && patch > hostPatch)))
   )
     throw new Error("platform_version_unsupported");
-  return input as AppManifest;
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => key !== "trustLevel"),
+  ) as AppManifest;
 }

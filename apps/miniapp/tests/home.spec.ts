@@ -4,15 +4,15 @@ import { t } from "../../../packages/i18n/src/index.ts";
 
 const artifact = `<main id="artifact">Home fixture app</main>`;
 const sha256 = createHash("sha256").update(artifact).digest("hex");
-const release = (appId: string, name: string, trustLevel: string) => ({
+const release = (appId: string, name: string, tier: string) => ({
   appId,
   registryId: "00000000-0000-4000-8000-000000000001",
   versionId: "00000000-0000-4000-8000-000000000002",
   versionNo: 1,
+  tier,
   manifest: {
     name,
     author: "Fixture author",
-    trustLevel,
     designRoute: "standard",
     permissions: ["identity.self.read"],
     minPlatformVersion: "1.0.0",

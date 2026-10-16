@@ -133,7 +133,6 @@ test("verified opaque app requests consent through host and self-only API", asyn
           manifest: {
             name: "Fixture",
             author: "Fixture",
-            trustLevel: "official",
             designRoute: "free-style",
             permissions: [
               "wallet.address.read",
@@ -219,7 +218,6 @@ test("opaque app cannot fetch, navigate externally or self-grant declared author
           manifest: {
             name: "Fixture",
             author: "Fixture",
-            trustLevel: "official",
             designRoute: "free-style",
             permissions: ["identity.self.read"],
             minPlatformVersion: "1.0.0",
@@ -282,7 +280,6 @@ test("closing an app cancels its unanswered permission dialog", async ({
             manifest: {
               name: "Fixture",
               author: "Fixture",
-              trustLevel: "community",
               designRoute: "standard",
               permissions: ["wallet.address.read"],
               minPlatformVersion: "1.0.0",
@@ -343,7 +340,6 @@ test("timed-out bridge calls release capacity even when identity fetch hangs", a
           manifest: {
             name: "Fixture",
             author: "Fixture",
-            trustLevel: "community",
             designRoute: "standard",
             permissions: ["identity.self.read"],
             minPlatformVersion: "1.0.0",
@@ -412,7 +408,6 @@ test("a replaced artifact fetch cannot remove the current app", async ({
           manifest: {
             name: "Fixture",
             author: "Fixture",
-            trustLevel: "community",
             designRoute: "standard",
             permissions: [],
             minPlatformVersion: "1.0.0",
@@ -441,7 +436,6 @@ test("a replaced artifact fetch cannot remove the current app", async ({
         manifest: {
           name: "Fixture",
           author: "Fixture",
-          trustLevel: "community",
           designRoute: "standard",
           permissions: [],
           minPlatformVersion: "1.0.0",

@@ -9,6 +9,8 @@ import { appSlug, versionUuid } from "./review-registry.ts";
 /** A reviewed, published release the launcher may open. */
 export type PublishedApp = AppRelease & {
   versionId: string;
+  /** Decided by the registry's authorized steward, never by the manifest. */
+  tier: "community" | "official";
   /** Where the approved icon would be fetched from, if the manifest names one. */
   iconUrl?: string;
 };
@@ -22,6 +24,7 @@ const rowKeys = [
   "sha256",
   "artifactUrl",
   "grantedPermissions",
+  "tier",
 ];
 
 function publishedApp(value: unknown): PublishedApp | null {
@@ -40,6 +43,9 @@ function publishedApp(value: unknown): PublishedApp | null {
     !Array.isArray(row.grantedPermissions)
   )
     return null;
+  // A registry that predates tiers sends none; that means community.
+  const tier = row.tier ?? "community";
+  if (tier !== "community" && tier !== "official") return null;
   let url: URL;
   try {
     url = new URL(row.artifactUrl);
@@ -76,6 +82,7 @@ function publishedApp(value: unknown): PublishedApp | null {
   return {
     appId: row.appId,
     versionId: row.versionId,
+    tier,
     ...(iconUrl ? { iconUrl } : {}),
     manifest,
     artifactUrl: url.href,

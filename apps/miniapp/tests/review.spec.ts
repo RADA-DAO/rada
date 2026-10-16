@@ -49,7 +49,6 @@ async function launch(page: Page, token = signed(), enter = true) {
 const manifest = {
   name: "Review fixture",
   author: "Fixture",
-  trustLevel: "official",
   designRoute: "free-style",
   permissions: [
     "identity.self.read",
