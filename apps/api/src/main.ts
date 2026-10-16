@@ -14,7 +14,10 @@ import {
   alertConfig,
   startDigestScheduler,
 } from "../../../modules/ops/index.ts";
-import { PostgresSplashStore } from "../../../modules/splash/index.ts";
+import {
+  PostgresSplashStore,
+  startRoundScheduler,
+} from "../../../modules/splash/index.ts";
 import {
   PostgresWalletStore,
   PostgresPaymentStore,
@@ -90,6 +93,12 @@ if (import.meta.main) {
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
   const splashUrl = Deno.env.get("SPLASH_SERVICE_DATABASE_URL");
+  const splash = splashUrl
+    ? new PostgresSplashStore(
+        auth,
+        new pg.Pool({ connectionString: splashUrl }),
+      )
+    : undefined;
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const failureCounts = new Map<string, number>();
   const app = createApp(
@@ -116,13 +125,10 @@ if (import.meta.main) {
           )
         : undefined,
     },
-    splashUrl
-      ? new PostgresSplashStore(
-          auth,
-          new pg.Pool({ connectionString: splashUrl }),
-        )
-      : undefined,
+    splash,
   );
+  // SPLASH rounds: close due rounds and open the next one, every minute.
+  if (splash) startRoundScheduler(splash);
   const alerts = alertConfig(Deno.env.toObject());
   if (Deno.env.get("ALERTS_ENABLED")?.trim() === "true" && !alerts)
     console.log("alert digest disabled: incomplete or invalid configuration");

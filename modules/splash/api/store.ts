@@ -1,6 +1,14 @@
 import pg from "pg";
 import { resolveTelegramSubject } from "../../identity/index.ts";
 import type { PreparedImage } from "./image.ts";
+import {
+  insertBid,
+  queryCurrentRound,
+  queryOwnBids,
+  queryRoundResults,
+  runAdvanceRounds,
+  type RoundStore,
+} from "./rounds.ts";
 import { PostgresImageStorage, type ImageStorage } from "./storage.ts";
 
 export type PondFrog = {
@@ -19,7 +27,7 @@ export type PondFrog = {
 };
 export type OwnSubmission = {
   submissionId: string;
-  state: "in_pond";
+  state: "in_pond" | "won";
   submittedAt: string;
   width: number;
   height: number;
@@ -30,7 +38,7 @@ export type SubmitResult =
   | { status: "rate_limited"; retryAfterSeconds: number }
   | { status: "duplicate" };
 
-export interface SplashStore {
+export interface SplashStore extends RoundStore {
   submit(telegramId: string, image: PreparedImage): Promise<SubmitResult>;
   pond(): Promise<PondFrog[]>;
   mine(telegramId: string): Promise<OwnSubmission[]>;
@@ -53,7 +61,11 @@ type PondRow = {
 type OwnRow = Omit<
   PondRow,
   `author_${string}` | "submission_id" | "submitted_at"
-> & { submission_id: string; state: "in_pond"; submitted_at: Date };
+> & {
+  submission_id: string;
+  state: OwnSubmission["state"];
+  submitted_at: Date;
+};
 
 /** `auth` resolves Telegram ids to subjects; `service` holds only `splash_service`. */
 export class PostgresSplashStore implements SplashStore {
@@ -159,6 +171,28 @@ export class PostgresSplashStore implements SplashStore {
   }
   async image(submissionId: string) {
     return await this.storage.load(this.service, submissionId);
+  }
+  async currentRound() {
+    return await queryCurrentRound(this.service);
+  }
+  async placeBid(
+    telegramId: string,
+    submissionId: string,
+    amount: string,
+    username: string,
+  ) {
+    return await this.inSubjectTransaction(telegramId, (client) =>
+      insertBid(client, submissionId, amount, username),
+    );
+  }
+  async myBids(telegramId: string) {
+    return await this.inSubjectTransaction(telegramId, queryOwnBids);
+  }
+  async roundResults(roundId: number) {
+    return await queryRoundResults(this.service, roundId);
+  }
+  async advanceRounds() {
+    return await runAdvanceRounds(this.service);
   }
 }
 

@@ -1,11 +1,7 @@
 import type { Hono } from "hono";
 import { MAX_UPLOAD_BYTES, prepareImage, SubmissionRejected } from "./image.ts";
+import { registerRoundRoutes, type Authenticated } from "./rounds-router.ts";
 import type { SplashStore } from "./store.ts";
-
-type Authenticated = (
-  c: { req: { header(name: string): string | undefined } },
-  privileged: boolean,
-) => Promise<string | null>;
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -132,4 +128,5 @@ export function registerSplashRoutes(
     c.header("Content-Type", stored.contentType);
     return c.body(new Uint8Array(stored.bytes), 200);
   });
+  registerRoundRoutes(app, store, authenticated);
 }
