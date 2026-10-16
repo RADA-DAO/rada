@@ -139,6 +139,17 @@ export function registerRoundRoutes(
       })),
     });
   });
+  // Live check for the bid sheet; signed launch so it is not an open lookup.
+  app.get("/v1/splash/names/:name", async (c) => {
+    const id = await authenticated(c, false);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const name = c.req.param("name");
+    const status =
+      name.length < 1 || name.length > 32
+        ? "invalid"
+        : await store.nameStatus(name);
+    return c.json({ name, status });
+  });
   app.get("/v1/splash/rounds/:id/results", async (c) => {
     const raw = c.req.param("id");
     if (!ROUND_ID.test(raw)) return c.json({ error: "not_found" }, 404);

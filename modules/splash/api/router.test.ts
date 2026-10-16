@@ -10,6 +10,7 @@ const idleRounds = {
   placeBid: () => Promise.reject(new Error("unused")),
   myBids: () => Promise.resolve([]),
   roundResults: () => Promise.resolve(null),
+  nameStatus: () => Promise.resolve("available" as const),
   advanceRounds: () => Promise.resolve(0),
 };
 const ID = "11111111-1111-4111-8111-111111111111";

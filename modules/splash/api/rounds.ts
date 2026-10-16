@@ -92,6 +92,8 @@ export type PendingClaim = {
   claimDeadline: string;
 };
 
+export type NameStatus = "available" | "taken" | "invalid";
+
 export interface RoundStore {
   currentRound(): Promise<CurrentRound | null>;
   placeBid(
@@ -102,6 +104,8 @@ export interface RoundStore {
   ): Promise<BidResult>;
   myBids(telegramId: string): Promise<OwnBid[]>;
   roundResults(roundId: number): Promise<RoundResults | null>;
+  /** Whether a proposed permanent name is free under JPEGPE's rule right now. */
+  nameStatus(name: string): Promise<NameStatus>;
   /** The round job: closes due rounds and opens the current one. */
   advanceRounds(): Promise<number>;
 }
@@ -220,6 +224,18 @@ export async function queryRoundResults(
         winner: profile(row, "winner"),
       })),
   };
+}
+
+export async function queryNameStatus(
+  client: Queryable,
+  name: string,
+): Promise<NameStatus> {
+  const result = await client.query<{ status: NameStatus }>(
+    "SELECT splash.name_status($1) AS status",
+    [name],
+  );
+  const status = result.rows[0]?.status;
+  return status === "available" || status === "taken" ? status : "invalid";
 }
 
 export async function runAdvanceRounds(client: Queryable): Promise<number> {
