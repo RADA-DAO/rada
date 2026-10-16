@@ -20,6 +20,13 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Registry login read private roles';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
+SELECT pg_temp.assert_true(apps.valid_manifest(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0"}'::jsonb));
+SELECT pg_temp.assert_true(apps.valid_manifest(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0","icon":"img/icon.webp"}'::jsonb));
+SELECT pg_temp.assert_true(NOT apps.valid_manifest(format(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0","icon":%s}', icon)::jsonb))
+  FROM unnest(ARRAY['"/icon.png"','"../icon.png"','"https://x.example/i.png"','"icon.gif"','"icon.PNG"','"a/b/c/d.png"','7','null']) AS icons(icon);
 SELECT identity.resolve_telegram(909001) AS fixture_subject \gset
 INSERT INTO apps.registry(app_id,author_id) VALUES('fixture.invalid',:'fixture_subject');
 DO $$ BEGIN
@@ -28,4 +35,29 @@ DO $$ BEGIN
       'https://artifacts.example/artifacts/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.html','draft');
   RAISE EXCEPTION 'Malformed manifest reached version storage';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
+SELECT pg_temp.assert_true((SELECT tier = 'community' FROM apps.registry WHERE app_id = 'fixture.invalid'));
+SELECT set_config('rada.subject_id', :'fixture_subject', true);
+DO $$ BEGIN
+  PERFORM apps.set_tier('fixture.invalid', 'official', 'not a steward');
+  RAISE EXCEPTION 'Non-steward changed a tier';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+INSERT INTO identity.role_grants(subject_id, role_name) VALUES (:'fixture_subject', 'apps.steward');
+SELECT pg_temp.assert_true(apps.set_tier('fixture.invalid', 'official', 'fixture grant')->>'tier' = 'official');
+SELECT pg_temp.assert_true((SELECT tier = 'official' FROM apps.registry WHERE app_id = 'fixture.invalid'));
+DO $$ BEGIN
+  PERFORM apps.set_tier('fixture.invalid', 'official', 'again');
+  RAISE EXCEPTION 'Unchanged tier accepted';
+EXCEPTION WHEN object_not_in_prerequisite_state THEN NULL; END $$;
+SELECT pg_temp.assert_true(apps.set_tier('fixture.invalid', 'community', 'fixture revoke')->>'tier' = 'community');
+SELECT pg_temp.assert_true(jsonb_array_length(apps.tier_changes('fixture.invalid')) = 2);
+DO $$ BEGIN
+  UPDATE apps.tier_history SET reason = 'edited';
+  RAISE EXCEPTION 'Tier history was edited';
+EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM <> 'Immutable app audit' THEN RAISE; END IF;
+END $$;
+SELECT pg_temp.assert_true(apps.valid_manifest(
+  '{"name":"A","author":"B","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0"}'::jsonb));
+SELECT pg_temp.assert_true(NOT apps.valid_manifest(
+  '{"name":"A","author":"B","trustLevel":"gold","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0"}'::jsonb));
 ROLLBACK;

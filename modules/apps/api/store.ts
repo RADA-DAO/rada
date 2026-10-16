@@ -39,6 +39,15 @@ export interface RegistryStore {
     appId: string,
     reason: string,
   ): Promise<SubmittedVersion>;
+  /** Authorized steward only: record or revoke official status with a reason. */
+  setTier(
+    id: string,
+    appId: string,
+    tier: "community" | "official",
+    reason: string,
+  ): Promise<{ appId: string; tier: string }>;
+  /** Authorized steward only: who changed the tier, when and why. */
+  tierChanges(id: string, appId: string): Promise<unknown[]>;
   published(): Promise<unknown[]>;
 }
 
@@ -125,6 +134,23 @@ export class PostgresRegistryStore implements RegistryStore {
       "SELECT apps.withdraw_app($1,$2) AS result",
       [appId, reason],
     );
+  }
+  setTier(
+    id: string,
+    appId: string,
+    tier: "community" | "official",
+    reason: string,
+  ) {
+    return this.own<{ appId: string; tier: string }>(
+      id,
+      "SELECT apps.set_tier($1,$2,$3) AS result",
+      [appId, tier, reason],
+    );
+  }
+  tierChanges(id: string, appId: string) {
+    return this.own<unknown[]>(id, "SELECT apps.tier_changes($1) AS result", [
+      appId,
+    ]);
   }
   async published() {
     const result = await this.service.query<{ result: unknown[] }>(

@@ -6,7 +6,6 @@
   "required": [
     "name",
     "author",
-    "trustLevel",
     "designRoute",
     "permissions",
     "minPlatformVersion"
@@ -14,7 +13,10 @@
   "properties": {
     "name": { "type": "string", "minLength": 1, "maxLength": 64 },
     "author": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "trustLevel": { "enum": ["community", "official"] },
+    "trustLevel": {
+      "const": "community",
+      "description": "Retired. Official status is a registry decision and cannot be declared."
+    },
     "designRoute": { "enum": ["standard", "free-style"] },
     "permissions": {
       "type": "array",
@@ -42,6 +44,11 @@
           "rewards.grant"
         ]
       }
+    },
+    "icon": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}(/[a-z0-9][a-z0-9._-]{0,63}){0,2}\\.(png|webp|svg)$",
+      "description": "Relative path inside the artifact's own folder to a square PNG, WebP or SVG of at most 64 KB."
     },
     "minPlatformVersion": {
       "type": "string",

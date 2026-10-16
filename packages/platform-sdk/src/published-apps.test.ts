@@ -11,7 +11,6 @@ const row = {
   manifest: {
     name: "Fixture",
     author: "Fixture author",
-    trustLevel: "community",
     designRoute: "standard",
     permissions: ["identity.self.read", "wallet.sign"],
     minPlatformVersion: "1.0.0",
@@ -27,12 +26,37 @@ await test("published list keeps valid releases and drops malformed rows", () =>
   assert.deepEqual(app, {
     appId: "fixture.app",
     versionId: row.versionId,
+    tier: "community",
     manifest: row.manifest,
     artifactUrl: row.artifactUrl,
     artifactSha256: sha256,
     grantedPermissions: ["identity.self.read"],
   });
+  const [withIcon] = parsePublishedApps({
+    apps: [{ ...row, manifest: { ...row.manifest, icon: "icon.png" } }],
+  });
+  assert.equal(
+    withIcon?.iconUrl,
+    `https://artifacts.example/artifacts/${sha256}/icon.png`,
+  );
+  assert.equal("iconUrl" in app, false);
+  assert.equal(app.tier, "community", "a row without a tier is community");
+  assert.equal(
+    parsePublishedApps({ apps: [{ ...row, tier: "official" }] })[0]?.tier,
+    "official",
+  );
+  const [declared] = parsePublishedApps({
+    apps: [{ ...row, manifest: { ...row.manifest, trustLevel: "community" } }],
+  });
+  assert.equal("trustLevel" in (declared?.manifest ?? {}), false);
   const invalid = [
+    { ...row, tier: "platform" },
+    { ...row, tier: true },
+    { ...row, manifest: { ...row.manifest, trustLevel: "official" } },
+    {
+      ...row,
+      manifest: { ...row.manifest, icon: "https://evil.example/i.png" },
+    },
     { ...row, appId: "Bad id" },
     { ...row, versionId: "1" },
     { ...row, sha256: "b".repeat(64) },

@@ -22,7 +22,11 @@ through. No navigation action submits or writes data.
 `rada.app.json` follows `rada.app.schema.json`; `parseAppManifest` also validates
 it at runtime. Its requested trust level, design route and permissions are
 declarations. A trusted registry release must separately provide the allowed
-permission subset, artifact URL and SHA-256. The current shell has no release
+permission subset, artifact URL and SHA-256.
+The optional `icon` is a relative path to a square PNG, WebP or SVG of at most
+64 KB. It is served from `/artifacts/<sha256>/<icon>` on the artifact origin and
+is part of the manifest the reviewer approves; the launcher falls back to the
+monogram if it is missing, too large or of another type. The current shell has no release
 registry or published apps yet. Its `RadaAppHost.mount` adapter is ready for a
 trusted launcher to supply that release record.
 

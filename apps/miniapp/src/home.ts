@@ -28,6 +28,8 @@ export function createHome(options: {
   locale(): Locale;
   authenticated: boolean;
   read(signal: AbortSignal): Promise<PublishedApp[]>;
+  /** A local URL for an approved icon, or nothing when it cannot be used. */
+  loadIcon(url: string, signal: AbortSignal): Promise<string | undefined>;
   mount(
     app: PublishedApp,
     container: HTMLElement,
@@ -39,6 +41,11 @@ export function createHome(options: {
   let status: Status = options.authenticated ? "loading" : "guest";
   let apps: PublishedApp[] = [];
   let generation = 0;
+  const icons = new Map<string, string>();
+  const dropIcons = () => {
+    for (const url of icons.values()) URL.revokeObjectURL(url);
+    icons.clear();
+  };
   let running: { app: PublishedApp; frame: HTMLElement } | undefined;
   let failed: PublishedApp | undefined;
   const text = (
@@ -46,9 +53,31 @@ export function createHome(options: {
     values?: Record<string, string>,
   ) => t(options.locale(), key, values);
 
+  async function loadIcons(id: number) {
+    const wanted = apps.flatMap((app) => (app.iconUrl ? [app.iconUrl] : []));
+    const loaded = await Promise.all(
+      wanted.map(
+        async (url) =>
+          [url, await options.loadIcon(url, lifecycle.signal)] as const,
+      ),
+    );
+    const found = loaded.flatMap(([url, local]) =>
+      local ? [[url, local] as const] : [],
+    );
+    if (id !== generation || lifecycle.signal.aborted) {
+      for (const [, local] of found) URL.revokeObjectURL(local);
+      return;
+    }
+    if (!found.length) return;
+    for (const [url, local] of found) icons.set(url, local);
+    // Re-rendering would move a running app's frame, so wait for the launcher.
+    if (!running) options.render();
+  }
+
   async function load() {
     if (!options.authenticated) return;
     const id = ++generation;
+    dropIcons();
     status = "loading";
     options.render();
     try {
@@ -64,6 +93,7 @@ export function createHome(options: {
           : "unavailable";
     }
     options.render();
+    if (status === "ready") void loadIcons(id);
   }
 
   function open(app: PublishedApp) {
@@ -90,8 +120,11 @@ export function createHome(options: {
       tiles: apps.map((app) =>
         AppTile({
           name: app.manifest.name,
-          tier: app.manifest.trustLevel,
-          tierLabel: text(`home.tier.${app.manifest.trustLevel}`),
+          tier: app.tier,
+          tierLabel: text(`home.tier.${app.tier}`),
+          ...(app.iconUrl && icons.has(app.iconUrl)
+            ? { iconUrl: icons.get(app.iconUrl) as string }
+            : {}),
           onOpen: () => {
             open(app);
           },
@@ -178,6 +211,7 @@ export function createHome(options: {
     dispose() {
       lifecycle.abort();
       generation++;
+      dropIcons();
     },
   };
 }

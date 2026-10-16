@@ -31,19 +31,38 @@ export type ConsentPermission = (typeof CONSENT_PERMISSIONS)[number];
 export type AppManifest = {
   name: string;
   author: string;
-  trustLevel: "community" | "official";
   designRoute: "standard" | "free-style";
   permissions: AppPermission[];
   minPlatformVersion: string;
+  /** Square PNG, WebP or SVG inside the artifact's own folder; at most APP_ICON_MAX_BYTES. */
+  icon?: string;
 };
-const keys = [
+const requiredKeys = [
   "name",
   "author",
-  "trustLevel",
   "designRoute",
   "permissions",
   "minPlatformVersion",
 ];
+// `trustLevel` is a retired declaration: official status is a registry decision,
+// so an author may still write "community" but nothing else, and it is dropped.
+const keys = [...requiredKeys, "icon", "trustLevel"];
+export const APP_ICON_MAX_BYTES = 64 * 1024;
+/** Relative, lower-case path of at most three segments; never absolute, hidden or climbing. */
+export const APP_ICON_PATH =
+  /^[a-z0-9][a-z0-9._-]{0,63}(?:\/[a-z0-9][a-z0-9._-]{0,63}){0,2}\.(?:png|webp|svg)$/;
+/**
+ * Where an approved release's icon lives: `/artifacts/<sha256>/<icon>` on the
+ * artifact's own origin, so it is scoped to the hash the reviewer approved.
+ */
+export function appIconUrl(
+  manifest: Pick<AppManifest, "icon">,
+  artifactUrl: string,
+  artifactSha256: string,
+): string | undefined {
+  if (!manifest.icon) return undefined;
+  return `${new URL(artifactUrl).origin}/artifacts/${artifactSha256}/${manifest.icon}`;
+}
 const text = (value: unknown, limit: number) =>
   typeof value === "string" &&
   value.trim() === value &&
@@ -55,12 +74,13 @@ export function parseAppManifest(value: unknown): AppManifest {
     throw new Error("invalid_manifest");
   const input = value as Record<string, unknown>;
   if (
-    Object.keys(input).length !== keys.length ||
+    requiredKeys.some((key) => !(key in input)) ||
     Object.keys(input).some((key) => !keys.includes(key)) ||
+    ("icon" in input &&
+      (typeof input.icon !== "string" || !APP_ICON_PATH.test(input.icon))) ||
     !text(input.name, 64) ||
     !text(input.author, 64) ||
-    typeof input.trustLevel !== "string" ||
-    !["community", "official"].includes(input.trustLevel) ||
+    ("trustLevel" in input && input.trustLevel !== "community") ||
     typeof input.designRoute !== "string" ||
     !["standard", "free-style"].includes(input.designRoute) ||
     !Array.isArray(input.permissions) ||
@@ -87,5 +107,7 @@ export function parseAppManifest(value: unknown): AppManifest {
       (minor > hostMinor || (minor === hostMinor && patch > hostPatch)))
   )
     throw new Error("platform_version_unsupported");
-  return input as AppManifest;
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => key !== "trustLevel"),
+  ) as AppManifest;
 }

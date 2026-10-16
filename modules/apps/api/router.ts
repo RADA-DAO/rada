@@ -182,6 +182,38 @@ export function registerRegistryRoutes(
       return respond(c, error);
     }
   });
+  // Official status: the steward role only, and never reachable from a manifest.
+  app.post("/apps/:appId/tier", async (c) => {
+    const id = await authenticated(c, true);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const appId = c.req.param("appId");
+    if (!slug.test(appId)) return c.json({ error: "invalid_request" }, 400);
+    try {
+      const body = await jsonBody(c);
+      if (
+        !object(body, ["tier", "reason"]) ||
+        (body.tier !== "official" && body.tier !== "community") ||
+        typeof body.reason !== "string" ||
+        !body.reason.trim() ||
+        body.reason.length > 500
+      )
+        throw new Error("invalid_request");
+      return c.json(await store.setTier(id, appId, body.tier, body.reason));
+    } catch (error) {
+      return respond(c, error);
+    }
+  });
+  app.get("/apps/:appId/tier-history", async (c) => {
+    const id = await authenticated(c, true);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const appId = c.req.param("appId");
+    if (!slug.test(appId)) return c.json({ error: "invalid_request" }, 400);
+    try {
+      return c.json({ changes: await store.tierChanges(id, appId) });
+    } catch (error) {
+      return respond(c, error);
+    }
+  });
   app.post("/apps/:appId/withdraw", async (c) => {
     const id = await authenticated(c, true);
     if (!id) return c.json({ error: "unauthorized" }, 401);

@@ -67,10 +67,10 @@ Deno.test(
       const manifest = {
         name: "Fixture App",
         author: "Fixture",
-        trustLevel: "official",
         designRoute: "free-style",
         permissions: ["theme.read", "money.transfer"],
         minPlatformVersion: "1.0.0",
+        icon: "img/icon.png",
       };
       const digest = "a".repeat(64);
       const create = (id: number) =>
@@ -85,6 +85,20 @@ Deno.test(
         `submit: ${initial.status} ${initialText}`,
       );
       const initialVersion = JSON.parse(initialText);
+      for (const icon of [
+        "/icon.png",
+        "../icon.png",
+        "https://x.example/i.png",
+      ])
+        assert(
+          (
+            await request(101, "POST", "/apps/fixture.app/versions", {
+              manifest: { ...manifest, icon },
+              sha256: digest,
+            })
+          ).status === 400,
+          `icon ${icon} must be rejected`,
+        );
       const firstResponse = await create(101);
       assert(firstResponse.status === 201);
       const first = await firstResponse.json();
@@ -187,9 +201,113 @@ Deno.test(
           `https://artifacts.example/artifacts/${digest}.html`,
       );
       assert(
+        listing[0].manifest.icon === "img/icon.png",
+        "approved icon path is part of the published manifest",
+      );
+      assert(
         JSON.stringify(listing[0].grantedPermissions) ===
           '["theme.read","money.transfer"]',
       );
+      // Official status is a registry decision recorded only by the steward.
+      assert(
+        listing[0].tier === "community" &&
+          !("trustLevel" in listing[0].manifest),
+        "every app starts as community",
+      );
+      assert(
+        (
+          await request(101, "POST", "/apps/fixture.app/versions", {
+            manifest: { ...manifest, trustLevel: "official" },
+            sha256: digest,
+          })
+        ).status === 400,
+        "an author cannot self-declare official",
+      );
+      const setTier = (
+        id: number,
+        tier: string,
+        reason = "stewardship",
+        age = 0,
+      ) => request(id, "POST", "/apps/fixture.app/tier", { tier, reason }, age);
+      assert((await setTier(101, "official")).status === 403, "author");
+      assert((await setTier(102, "official")).status === 403, "reviewer");
+      assert(
+        (await request(102, "GET", "/apps/fixture.app/tier-history")).status ===
+          403,
+      );
+      const stewardRow = (
+        await admin.query<{ subject_id: string }>(
+          "SELECT identity.resolve_telegram(103) AS subject_id",
+        )
+      ).rows[0];
+      assert(stewardRow);
+      await admin.query(
+        "INSERT INTO identity.role_grants(subject_id,role_name) VALUES($1,'apps.steward')",
+        [stewardRow.subject_id],
+      );
+      assert(
+        (await setTier(103, "official", "stewardship", 3700)).status === 401,
+      );
+      assert((await setTier(103, "gold")).status === 400);
+      assert((await setTier(103, "official", " ")).status === 400);
+      assert(
+        (
+          await request(103, "POST", "/apps/missing.app/tier", {
+            tier: "official",
+            reason: "x",
+          })
+        ).status === 404,
+      );
+      assert((await setTier(103, "community")).status === 409, "no change");
+      const granted = await setTier(103, "official", "signed by RADA");
+      assert(
+        granted.status === 200 && (await granted.json()).tier === "official",
+      );
+      assert((await setTier(103, "official")).status === 409);
+      const official = (await (await app.request("/apps/published")).json())
+        .apps;
+      assert(official[0].tier === "official");
+      assert(
+        !JSON.stringify(official).includes(stewardRow.subject_id),
+        "the public list never exposes the steward",
+      );
+      assert((await setTier(103, "community", "revoked")).status === 200);
+      assert(
+        (await (await app.request("/apps/published")).json()).apps[0].tier ===
+          "community",
+      );
+      const history = await request(
+        103,
+        "GET",
+        "/apps/fixture.app/tier-history",
+      );
+      const changes = (await history.json()).changes;
+      assert(
+        changes.length === 2 &&
+          changes[0].toTier === "official" &&
+          changes[0].actorId === stewardRow.subject_id &&
+          changes[0].reason === "signed by RADA" &&
+          typeof changes[0].recordedAt === "string" &&
+          changes[1].toTier === "community",
+        "history records who, when and why",
+      );
+      let tierBlocked = false;
+      try {
+        await admin.query("UPDATE apps.tier_history SET reason='x'");
+      } catch {
+        tierBlocked = true;
+      }
+      assert(tierBlocked, "tier history must remain append-only");
+      tierBlocked = false;
+      try {
+        await registry.query(
+          "INSERT INTO identity.role_grants(subject_id,role_name) VALUES($1,'apps.steward')",
+          [reviewer],
+        );
+      } catch {
+        tierBlocked = true;
+      }
+      assert(tierBlocked, "registry role must not mint stewards");
       const nextResponse = await create(101);
       const next = await nextResponse.json();
       assert(
@@ -329,10 +447,13 @@ Deno.test(
       await identity?.end();
       await auth?.end();
       await admin.query(
-        "TRUNCATE apps.audit_events, apps.versions, apps.registry RESTART IDENTITY CASCADE",
+        "TRUNCATE apps.tier_history, apps.audit_events, apps.versions, apps.registry RESTART IDENTITY CASCADE",
       );
       await admin.query(
         "DELETE FROM identity.role_grants WHERE role_name='apps.reviewer' AND subject_id IN (SELECT subject_id FROM identity.telegram_accounts WHERE telegram_user_id=102)",
+      );
+      await admin.query(
+        "DELETE FROM identity.role_grants WHERE role_name='apps.steward' AND subject_id IN (SELECT subject_id FROM identity.telegram_accounts WHERE telegram_user_id=103)",
       );
       await admin.query(
         "DROP ROLE IF EXISTS apps_fixture_registry; DROP ROLE IF EXISTS apps_fixture_identity; DROP ROLE IF EXISTS apps_fixture_auth",

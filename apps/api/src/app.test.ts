@@ -448,6 +448,12 @@ Deno.test(
       withdraw: () => {
         return Promise.reject(Error("unexpected"));
       },
+      setTier: () => {
+        return Promise.reject(Error("unexpected"));
+      },
+      tierChanges: () => {
+        return Promise.reject(Error("unexpected"));
+      },
     };
     const app = createApp(
       FIXTURE_TOKEN,

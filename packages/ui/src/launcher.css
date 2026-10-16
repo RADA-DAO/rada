@@ -74,6 +74,7 @@
   place-items: center;
   border: var(--rada-rule);
   border-radius: var(--rada-radius-tile);
+  overflow: hidden;
   background: var(--surface-raised);
   box-shadow: var(--rada-shadow-tile);
   font-family: var(--rada-font-heading);
@@ -82,6 +83,12 @@
   line-height: var(--rada-line-height-heading);
   transition: border-color var(--rada-duration-control)
     var(--rada-ease-standard);
+}
+.rada-app-tile-icon {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
 }
 .rada-app-tile-name,
 .rada-app-tile-tier {

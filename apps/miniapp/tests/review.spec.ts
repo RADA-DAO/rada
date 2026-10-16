@@ -49,7 +49,6 @@ async function launch(page: Page, token = signed(), enter = true) {
 const manifest = {
   name: "Review fixture",
   author: "Fixture",
-  trustLevel: "official",
   designRoute: "free-style",
   permissions: [
     "identity.self.read",
@@ -133,9 +132,7 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
     await launch(page);
     const row = page.getByRole("listitem").filter({ hasText: appId });
     await expect(row).toBeVisible();
-    await expect(
-      row.getByText("Official (requested)", { exact: false }),
-    ).toBeVisible();
+    await expect(row.getByText("Design: Free style")).toBeVisible();
     await row.getByRole("button", { name: "Preview app" }).click();
     const frame = page.frameLocator(`iframe[title="${manifest.name}"]`);
     for (const field of ["identity", "consent", "money", "signature"])

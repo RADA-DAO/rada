@@ -43,6 +43,10 @@ const AVATAR_IMAGE = `data:image/svg+xml,${encodeURIComponent(
   "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='#7a5cff'/><circle cx='20' cy='20' r='9' fill='#ffd166'/></svg>",
 )}`;
 
+const APP_ICON_IMAGE = `data:image/svg+xml,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='#2b8a6e'/><path d='M14 44 32 14l18 30z' fill='#f4f1de'/></svg>",
+)}`;
+
 const text = (key: string) => t("en", `catalog.${key}` as MessageKey);
 
 const params = new URLSearchParams(location.search);
@@ -191,6 +195,13 @@ function launcher(): Node {
       name: text("appGame"),
       tier: "community",
       tierLabel: tier("community"),
+      onOpen: noop,
+    }),
+    AppTile({
+      name: text("appIcon"),
+      tier: "community",
+      tierLabel: tier("community"),
+      iconUrl: APP_ICON_IMAGE,
       onOpen: noop,
     }),
     AppTile({

@@ -19,7 +19,8 @@ tokens, controls show focus rings, and motion honors reduced-motion preferences.
 - `EmptyState`, `ErrorState` (with retry) and `Loading`.
 - `AppTile`, `AppGrid` and `Identity`: the home screen launcher. A tile is one
   button named by the app, with its tier mark (official or community; platform
-  apps carry none) as its accessible description. `Screen({ top })` places the
+  apps carry none) as its accessible description. A tile shows `iconUrl` when
+  given and falls back to the app's monogram if it is absent or fails to load. `Screen({ top })` places the
   identity above the title, and `Embed({ fill: true })` gives a running app the
   rest of the screen.
 

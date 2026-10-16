@@ -4,15 +4,15 @@ import { t } from "../../../packages/i18n/src/index.ts";
 
 const artifact = `<main id="artifact">Home fixture app</main>`;
 const sha256 = createHash("sha256").update(artifact).digest("hex");
-const release = (appId: string, name: string, trustLevel: string) => ({
+const release = (appId: string, name: string, tier: string) => ({
   appId,
   registryId: "00000000-0000-4000-8000-000000000001",
   versionId: "00000000-0000-4000-8000-000000000002",
   versionNo: 1,
+  tier,
   manifest: {
     name,
     author: "Fixture author",
-    trustLevel,
     designRoute: "standard",
     permissions: ["identity.self.read"],
     minPlatformVersion: "1.0.0",
@@ -66,10 +66,21 @@ const tile = (page: Page, name: string) =>
     .getByRole("list", { name: t("en", "home.gridLabel") })
     .getByRole("button", { name, exact: true });
 
+const ownProfile = (profile: unknown) => ({
+  subject_id: "00000000-0000-4000-8000-000000000101",
+  profile,
+  membership: { status: "unavailable" },
+});
+
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => {
     throw error;
   });
+  await page.route("**/me", (route) =>
+    route.fulfill({
+      json: ownProfile({ visibility: "private", public: null }),
+    }),
+  );
   await page.route("https://artifacts.example/**", (route) =>
     route.fulfill({
       contentType: "text/html",
@@ -226,4 +237,87 @@ test("tier marks follow the viewer's language", async ({ page }) => {
       .getByRole("list", { name: t("uk", "home.gridLabel") })
       .getByRole("button", { name: "Governance fixture", exact: true }),
   ).toHaveAccessibleDescription(t("uk", "home.tier.official"));
+});
+
+test("home shows the viewer's name and frog right after login", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  await page.route("**/me", (route) => {
+    reads++;
+    return route.fulfill({
+      json: ownProfile({
+        visibility: "public",
+        public: {
+          frog_id: "00000000-0000-4000-8000-000000000001",
+          username: "Fixture_frog",
+          background_color: "#123456",
+          accent_color: null,
+        },
+      }),
+    });
+  });
+  await launch(page);
+  await expect(page.getByText("Fixture_frog", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(t("en", "shell.public"), { exact: true }),
+  ).toBeVisible();
+  expect(reads).toBe(1);
+});
+
+test("home keeps a generic identity when the profile cannot be read", async ({
+  page,
+}) => {
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  await page.route("**/me", (route) =>
+    route.fulfill({ status: 503, json: { error: "unavailable" } }),
+  );
+  await launch(page);
+  await expect(
+    page.getByText(t("en", "home.identityMember"), { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("listitem")).toHaveCount(2);
+});
+
+test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({
+  page,
+}) => {
+  const withIcon = (appId: string, name: string, icon: string) => {
+    const base = release(appId, name, "community");
+    return { ...base, manifest: { ...base.manifest, icon } };
+  };
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({
+      json: {
+        apps: [
+          withIcon("fixture.pictured", "Pictured fixture", "icon.svg"),
+          withIcon("fixture.broken", "Broken fixture", "missing.png"),
+        ],
+      },
+    }),
+  );
+  await page.route(
+    `https://artifacts.example/artifacts/${sha256}/*`,
+    (route) =>
+      route.request().url().endsWith("/icon.svg")
+        ? route.fulfill({
+            contentType: "image/svg+xml",
+            headers: { "access-control-allow-origin": "*" },
+            body: "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='#2b8a6e'/></svg>",
+          })
+        : route.fulfill({
+            status: 404,
+            headers: { "access-control-allow-origin": "*" },
+            body: "",
+          }),
+  );
+  await launch(page);
+  await expect(tile(page, "Pictured fixture").locator("img")).toBeVisible();
+  await expect(tile(page, "Broken fixture").locator("img")).toHaveCount(0);
+  await expect(tile(page, "Broken fixture")).toContainText("B");
 });

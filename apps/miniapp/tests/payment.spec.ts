@@ -176,7 +176,6 @@ async function fixture(page: Page) {
         manifest: {
           name: "Fixture",
           author: "Fixture",
-          trustLevel: "official",
           designRoute: "free-style",
           permissions: ["money.transfer", "navigation"],
           minPlatformVersion: "1.0.0",
