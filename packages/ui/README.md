@@ -54,3 +54,26 @@ foundation/CSS contract, canonical anchors, token references and reduced motion.
 Run `node packages/ui/scripts/test-theme-compiler.ts` for guest first-paint parity,
 exact authored colors and AA contrast across sampled themes, and
 `node packages/ui/scripts/test-components.ts` for component behavior (a DOM double, no browser) and `node packages/ui/scripts/test-guest-palette.ts` for the `:root` first-paint palette; all run from `npm run test:unit`.
+
+## Component catalog and visual tests
+
+`src/catalog.ts` renders every component in every variant and state (buttons with
+loading and disabled, fields with an error, selected tab, loading, empty and error
+states, avatars with a picture and with initials, list, card, section, frog cards
+with and without artwork, and an open sheet) from fixed data and i18n keys. Open it
+at `/catalog.html?theme=guest|light|dark` (add `&sheet=open` for the sheet) from
+`npm run dev:miniapp`. The page is a separate Vite entry that only exists when
+`CATALOG=true`; the production build never contains it (`tools/catalog.test.mjs`
+checks this).
+
+`npm run test:visual` screenshots the catalog in the guest, a light and a dark
+profile theme at 390px and 1280px in Chromium and WebKit, with reduced motion.
+Baselines live in `apps/miniapp/visual/__screenshots__` and must be rendered in
+the Linux Playwright image CI uses, never on macOS. Any pixel difference fails CI.
+
+When a design change is intended, run `npm run test:visual:update` (needs Docker;
+it uses the pinned `mcr.microsoft.com/playwright` image from
+`.github/workflows/ci.yaml`), review the changed PNGs and commit them with the
+change. A failed CI run uploads the `visual-diff` artifact with the expected,
+actual and diff images. When changing the image, update it in both the script
+and the workflow.
