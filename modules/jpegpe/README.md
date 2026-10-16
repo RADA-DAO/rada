@@ -23,6 +23,17 @@ Artwork paths are immutable, content-addressed local PNG/WebP references under
 hosting are outside this change; missing or failed artwork has an accessible
 fallback. This self-only metadata does not change the public identity projection.
 
+## Usernames
+
+Frog usernames are one platform-wide namespace: 1 to 32 characters, a letter
+first, then letters, digits or `_`, unique ignoring case, and immutable.
+`jpegpe.username_reservations` holds names promised to frogs that do not exist
+yet (a SPLASH auction win before its claim); reservations are permanent.
+`jpegpe.username_status(name)` returns `invalid`, `taken` or `available`, and
+`jpegpe.reserve_username(name, frog_id)` reserves an available name for one future
+frog id; both are granted to `splash_owner` only. `jpegpe.create_frog` refuses a
+reserved name unless the frog id matches the reservation.
+
 ## Color Drop protocol
 
 `color-protocol/` preserves JPEGPE Color Drop v1. It derives a uniformly

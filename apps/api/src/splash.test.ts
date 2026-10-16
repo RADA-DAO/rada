@@ -13,6 +13,13 @@ const identity = {
   consents: () => Promise.resolve([]),
   setConsent: () => Promise.resolve(true),
 };
+const idleRounds = {
+  currentRound: () => Promise.resolve(null),
+  placeBid: () => Promise.reject(new Error("unused")),
+  myBids: () => Promise.resolve([]),
+  roundResults: () => Promise.resolve(null),
+  advanceRounds: () => Promise.resolve(0),
+};
 const own: OwnSubmission = {
   submissionId: "11111111-1111-4111-8111-111111111111",
   state: "in_pond",
@@ -25,6 +32,7 @@ const own: OwnSubmission = {
 function build(access: boolean = false) {
   const submitted: string[] = [];
   const store: SplashStore = {
+    ...idleRounds,
     submit: (id) => {
       submitted.push(id);
       return Promise.resolve({

@@ -5,6 +5,13 @@ import { encodePng } from "./png.ts";
 import { registerSplashRoutes } from "./router.ts";
 import type { SplashStore, SubmitResult } from "./store.ts";
 
+const idleRounds = {
+  currentRound: () => Promise.resolve(null),
+  placeBid: () => Promise.reject(new Error("unused")),
+  myBids: () => Promise.resolve([]),
+  roundResults: () => Promise.resolve(null),
+  advanceRounds: () => Promise.resolve(0),
+};
 const ID = "11111111-1111-4111-8111-111111111111";
 function png(width = 100, height = 100) {
   const rgba = new Uint8Array(width * height * 4);
@@ -26,6 +33,7 @@ function build(
 ) {
   const calls: { id: string; sha256: string }[] = [];
   const store: SplashStore = {
+    ...idleRounds,
     submit: (id, image) => {
       calls.push({ id, sha256: image.sha256 });
       return Promise.resolve(result);

@@ -2,6 +2,7 @@
 \getenv service_password SERVICE_PASSWORD
 \getenv wallet_password WALLET_PASSWORD
 \getenv ops_password OPS_PASSWORD
+\getenv splash_password SPLASH_PASSWORD
 BEGIN;
 REVOKE ALL ON DATABASE rada_staging FROM PUBLIC;
 SELECT 'CREATE ROLE staging_auth LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_auth') \gexec
@@ -10,11 +11,14 @@ SELECT 'CREATE ROLE staging_wallet LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOR
 SELECT 'CREATE ROLE staging_ops LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_ops') \gexec
 ALTER ROLE staging_ops PASSWORD :'ops_password';
 GRANT ops_service TO staging_ops;
+SELECT 'CREATE ROLE staging_splash LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_splash') \gexec
+ALTER ROLE staging_splash PASSWORD :'splash_password';
+GRANT splash_service TO staging_splash;
 ALTER ROLE staging_wallet PASSWORD :'wallet_password';
 GRANT wallet_service TO staging_wallet;
 ALTER ROLE staging_auth PASSWORD :'auth_password';
 ALTER ROLE staging_service PASSWORD :'service_password';
-GRANT CONNECT ON DATABASE rada_staging TO staging_auth, staging_service, staging_wallet, staging_ops;
+GRANT CONNECT ON DATABASE rada_staging TO staging_auth, staging_service, staging_wallet, staging_ops, staging_splash;
 GRANT identity_auth TO staging_auth;
 GRANT identity_service TO staging_service;
 COMMIT;
