@@ -24,6 +24,8 @@ and the exact HTTPS shell origin in `WALLET_APP_ORIGIN`. These settings must be
 provided together; the origin hostname is the only accepted proof domain.
 The API rejects loopback proof domains. The shell build uses the same origin in
 `VITE_TON_CONNECT_APP_ORIGIN` to emit `tonconnect-manifest.json`.
+Enable SPLASH submissions with a `splash_service` login in `SPLASH_SERVICE_DATABASE_URL`
+(see [splash](../../modules/splash/README.md)); without it the routes are not registered.
 The listener defaults to `127.0.0.1:8000`; `API_HOST` can override the bind address.
 Set `API_ALLOWED_ORIGINS` to comma-separated exact HTTP(S) origins for browser
 clients. An empty value disables cross-origin reads. Credentials are not enabled.

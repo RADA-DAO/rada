@@ -20,6 +20,10 @@ import {
   type PostgresPaymentStore,
   registerPaymentRoutes,
 } from "../../../modules/wallet/index.ts";
+import {
+  type SplashStore,
+  registerSplashRoutes,
+} from "../../../modules/splash/index.ts";
 import { registerClientErrorRoutes } from "../../../modules/ops/index.ts";
 import {
   createErrorReporter,
@@ -39,6 +43,7 @@ export function createApp(
   wallet?: WalletStore,
   payments?: PostgresPaymentStore,
   ops: OpsOptions = {},
+  splash?: SplashStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -87,6 +92,7 @@ export function createApp(
   );
   if (wallet) registerWalletRoutes(app, wallet, authenticated);
   if (payments) registerPaymentRoutes(app, payments, authenticated);
+  if (splash) registerSplashRoutes(app, splash, authenticated);
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   // Records hold only route pattern, error class and code; see observability.ts.
   app.onError((error, c) => reporter.onError(error, c));

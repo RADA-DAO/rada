@@ -14,6 +14,7 @@ import {
   alertConfig,
   startDigestScheduler,
 } from "../../../modules/ops/index.ts";
+import { PostgresSplashStore } from "../../../modules/splash/index.ts";
 import {
   PostgresWalletStore,
   PostgresPaymentStore,
@@ -88,6 +89,7 @@ if (import.meta.main) {
     policy.mode === "production" && chatId
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
+  const splashUrl = Deno.env.get("SPLASH_SERVICE_DATABASE_URL");
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const failureCounts = new Map<string, number>();
   const app = createApp(
@@ -114,6 +116,12 @@ if (import.meta.main) {
           )
         : undefined,
     },
+    splashUrl
+      ? new PostgresSplashStore(
+          auth,
+          new pg.Pool({ connectionString: splashUrl }),
+        )
+      : undefined,
   );
   const alerts = alertConfig(Deno.env.toObject());
   if (Deno.env.get("ALERTS_ENABLED")?.trim() === "true" && !alerts)
