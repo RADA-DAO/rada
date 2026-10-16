@@ -32,6 +32,7 @@ export default defineConfig(
       "packages/*/scripts/**/*.{mjs,ts}",
       "packages/*/src/**/*.test.ts",
       "apps/miniapp/tests/**/*.ts",
+      "apps/miniapp/visual/**/*.ts",
       "apps/miniapp/*config.ts",
       "modules/**/*.ts",
     ],

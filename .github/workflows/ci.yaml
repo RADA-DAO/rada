@@ -8,7 +8,7 @@ permissions:
 jobs:
   checks:
     if: always()
-    needs: [quality, database, dependency-review, e2e]
+    needs: [quality, database, dependency-review, e2e, visual]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every verification gate
@@ -17,12 +17,14 @@ jobs:
           DATABASE: ${{ needs.database.result }}
           DEPENDENCIES: ${{ needs.dependency-review.result }}
           E2E: ${{ needs.e2e.result }}
+          VISUAL: ${{ needs.visual.result }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -eu
           test "$QUALITY" = success
           test "$DATABASE" = success
           test "$E2E" = success
+          test "$VISUAL" = success
           if [ "$EVENT_NAME" = pull_request ]; then
             test "$DEPENDENCIES" = success
           fi
@@ -147,3 +149,25 @@ jobs:
       - run: npm run e2e
         env:
           E2E_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
+  visual:
+    runs-on: ubuntu-24.04
+    # The same image tools/visual-update.sh uses, so baselines match byte for byte.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: npm ci --ignore-scripts
+      - run: npm run test:visual
+        env:
+          CI: "true"
+          HOME: /root
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: visual-diff
+          path: |
+            test-results
+            apps/miniapp/visual/__screenshots__
+          retention-days: 7

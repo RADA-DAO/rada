@@ -1,6 +1,18 @@
 import { defineConfig } from "vite";
+/** Component catalog build for visual tests; production builds never include it. */
+const catalog = process.env.CATALOG === "true";
+
 export default defineConfig({
   root: "apps/miniapp",
+  ...(catalog
+    ? {
+        build: {
+          outDir: "dist-catalog",
+          emptyOutDir: true,
+          rollupOptions: { input: "apps/miniapp/catalog.html" },
+        },
+      }
+    : {}),
   resolve: {
     alias: [
       {

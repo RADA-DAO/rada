@@ -10,3 +10,5 @@ playwright-report/
 test-results/
 .wrangler/
 .claude/
+dist-catalog/
+.visual-out/
