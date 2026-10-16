@@ -66,10 +66,21 @@ const tile = (page: Page, name: string) =>
     .getByRole("list", { name: t("en", "home.gridLabel") })
     .getByRole("button", { name, exact: true });
 
+const ownProfile = (profile: unknown) => ({
+  subject_id: "00000000-0000-4000-8000-000000000101",
+  profile,
+  membership: { status: "unavailable" },
+});
+
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => {
     throw error;
   });
+  await page.route("**/me", (route) =>
+    route.fulfill({
+      json: ownProfile({ visibility: "private", public: null }),
+    }),
+  );
   await page.route("https://artifacts.example/**", (route) =>
     route.fulfill({
       contentType: "text/html",
@@ -226,4 +237,49 @@ test("tier marks follow the viewer's language", async ({ page }) => {
       .getByRole("list", { name: t("uk", "home.gridLabel") })
       .getByRole("button", { name: "Governance fixture", exact: true }),
   ).toHaveAccessibleDescription(t("uk", "home.tier.official"));
+});
+
+test("home shows the viewer's name and frog right after login", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  await page.route("**/me", (route) => {
+    reads++;
+    return route.fulfill({
+      json: ownProfile({
+        visibility: "public",
+        public: {
+          frog_id: "00000000-0000-4000-8000-000000000001",
+          username: "Fixture_frog",
+          background_color: "#123456",
+          accent_color: null,
+        },
+      }),
+    });
+  });
+  await launch(page);
+  await expect(page.getByText("Fixture_frog", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(t("en", "shell.public"), { exact: true }),
+  ).toBeVisible();
+  expect(reads).toBe(1);
+});
+
+test("home keeps a generic identity when the profile cannot be read", async ({
+  page,
+}) => {
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  await page.route("**/me", (route) =>
+    route.fulfill({ status: 503, json: { error: "unavailable" } }),
+  );
+  await launch(page);
+  await expect(
+    page.getByText(t("en", "home.identityMember"), { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("listitem")).toHaveCount(2);
 });

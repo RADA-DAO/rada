@@ -134,8 +134,14 @@ function showAppPermissions(opener: HTMLElement | null) {
   return openAppPermissions({ text, platform, navigation, opener });
 }
 const onProfileRoute = () => route === "profile";
-async function loadProfile() {
+/**
+ * Reads the viewer's own profile. At start (`initial`) it only fills the
+ * identity shown on home; on the Profile route it also probes review access.
+ */
+async function loadProfile(initial = false) {
   const generation = ++profileGeneration;
+  const stale = () =>
+    generation !== profileGeneration || (!initial && !onProfileRoute());
   reviewAuthorized = false;
   reviewProbeFailed = false;
   profile = "loading";
@@ -144,7 +150,7 @@ async function loadProfile() {
   render();
   try {
     const ownProfile = await platform.readOwnProfile();
-    if (generation !== profileGeneration || !onProfileRoute()) return;
+    if (stale()) return;
     profile = ownProfile?.profile.visibility ?? "guest";
     selectedFrog = ownProfile?.profile.public ?? null;
     applyTheme(
@@ -156,21 +162,25 @@ async function loadProfile() {
     );
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
-    if (generation !== profileGeneration || !onProfileRoute()) return;
+    if (stale()) return;
     membership = "unavailable";
     profile =
       error instanceof Error && error.message === "expired"
         ? "expired"
         : "unavailable";
   }
-  if (generation !== profileGeneration || !onProfileRoute()) return;
+  if (stale()) return;
+  if (initial) {
+    render();
+    return;
+  }
   if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
     try {
       await platform.readReviewQueue();
-      if (generation !== profileGeneration || !onProfileRoute()) return;
+      if (stale()) return;
       reviewAuthorized = true;
     } catch (error) {
-      if (generation !== profileGeneration || !onProfileRoute()) return;
+      if (stale()) return;
       reviewProbeFailed = !(
         error instanceof Error &&
         ["forbidden", "expired", "not_available"].includes(error.message)
@@ -337,6 +347,7 @@ navigation.subscribe(() => {
 });
 render();
 void launcher.load();
+if (platform.authenticatedLaunch) void loadProfile(true);
 window.addEventListener(
   "pagehide",
   (event) => {
