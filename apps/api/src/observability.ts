@@ -14,8 +14,8 @@ export interface FailureRecord {
 }
 
 export interface OpsOptions {
-  token?: string;
-  log?: (line: string) => void;
+  token?: string | undefined;
+  log?: ((line: string) => void) | undefined;
 }
 
 const MAX_ROUTES = 256;
@@ -27,8 +27,8 @@ const timings = new WeakMap<Request, { id: string; start: number }>();
 export function routePattern(c: Context): string {
   const routes = c.req.matchedRoutes;
   for (let i = routes.length - 1; i >= 0; i--) {
-    const path = routes[i].path;
-    if (path !== "*" && path !== "/*") return path;
+    const path = routes[i]?.path;
+    if (path !== undefined && path !== "*" && path !== "/*") return path;
   }
   return "unmatched";
 }
@@ -113,7 +113,7 @@ async function digest(value: string): Promise<Uint8Array> {
 async function tokenMatches(expected: string, given: string): Promise<boolean> {
   const [a, b] = await Promise.all([digest(expected), digest(given)]);
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 1) ^ (b[i] ?? 2);
   return diff === 0;
 }
 
@@ -122,7 +122,7 @@ async function tokenMatches(expected: string, given: string): Promise<boolean> {
 export function registerErrorCounts(
   app: Hono,
   counts: Map<string, number>,
-  token?: string,
+  token?: string | undefined,
 ) {
   app.get("/health/errors", async (c) => {
     const header = c.req.header("authorization") ?? "";

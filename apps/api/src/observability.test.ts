@@ -9,6 +9,8 @@ const consentMethods = {
 };
 const OPS = "synthetic-ops-token";
 
+const line = (lines: string[]) => lines[0] ?? "";
+
 class DatabaseFailure extends Error {
   code = "57P01";
 }
@@ -48,7 +50,7 @@ Deno.test("request id is generated on success and on failure", async () => {
   const failedId = failed.headers.get("request-id");
   assert(failed.status === 503 && failedId && failedId !== okId);
   assert((await failed.json()).error === "unavailable");
-  assert(JSON.parse(lines[0]).requestId === failedId);
+  assert(JSON.parse(line(lines)).requestId === failedId);
 });
 
 Deno.test(
@@ -62,14 +64,14 @@ Deno.test(
       headers: { authorization: `tma ${await signed()}` },
     });
     assert(lines.length === 1);
-    const record = JSON.parse(lines[0]);
+    const record = JSON.parse(line(lines));
     assert(record.route === "/me", `route ${record.route}`);
     assert(record.method === "GET");
     assert(record.errorClass === "DatabaseFailure");
     assert(record.errorCode === "57P01");
     assert(!Number.isNaN(Date.parse(record.time)));
     assert(typeof record.durationMs === "number" && record.durationMs >= 0);
-    assert(!lines[0].includes("subject_id"));
+    assert(!line(lines).includes("subject_id"));
     assert(
       Object.keys(record).sort().join() ===
         "durationMs,errorClass,errorCode,method,requestId,route,time",
@@ -92,8 +94,8 @@ Deno.test("failure record never contains secrets or error text", async () => {
       detail: string;
       code: string;
     };
-    error.detail = secrets[3];
-    error.code = secrets[1]; // not a safe code shape: must be dropped
+    error.detail = secrets[3] ?? "";
+    error.code = secrets[1] ?? ""; // not a safe code shape: must be dropped
     throw error;
   }, lines);
   await app.request("/me?token=123456:ABC-bot-token-like", {
@@ -105,8 +107,8 @@ Deno.test("failure record never contains secrets or error text", async () => {
   });
   assert(lines.length === 1);
   for (const secret of [...secrets, "203.0.113.9", "synthetic", "token="])
-    assert(!lines[0].includes(secret), `leaked ${secret}`);
-  assert(!("errorCode" in JSON.parse(lines[0])));
+    assert(!line(lines).includes(secret), `leaked ${secret}`);
+  assert(!("errorCode" in JSON.parse(line(lines))));
 });
 
 Deno.test(
