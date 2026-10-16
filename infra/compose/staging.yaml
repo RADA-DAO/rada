@@ -50,6 +50,7 @@ services:
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
       STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
       STAGING_ALLOWED_TELEGRAM_IDS: ${STAGING_ALLOWED_TELEGRAM_IDS-}
+      API_OPS_TOKEN: ${API_OPS_TOKEN-}
     healthcheck:
       test:
         [
