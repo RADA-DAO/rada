@@ -303,9 +303,6 @@ function render() {
           : "shell.profile",
     ),
     brand: text("shell.brand"),
-    ...(route !== "launcher"
-      ? { back: { label: text("common.back"), onBack: back } }
-      : {}),
     actions: [settingsButton],
     children: content,
     footer: Tabs({

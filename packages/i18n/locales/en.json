@@ -2,7 +2,6 @@
   "common": {
     "loading": "Loading…",
     "retry": "Try again",
-    "back": "Back",
     "close": "Close",
     "dismiss": "Dismiss"
   },

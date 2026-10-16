@@ -6,9 +6,9 @@ The package exports framework-neutral DOM components. Callers provide visible
 labels and messages, usually from `@rada/i18n`; every visual value comes from
 tokens, controls show focus rings, and motion honors reduced-motion preferences.
 
-- `ScreenHost` and `Screen`: the scrolling surface and one screen (header with
-  Back, title, content, footer). `Screen` takes `back.onBack`, which should pop
-  the platform navigation stack.
+- `ScreenHost` and `Screen`: the scrolling surface and one screen (header,
+  title, content, footer). Screens never draw Back: the platform owns it
+  (Telegram BackButton, browser Back, Escape, swipe).
 - `Button` (`primary`, `secondary`, `ghost`; `loading` and `disabled`),
   `setButtonLoading`, `Field` (input, textarea or select with label and error),
   `Tabs`, `List` and `ListItem`, `Card`, `Section`, `Text`, `Actions`, `Group`,

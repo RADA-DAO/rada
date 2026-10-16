@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fake, fakeDocument, type FakeElement } from "./fake-dom.ts";
+import { fake, fakeDocument } from "./fake-dom.ts";
 import {
   Actions,
   Avatar,
@@ -144,15 +144,13 @@ await test("openSheet registers in the navigation stack and restores focus", () 
   assert.deepEqual(log.slice(2), ["drop:sheet"]);
 });
 
-await test("Screen shows Back only when a previous screen exists", () => {
-  let backs = 0;
+await test("Screen composes header, title, body and footer without its own Back", () => {
   const footer = Tabs({ label: "Main", selected: "a", tabs: [] });
   const child = Text("Body");
   const view = fake(
     Screen({
       title: "Profile",
       brand: "RADA",
-      back: { label: "Back", onBack: () => backs++ },
       actions: [Button("Settings")],
       children: [child],
       footer,
@@ -162,10 +160,8 @@ await test("Screen shows Back only when a previous screen exists", () => {
   const body = view.child(1);
   const foot = view.child(2);
   assert.equal(header.tagName, "header");
-  const back = header.all("rada-button")[0] as FakeElement;
-  assert.equal(back.textContent, "Back");
-  back.click();
-  assert.equal(backs, 1);
+  // Only the Settings action: Back belongs to the platform.
+  assert.equal(header.all("rada-button").length, 1);
   assert.equal(body.child(0).tagName, "h1");
   assert.equal(body.child(0).textContent, "Profile");
   assert.equal(body.child(1), fake(child));

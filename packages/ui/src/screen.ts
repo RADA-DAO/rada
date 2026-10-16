@@ -1,4 +1,3 @@
-import { Button } from "./button.ts";
 import { element } from "./dom.ts";
 
 /** Scrolling surface that holds the current screen. Created once per application. */
@@ -13,8 +12,6 @@ export type ScreenOptions = {
   title: string;
   /** Wordmark shown in the header. */
   brand?: string;
-  /** Present when a previous screen exists; `onBack` should pop the platform navigation stack. */
-  back?: { label: string; onBack: () => void };
   /** Header controls, such as Settings. */
   actions?: Node[];
   children?: Node[];
@@ -22,14 +19,15 @@ export type ScreenOptions = {
   footer?: Node;
 };
 
-/** One screen: header with Back, title, content and optional footer navigation. */
+/**
+ * One screen: header, title, content and optional footer navigation. Back is
+ * never drawn here: the platform owns it (Telegram BackButton, browser Back,
+ * Escape and the swipe), so screens cannot add a second one.
+ */
 export function Screen(options: ScreenOptions): HTMLElement {
   const view = element("div", "rada-screen-view");
   const header = element("header", "rada-screen-header");
   const lead = element("div", "rada-screen-lead");
-  const { back } = options;
-  if (back)
-    lead.append(Button(back.label, { variant: "ghost", onClick: back.onBack }));
   if (options.brand)
     lead.append(element("strong", "rada-screen-brand", options.brand));
   header.append(lead, ...(options.actions ?? []));
