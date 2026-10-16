@@ -23,6 +23,8 @@ export interface OpsOptions {
   /** Enables POST /v1/client-errors when present. */
   clientErrors?: ClientErrorStore | undefined;
   clientErrorLimiter?: TokenBucket | undefined;
+  /** Shared failure counters, so a digest job can read them. */
+  counts?: Map<string, number> | undefined;
 }
 
 const MAX_ROUTES = 256;
@@ -74,7 +76,7 @@ export function registerRequestId(app: Hono) {
 }
 
 export function createErrorReporter(options: OpsOptions) {
-  const counts = new Map<string, number>();
+  const counts = options.counts ?? new Map<string, number>();
   const log = options.log ?? ((line: string) => console.log(line));
   return {
     counts,

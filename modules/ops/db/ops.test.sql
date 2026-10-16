@@ -32,4 +32,20 @@ SELECT pg_temp.ops_assert(ops.purge_client_errors() = 1);
 RESET ROLE;
 SELECT pg_temp.ops_assert((SELECT count(*) FROM ops.client_errors WHERE build = 'old') = 0);
 SELECT pg_temp.ops_assert((SELECT count(*) FROM ops.client_errors WHERE build = 'abc1234') = 1);
+-- Alert digest: summary is callable by ops_service, the state table is not readable.
+SET LOCAL ROLE ops_service;
+DO $$ BEGIN
+  PERFORM * FROM ops.alert_state;
+  RAISE EXCEPTION 'Ops service read the alert state table';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+DO $$ BEGIN
+  UPDATE ops.alert_state SET client_errors_after = 99;
+  RAISE EXCEPTION 'Ops service wrote the alert state table';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+SELECT pg_temp.ops_assert((SELECT count(*) FROM ops.client_error_summary(0)) >= 1);
+SELECT pg_temp.ops_assert((SELECT sum(total) FROM ops.client_error_summary(0)) >= 1);
+SELECT ops.advance_alert_watermark(5);
+SELECT ops.advance_alert_watermark(2);
+SELECT pg_temp.ops_assert(ops.alert_watermark() = 5);
+RESET ROLE;
 ROLLBACK;

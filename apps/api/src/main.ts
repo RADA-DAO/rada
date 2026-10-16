@@ -7,7 +7,13 @@ import {
 } from "../../../modules/identity/index.ts";
 import { PostgresIdentityStore } from "../../../modules/identity/index.ts";
 import { PostgresRegistryStore } from "../../../modules/apps/index.ts";
-import { PostgresClientErrorStore } from "../../../modules/ops/index.ts";
+import {
+  FailureDigest,
+  PostgresAlertStore,
+  PostgresClientErrorStore,
+  alertConfig,
+  startDigestScheduler,
+} from "../../../modules/ops/index.ts";
 import {
   PostgresWalletStore,
   PostgresPaymentStore,
@@ -83,6 +89,7 @@ if (import.meta.main) {
       ? new TelegramMembershipProvider(token, chatId)
       : unavailableMembership;
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
+  const failureCounts = new Map<string, number>();
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -100,6 +107,7 @@ if (import.meta.main) {
       : undefined,
     {
       token: Deno.env.get("API_OPS_TOKEN")?.trim() || undefined,
+      counts: failureCounts,
       clientErrors: clientErrorsUrl
         ? new PostgresClientErrorStore(
             new pg.Pool({ connectionString: clientErrorsUrl }),
@@ -107,6 +115,21 @@ if (import.meta.main) {
         : undefined,
     },
   );
+  const alerts = alertConfig(Deno.env.toObject());
+  if (Deno.env.get("ALERTS_ENABLED")?.trim() === "true" && !alerts)
+    console.log("alert digest disabled: incomplete or invalid configuration");
+  if (alerts)
+    startDigestScheduler(
+      new FailureDigest({
+        config: alerts,
+        counts: failureCounts,
+        store: clientErrorsUrl
+          ? new PostgresAlertStore(
+              new pg.Pool({ connectionString: clientErrorsUrl }),
+            )
+          : undefined,
+      }),
+    );
   Deno.serve(
     { hostname: Deno.env.get("API_HOST") ?? "127.0.0.1", port: 8000 },
     app.fetch,
