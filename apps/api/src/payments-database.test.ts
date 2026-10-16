@@ -24,7 +24,7 @@ class FixtureChain extends PaymentChain {
     this.signatures++;
     return await super.signRequest(intent);
   }
-  override async receipt(intent: PaymentRecord) {
+  override async confirmation(intent: PaymentRecord) {
     // Exercise the real receipt validator with a deterministic finalized fixture.
     const chain = new PaymentChain(() =>
       Promise.resolve(
@@ -56,7 +56,7 @@ class FixtureChain extends PaymentChain {
         }),
       ),
     );
-    return await chain.receipt(intent);
+    return await chain.confirmation(intent);
   }
 }
 

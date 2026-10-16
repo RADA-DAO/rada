@@ -44,6 +44,11 @@ test("TON receipt needs finalized successful inbound with exact sender, amount a
     await new PaymentChain(send({ transactions: [tx] })).receipt(intent),
     "a".repeat(64),
   );
+  // The confirmation carries the recipient transaction time for deadlines.
+  assert.deepEqual(
+    await new PaymentChain(send({ transactions: [tx] })).confirmation(intent),
+    { hash: "a".repeat(64), onChainAt: 1792022401 },
+  );
   for (const patch of [
     { finality: "pending" },
     { now: NaN },
@@ -134,6 +139,10 @@ test("jetton receipt needs canonical wallets and successful recipient notificati
         ),
     );
   assert.equal(await chain(body()).receipt(payment), "b".repeat(64));
+  assert.equal(
+    (await chain(body()).confirmation(payment))?.onChainAt,
+    Number(notification.now),
+  );
   for (const patch of [
     { jetton_master: address("5") },
     { source: address("5") },
@@ -177,5 +186,18 @@ test("jetton receipt needs canonical wallets and successful recipient notificati
       body(transfer, { ...notification, description: { aborted: true } }),
     ).receipt(payment),
     null,
+  );
+});
+
+test("a signing deadline caps the signed message lifetime", async () => {
+  const chain = new PaymentChain(send({}));
+  const now = Math.floor(Date.now() / 1000);
+  assert.ok((await chain.signRequest(intent)).validUntil >= now + 179);
+  assert.equal(
+    (await chain.signRequest(intent, now + 30)).validUntil,
+    now + 30,
+  );
+  assert.ok(
+    (await chain.signRequest(intent, now + 9999)).validUntil <= now + 181,
   );
 });
