@@ -26,6 +26,10 @@ Server environment:
 - `API_ALLOWED_ORIGINS` and `WALLET_APP_ORIGIN`: the exact existing Worker HTTPS
   origin, no trailing slash. The wallet proof accepts only this server-configured
   HTTPS domain; local domains are rejected.
+- `ALERTS_ENABLED` (default `false`) and `ALERT_TELEGRAM_CHAT_ID` (default empty):
+  optional hourly failure digest to the operator through `TELEGRAM_BOT_TOKEN`.
+  Active only when `ALERTS_ENABLED=true` and the chat id is a numeric chat id or
+  `@channel`. See `modules/ops/README.md`; set values only in `staging.env`.
 
 Missing, empty or malformed allowlists and conflicting modes prevent API startup.
 Only signed launches for allowed testers reach persistence. Every staging API
