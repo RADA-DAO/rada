@@ -13,7 +13,7 @@ release directories with mode 0600. Docker access is administrator-equivalent.
 
 Server environment:
 
-- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`: distinct high-entropy
+- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`, `SPLASH_PASSWORD`: distinct high-entropy
   hexadecimal passwords; runtime logins receive only their respective module role.
 - `TELEGRAM_BOT_TOKEN`: the test bot token, server only; no bot update changes.
 - `STAGING_AUTH_MODE=allowlist`, `STAGING_SYNTHETIC_ONLY=false`.
