@@ -49,6 +49,27 @@ await test("AppTile is one button named by the app and described by its tier", (
   assert.equal(opened, 1, "a disabled tile does not open");
 });
 
+await test("AppTile shows the icon and falls back to the monogram if it fails", () => {
+  const tile = fake(
+    AppTile({
+      name: "Game",
+      tier: "community",
+      tierLabel: "Community",
+      iconUrl: "blob:icon",
+      onOpen() {},
+    }),
+  );
+  const art = tile.child(0);
+  assert.equal(art.textContent, "");
+  const icon = art.child(0);
+  assert.equal(icon.tagName, "img");
+  assert.equal(icon.src, "blob:icon");
+  assert.equal(icon.alt, "");
+  icon.dispatch("error");
+  assert.equal(art.children.length, 0);
+  assert.equal(art.textContent, "G");
+});
+
 await test("AppGrid lists tiles in order under a label", () => {
   const tiles = ["A", "B", "C"].map((name) =>
     AppTile({ name, tier: "community", tierLabel: "Community", onOpen() {} }),

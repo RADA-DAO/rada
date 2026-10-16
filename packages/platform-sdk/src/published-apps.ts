@@ -1,9 +1,17 @@
 import type { AppRelease } from "./app-host.ts";
-import { APP_PERMISSIONS, parseAppManifest } from "./app-manifest.ts";
+import {
+  APP_PERMISSIONS,
+  appIconUrl,
+  parseAppManifest,
+} from "./app-manifest.ts";
 import { appSlug, versionUuid } from "./review-registry.ts";
 
 /** A reviewed, published release the launcher may open. */
-export type PublishedApp = AppRelease & { versionId: string };
+export type PublishedApp = AppRelease & {
+  versionId: string;
+  /** Where the approved icon would be fetched from, if the manifest names one. */
+  iconUrl?: string;
+};
 
 const rowKeys = [
   "appId",
@@ -64,9 +72,11 @@ function publishedApp(value: unknown): PublishedApp | null {
     new Set(grants).size !== grants.length
   )
     return null;
+  const iconUrl = appIconUrl(manifest, url.href, row.sha256);
   return {
     appId: row.appId,
     versionId: row.versionId,
+    ...(iconUrl ? { iconUrl } : {}),
     manifest,
     artifactUrl: url.href,
     artifactSha256: row.sha256,

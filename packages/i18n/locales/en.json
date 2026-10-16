@@ -71,6 +71,7 @@
     "declarations": "Requested level: {{trust}} · Design: {{design}}",
     "officialRequested": "Official (requested)",
     "communityRequested": "Community",
+    "icon": "Icon (square PNG, WebP or SVG, up to 64 KB)",
     "standard": "Standard",
     "freeStyle": "Free style",
     "permissions": {
@@ -233,6 +234,7 @@
     "appTreasury": "Treasury",
     "appWallet": "Wallet",
     "appGame": "Frog racing championship",
+    "appIcon": "Custom icon",
     "appDisabled": "Unavailable",
     "identityName": "frog_fixture",
     "identityCaption": "Public profile"

@@ -35,8 +35,10 @@ export type AppManifest = {
   designRoute: "standard" | "free-style";
   permissions: AppPermission[];
   minPlatformVersion: string;
+  /** Square PNG, WebP or SVG inside the artifact's own folder; at most APP_ICON_MAX_BYTES. */
+  icon?: string;
 };
-const keys = [
+const requiredKeys = [
   "name",
   "author",
   "trustLevel",
@@ -44,6 +46,23 @@ const keys = [
   "permissions",
   "minPlatformVersion",
 ];
+const keys = [...requiredKeys, "icon"];
+export const APP_ICON_MAX_BYTES = 64 * 1024;
+/** Relative, lower-case path of at most three segments; never absolute, hidden or climbing. */
+export const APP_ICON_PATH =
+  /^[a-z0-9][a-z0-9._-]{0,63}(?:\/[a-z0-9][a-z0-9._-]{0,63}){0,2}\.(?:png|webp|svg)$/;
+/**
+ * Where an approved release's icon lives: `/artifacts/<sha256>/<icon>` on the
+ * artifact's own origin, so it is scoped to the hash the reviewer approved.
+ */
+export function appIconUrl(
+  manifest: Pick<AppManifest, "icon">,
+  artifactUrl: string,
+  artifactSha256: string,
+): string | undefined {
+  if (!manifest.icon) return undefined;
+  return `${new URL(artifactUrl).origin}/artifacts/${artifactSha256}/${manifest.icon}`;
+}
 const text = (value: unknown, limit: number) =>
   typeof value === "string" &&
   value.trim() === value &&
@@ -55,8 +74,10 @@ export function parseAppManifest(value: unknown): AppManifest {
     throw new Error("invalid_manifest");
   const input = value as Record<string, unknown>;
   if (
-    Object.keys(input).length !== keys.length ||
+    requiredKeys.some((key) => !(key in input)) ||
     Object.keys(input).some((key) => !keys.includes(key)) ||
+    ("icon" in input &&
+      (typeof input.icon !== "string" || !APP_ICON_PATH.test(input.icon))) ||
     !text(input.name, 64) ||
     !text(input.author, 64) ||
     typeof input.trustLevel !== "string" ||

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseAppManifest } from "./app-manifest.ts";
+import { appIconUrl, parseAppManifest } from "./app-manifest.ts";
 import { mountAppHost, verifyAppArtifact } from "./app-host.ts";
 
 const valid = {
@@ -23,6 +23,44 @@ await test("manifest rejects unknown, coercible and future declarations", () => 
     { extra: true },
   ])
     assert.throws(() => parseAppManifest({ ...valid, ...change }));
+});
+await test("manifest icon is an optional relative image path inside the artifact", () => {
+  for (const icon of ["icon.png", "img/icon.webp", "a/b/c.svg", "x-1_2.png"])
+    assert.equal(parseAppManifest({ ...valid, icon }).icon, icon);
+  assert.equal("icon" in parseAppManifest(valid), false);
+  for (const icon of [
+    "/icon.png",
+    "../icon.png",
+    "a/../b.png",
+    ".hidden.png",
+    "https://evil.example/icon.png",
+    "//evil.example/icon.png",
+    "icon.gif",
+    "icon.PNG",
+    "icon.png?x=1",
+    "icon.png#x",
+    "a/b/c/d.png",
+    "icon\\x.png",
+    "",
+    42,
+    ["icon.png"],
+  ])
+    assert.throws(
+      () => parseAppManifest({ ...valid, icon }),
+      /invalid_manifest/,
+    );
+  assert.equal(
+    appIconUrl(
+      { icon: "img/icon.png" },
+      `https://artifacts.example/artifacts/${"a".repeat(64)}.html`,
+      "a".repeat(64),
+    ),
+    `https://artifacts.example/artifacts/${"a".repeat(64)}/img/icon.png`,
+  );
+  assert.equal(
+    appIconUrl({}, "https://artifacts.example/x.html", "a"),
+    undefined,
+  );
 });
 await test("artifact bytes require exact SHA-256", async () => {
   const bytes = new TextEncoder().encode("<h1>safe</h1>");

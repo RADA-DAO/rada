@@ -6,6 +6,7 @@ import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import { createRoutes, home, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
+import { loadAppIcon } from "./app-icon.ts";
 import "@rada/ui/design-system.css";
 import {
   applyTheme,
@@ -88,6 +89,7 @@ const launcher = createHome({
   locale: () => locale,
   authenticated: platform.authenticatedLaunch,
   read: (signal) => platform.readPublishedApps(signal),
+  loadIcon: loadAppIcon,
   mount: (app, container, origin) =>
     runner.mount(
       {

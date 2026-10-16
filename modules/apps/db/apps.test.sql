@@ -20,6 +20,13 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Registry login read private roles';
 EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 RESET ROLE;
+SELECT pg_temp.assert_true(apps.valid_manifest(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0"}'::jsonb));
+SELECT pg_temp.assert_true(apps.valid_manifest(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0","icon":"img/icon.webp"}'::jsonb));
+SELECT pg_temp.assert_true(NOT apps.valid_manifest(format(
+  '{"name":"A","author":"B","trustLevel":"community","designRoute":"standard","permissions":[],"minPlatformVersion":"1.0.0","icon":%s}', icon)::jsonb))
+  FROM unnest(ARRAY['"/icon.png"','"../icon.png"','"https://x.example/i.png"','"icon.gif"','"icon.PNG"','"a/b/c/d.png"','7','null']) AS icons(icon);
 SELECT identity.resolve_telegram(909001) AS fixture_subject \gset
 INSERT INTO apps.registry(app_id,author_id) VALUES('fixture.invalid',:'fixture_subject');
 DO $$ BEGIN

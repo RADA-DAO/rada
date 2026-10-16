@@ -5,6 +5,7 @@ import {
   EmptyState,
   ErrorState,
   Field,
+  Identity,
   List,
   ListItem,
   Loading,
@@ -16,6 +17,7 @@ import {
   type MessageKey,
 } from "../../../packages/i18n/src/index.ts";
 import type { ReviewVersion } from "../../../packages/platform-sdk/src/index.ts";
+import { appIconUrl } from "../../../packages/platform-sdk/src/app-manifest.ts";
 
 export function mountReview(
   container: HTMLElement,
@@ -85,6 +87,18 @@ export function mountReview(
         ),
       }),
     );
+    const iconUrl = appIconUrl(
+      version.manifest,
+      version.artifactUrl,
+      version.artifactSha256,
+    );
+    const icon = iconUrl
+      ? Identity({
+          name: text("review.icon"),
+          caption: version.manifest.icon as string,
+          imageUrl: iconUrl,
+        })
+      : undefined;
     const preview = Embed();
     const previewButton = Button(text("review.preview"), {
       onClick: () => {
@@ -175,6 +189,7 @@ export function mountReview(
       description: `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`,
       children: [
         declarations,
+        ...(icon ? [icon] : []),
         para("review.requested"),
         requested,
         para("review.previewNotice"),

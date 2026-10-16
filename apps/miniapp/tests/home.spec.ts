@@ -283,3 +283,41 @@ test("home keeps a generic identity when the profile cannot be read", async ({
   ).toBeVisible();
   await expect(page.getByRole("listitem")).toHaveCount(2);
 });
+
+test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({
+  page,
+}) => {
+  const withIcon = (appId: string, name: string, icon: string) => {
+    const base = release(appId, name, "community");
+    return { ...base, manifest: { ...base.manifest, icon } };
+  };
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({
+      json: {
+        apps: [
+          withIcon("fixture.pictured", "Pictured fixture", "icon.svg"),
+          withIcon("fixture.broken", "Broken fixture", "missing.png"),
+        ],
+      },
+    }),
+  );
+  await page.route(
+    `https://artifacts.example/artifacts/${sha256}/*`,
+    (route) =>
+      route.request().url().endsWith("/icon.svg")
+        ? route.fulfill({
+            contentType: "image/svg+xml",
+            headers: { "access-control-allow-origin": "*" },
+            body: "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='#2b8a6e'/></svg>",
+          })
+        : route.fulfill({
+            status: 404,
+            headers: { "access-control-allow-origin": "*" },
+            body: "",
+          }),
+  );
+  await launch(page);
+  await expect(tile(page, "Pictured fixture").locator("img")).toBeVisible();
+  await expect(tile(page, "Broken fixture").locator("img")).toHaveCount(0);
+  await expect(tile(page, "Broken fixture")).toContainText("B");
+});

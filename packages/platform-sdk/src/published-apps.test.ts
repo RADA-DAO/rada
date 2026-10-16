@@ -32,7 +32,19 @@ await test("published list keeps valid releases and drops malformed rows", () =>
     artifactSha256: sha256,
     grantedPermissions: ["identity.self.read"],
   });
+  const [withIcon] = parsePublishedApps({
+    apps: [{ ...row, manifest: { ...row.manifest, icon: "icon.png" } }],
+  });
+  assert.equal(
+    withIcon?.iconUrl,
+    `https://artifacts.example/artifacts/${sha256}/icon.png`,
+  );
+  assert.equal("iconUrl" in app, false);
   const invalid = [
+    {
+      ...row,
+      manifest: { ...row.manifest, icon: "https://evil.example/i.png" },
+    },
     { ...row, appId: "Bad id" },
     { ...row, versionId: "1" },
     { ...row, sha256: "b".repeat(64) },

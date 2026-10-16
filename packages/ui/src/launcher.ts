@@ -9,6 +9,8 @@ export type AppTileOptions = {
   tier: AppTier;
   /** Visible, translated tier mark; required for official and community apps. */
   tierLabel?: string;
+  /** A loadable square picture for the app; the monogram shows without it or if it fails. */
+  iconUrl?: string;
   onOpen: () => void;
   disabled?: boolean;
 };
@@ -28,8 +30,18 @@ export function AppTile(options: AppTileOptions): HTMLButtonElement {
   tile.type = "button";
   tile.dataset.tier = options.tier;
   tile.disabled = options.disabled ?? false;
-  const art = element("span", "rada-app-tile-art", monogram(options.name));
+  const art = element("span", "rada-app-tile-art");
   art.setAttribute("aria-hidden", "true");
+  if (options.iconUrl) {
+    const icon = element("img", "rada-app-tile-icon");
+    icon.alt = "";
+    icon.src = options.iconUrl;
+    icon.addEventListener("error", () => {
+      icon.remove();
+      art.textContent = monogram(options.name);
+    });
+    art.append(icon);
+  } else art.textContent = monogram(options.name);
   const name = element("span", "rada-app-tile-name", options.name);
   name.id = uniqueId("rada-app-tile");
   tile.setAttribute("aria-labelledby", name.id);

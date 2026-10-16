@@ -73,6 +73,7 @@
     "declarations": "Запитаний рівень: {{trust}} · Дизайн: {{design}}",
     "officialRequested": "Офіційний (запитано)",
     "communityRequested": "Спільнота",
+    "icon": "Іконка (квадратна PNG, WebP або SVG, до 64 КБ)",
     "standard": "Стандартний",
     "freeStyle": "Вільний стиль",
     "permissions": {
@@ -235,6 +236,7 @@
     "appTreasury": "Скарбниця",
     "appWallet": "Гаманець",
     "appGame": "Чемпіонат жаб'ячих перегонів",
+    "appIcon": "Власна іконка",
     "appDisabled": "Недоступна",
     "identityName": "frog_fixture",
     "identityCaption": "Публічний профіль"

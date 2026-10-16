@@ -71,6 +71,7 @@ Deno.test(
         designRoute: "free-style",
         permissions: ["theme.read", "money.transfer"],
         minPlatformVersion: "1.0.0",
+        icon: "img/icon.png",
       };
       const digest = "a".repeat(64);
       const create = (id: number) =>
@@ -85,6 +86,20 @@ Deno.test(
         `submit: ${initial.status} ${initialText}`,
       );
       const initialVersion = JSON.parse(initialText);
+      for (const icon of [
+        "/icon.png",
+        "../icon.png",
+        "https://x.example/i.png",
+      ])
+        assert(
+          (
+            await request(101, "POST", "/apps/fixture.app/versions", {
+              manifest: { ...manifest, icon },
+              sha256: digest,
+            })
+          ).status === 400,
+          `icon ${icon} must be rejected`,
+        );
       const firstResponse = await create(101);
       assert(firstResponse.status === 201);
       const first = await firstResponse.json();
@@ -185,6 +200,10 @@ Deno.test(
       assert(
         listing[0].artifactUrl ===
           `https://artifacts.example/artifacts/${digest}.html`,
+      );
+      assert(
+        listing[0].manifest.icon === "img/icon.png",
+        "approved icon path is part of the published manifest",
       );
       assert(
         JSON.stringify(listing[0].grantedPermissions) ===
