@@ -93,7 +93,8 @@ Deno.test(
       headers: { origin: "https://miniapp.example" },
     });
     assert(
-      health.headers.get("access-control-expose-headers") === "Retry-After",
+      health.headers.get("access-control-expose-headers") ===
+        "Retry-After,ETag,Content-Location",
     );
   },
 );

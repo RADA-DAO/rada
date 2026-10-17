@@ -1,3 +1,5 @@
+import { PostgresArtworkStore } from "../../../modules/jpegpe/index.ts";
+import { resolveTelegramSubject } from "../../../modules/identity/index.ts";
 import {
   PostgresGovernanceStore,
   startGovernanceScheduler,
@@ -196,6 +198,9 @@ if (import.meta.main) {
     claims,
     rankings,
     governance,
+    new PostgresArtworkStore(service, (viewer) =>
+      resolveTelegramSubject(auth, viewer),
+    ),
   );
   if (
     rankingsWorkerUrl &&
