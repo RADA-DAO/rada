@@ -26,3 +26,5 @@ export {
   type StartResult,
 } from "./api/claim-service.ts";
 export { PostgresClaimDb, type ClaimDb, type OwnClaim } from "./api/claims.ts";
+// Shared bounded PNG codec; offline callers must check dimensions before decoding.
+export { decodePng, encodePng, pngDimensions } from "./api/png.ts";
