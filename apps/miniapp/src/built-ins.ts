@@ -1,10 +1,12 @@
-import { createSplashShell } from "./splash-shell.ts";
+import { createChunkLoader } from "./chunk-loader.ts";
+import { createLazyScreen } from "./lazy-screen.ts";
+import type { createSplashShell } from "./splash-shell.ts";
 import {
-  isSplashRoute,
+  SPLASH_ROUTES,
   type SplashRoute,
 } from "../../../modules/splash/ui/index.ts";
 import {
-  createGovernance,
+  loadGovernance,
   isGovernanceRoute,
   type GovernanceRoute,
 } from "../../../modules/governance/ui/index.ts";
@@ -13,6 +15,8 @@ import type {
   Navigation,
 } from "../../../packages/platform-sdk/src/index.ts";
 import { t, type Locale } from "../../../packages/i18n/src/index.ts";
+const isSplashRoute = (route: string): route is SplashRoute =>
+  (SPLASH_ROUTES as readonly string[]).includes(route);
 export const isBuiltInRoute = (
   route: string,
 ): route is SplashRoute | GovernanceRoute =>
@@ -25,19 +29,33 @@ export function createBuiltIns(options: {
   membership(): string;
   openWallet(): void;
 }) {
-  const splash = createSplashShell(options);
-  const governance = createGovernance({
-    ...options,
-    api: options.platform.moduleApi("governance"),
-    authenticated: options.platform.authenticatedLaunch,
-  });
+  let splash: ReturnType<typeof createSplashShell> | undefined;
+  let governance:
+    | ReturnType<Awaited<ReturnType<typeof loadGovernance>>["createGovernance"]>
+    | undefined;
+  const loadDAO = createChunkLoader(loadGovernance, "governance");
+  const loadSplash = createChunkLoader(
+    () => import("./splash-shell.ts"),
+    "splash",
+  );
+  const lazy = createLazyScreen();
+  const open = (key: SplashRoute | GovernanceRoute) => {
+    options.navigation.push({ key, edgeBack: true });
+  };
   return {
     tiles: () => [
-      { name: t(options.locale(), "splash.title"), onOpen: splash.open },
+      {
+        name: t(options.locale(), "splash.title"),
+        onOpen: () => {
+          open("splash");
+        },
+      },
       {
         name: t(options.locale(), "governance.title"),
         tier: "platform" as const,
-        onOpen: governance.open,
+        onOpen: () => {
+          open("governance");
+        },
       },
     ],
     render(
@@ -45,12 +63,41 @@ export function createBuiltIns(options: {
       route: SplashRoute | GovernanceRoute,
       frame: { brand: string; actions: Node[] },
     ) {
-      if (isGovernanceRoute(route)) governance.render(host, route, frame);
-      else splash.render(host, route, frame);
+      lazy.render(host, {
+        locale: options.locale(),
+        title: t(
+          options.locale(),
+          isGovernanceRoute(route) ? "governance.title" : "splash.title",
+        ),
+        ...frame,
+        load: async () => {
+          if (isGovernanceRoute(route)) {
+            governance ??= (await loadDAO()).createGovernance({
+              ...options,
+              api: options.platform.moduleApi("governance"),
+              authenticated: options.platform.authenticatedLaunch,
+            });
+            const app = governance;
+            return () => {
+              app.render(host, route, frame);
+              return () => {
+                app.dispose();
+              };
+            };
+          }
+          splash ??= (await loadSplash()).createSplashShell(options);
+          const app = splash;
+          return () => {
+            app.render(host, route, frame);
+            return () => {
+              app.dispose();
+            };
+          };
+        },
+      });
     },
     dispose() {
-      splash.dispose();
-      governance.dispose();
+      lazy.dispose();
     },
   };
 }

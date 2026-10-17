@@ -1,4 +1,4 @@
-import { showHolders } from "./holders.ts";
+import { createHoldersScreen } from "./holders-screen.ts";
 import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
@@ -29,23 +29,11 @@ import {
 import {
   initializePlatform,
   configurePageBack,
-<<<<<<< HEAD
-=======
-  pageBackNavigation,
-  installSwipeBack,
   type OwnProfile,
-  setPageBackActive,
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
 import { createAppRunner } from "./app-runner.ts";
-<<<<<<< HEAD
-import { createSplashShell } from "./splash-shell.ts";
-import { isSplashRoute } from "../../../modules/splash/ui/index.ts";
-=======
 import { createBuiltIns, isBuiltInRoute } from "./built-ins.ts";
-
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
 let reviewAuthorized = false;
@@ -56,7 +44,7 @@ let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
 let selectedFrog: OwnProfile["profile"]["public"] = null;
-let holdersDispose: (() => void) | undefined;
+const holders = createHoldersScreen();
 let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let settingsButton: HTMLElement | null = null;
@@ -119,10 +107,9 @@ const launcher = createHome({
       origin,
       true,
     ),
-<<<<<<< HEAD
   render,
   builtIn: () => [
-    { name: text("splash.title"), onOpen: splash.open },
+    ...builtIns.tiles(),
     {
       name: text("holders.title"),
       tier: "platform",
@@ -131,12 +118,6 @@ const launcher = createHome({
       },
     },
   ],
-=======
-  render: () => {
-    render();
-  },
-  builtIn: builtIns.tiles,
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installShellSwipe(
@@ -217,13 +198,8 @@ function render() {
   reviewDispose = undefined;
   profileDispose?.();
   profileDispose = undefined;
-<<<<<<< HEAD
-  splash.dispose();
-  holdersDispose?.();
-  holdersDispose = undefined;
-=======
   builtIns.dispose();
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
+  holders.dispose();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -258,16 +234,16 @@ function render() {
     return;
   }
   if (route === "holders") {
-    holdersDispose = showHolders(
-      screen,
-      {
-        locale,
-        viewerFrogId: selectedFrog?.frog_id ?? null,
-        read: (token, cursor, signal) =>
-          platform.readHolders(token, cursor, signal),
-      },
-      [settingsButton],
-    );
+    const actions = [settingsButton];
+    holders.render(screen, {
+      locale,
+      title: text("holders.title"),
+      brand: text("shell.brand"),
+      actions,
+      viewerFrogId: selectedFrog?.frog_id ?? null,
+      read: (token, cursor, signal) =>
+        platform.readHolders(token, cursor, signal),
+    });
     return;
   }
   const content: Node[] = [];
@@ -410,7 +386,7 @@ window.addEventListener(
     if (event.persisted) return;
     profileGeneration++;
     launcher.dispose();
-    holdersDispose?.();
+    holders.dispose();
     profileDispose?.();
     reviewDispose?.();
     builtIns.dispose();

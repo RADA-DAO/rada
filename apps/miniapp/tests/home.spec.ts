@@ -102,7 +102,11 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
   const grid = page.getByRole("list", { name: t("en", "home.gridLabel") });
-  await expect(grid.getByRole("listitem")).toHaveCount(4);
+  await expect(grid.getByRole("listitem")).toHaveCount(5);
+  for (const name of ["Holders", "DAO"]) {
+    await expect(tile(page, name)).toBeVisible();
+    await expect(tile(page, name)).toHaveAccessibleDescription("");
+  }
   const official = tile(page, "Governance fixture");
   const community = tile(page, "Game fixture");
   await expect(official).toHaveAccessibleDescription(
@@ -127,7 +131,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   const returned = async () => {
     await expect(appsHeading(page)).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await expect(grid.getByRole("listitem")).toHaveCount(4);
+    await expect(grid.getByRole("listitem")).toHaveCount(5);
   };
 
   await official.click();
@@ -179,12 +183,8 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   ).toBeVisible();
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
-<<<<<<< HEAD
-  // The built-in SPLASH and platform Holders tiles remain.
-=======
-  // Built-in SPLASH and platform DAO tiles remain.
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
-  await expect(page.getByRole("listitem")).toHaveCount(2);
+  // Built-in SPLASH and platform Holders and DAO tiles remain.
+  await expect(page.getByRole("listitem")).toHaveCount(3);
 });
 
 test("a guest sees how to sign in and no catalog request is made", async ({
@@ -286,7 +286,7 @@ test("home keeps a generic identity when the profile cannot be read", async ({
   await expect(
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(4);
+  await expect(page.getByRole("listitem")).toHaveCount(5);
 });
 
 test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({
@@ -325,4 +325,84 @@ test("a tile shows the approved icon and keeps its monogram when the icon fails"
   await expect(tile(page, "Pictured fixture").locator("img")).toBeVisible();
   await expect(tile(page, "Broken fixture").locator("img")).toHaveCount(0);
   await expect(tile(page, "Broken fixture")).toContainText("B");
+});
+
+test("secondary screens load on demand and return home through the stack", async ({
+  page,
+}) => {
+  const chunks: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "script") chunks.push(request.url());
+  });
+  await launch(page, "");
+  await expect(appsHeading(page)).toBeVisible();
+  expect(chunks.some((url) => /holders-|splash-shell-|screen-/.test(url))).toBe(
+    false,
+  );
+  for (const name of ["DAO", "Holders", "SPLASH"]) {
+    for (const method of ["back", "escape", "swipe"] as const) {
+      await tile(page, name).click();
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(t("en", "common.loading"), { exact: true }),
+      ).toHaveCount(0);
+      if (method === "back") await pressBack(page);
+      else if (method === "escape") await page.keyboard.press("Escape");
+      else {
+        const bounds = await page.locator(".screen").boundingBox();
+        if (!bounds) throw new Error("Screen bounds unavailable");
+        await page.mouse.move(bounds.x + 12, bounds.y + 60);
+        await page.mouse.down();
+        await page.mouse.move(bounds.x + bounds.width * 0.85, bounds.y + 64, {
+          steps: 12,
+        });
+        await page.mouse.up();
+      }
+      await expect(appsHeading(page)).toBeVisible();
+    }
+  }
+  expect(chunks.some((url) => /screen-/.test(url))).toBe(true);
+  expect(chunks.some((url) => /holders-/.test(url))).toBe(true);
+  expect(chunks.some((url) => /splash-shell-/.test(url))).toBe(true);
+});
+
+test("a failed screen chunk offers retry and pending imports cannot replace home", async ({
+  page,
+}) => {
+  let release: (() => void) | undefined;
+  let first = true;
+  await page.route("**/assets/holders-*.js*", async (route) => {
+    if (first) {
+      first = false;
+      await route.abort();
+    } else {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await route.continue();
+    }
+  });
+  await launch(page, "");
+  await tile(page, "Holders").click();
+  await page
+    .getByRole("button", { name: t("en", "common.retry"), exact: true })
+    .click();
+  await expect(
+    page.getByText(t("en", "common.loading"), { exact: true }),
+  ).toBeVisible();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await pressBack(page);
+  release?.();
+  await expect(appsHeading(page)).toBeVisible();
+  await tile(page, "Holders").click();
+  await expect(
+    page.getByRole("heading", { name: "Holders", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(t("en", "common.loading"), { exact: true }),
+  ).toHaveCount(0);
+  await pressBack(page);
+  await expect(appsHeading(page)).toBeVisible();
 });

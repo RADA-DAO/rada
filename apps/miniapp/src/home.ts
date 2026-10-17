@@ -37,13 +37,8 @@ export function createHome(options: {
     origin: string,
   ): Promise<() => void>;
   render(): void;
-<<<<<<< HEAD
   /** Built-in apps in the shell, shown before registry apps for everyone. */
   builtIn(): { name: string; tier?: AppTier; onOpen(): void }[];
-=======
-  /** Official apps built into the shell, shown before registry apps for everyone. */
-  builtIn(): { name: string; tier?: "platform" | "official"; onOpen(): void }[];
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 }) {
   const lifecycle = new AbortController();
   let status: Status = options.authenticated ? "loading" : "guest";
@@ -131,13 +126,9 @@ export function createHome(options: {
           AppTile({
             name: app.name,
             tier: app.tier ?? "official",
-<<<<<<< HEAD
-            tierLabel: text("home.tier.official"),
-=======
             ...(app.tier === "platform"
               ? {}
               : { tierLabel: text("home.tier.official") }),
->>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
             onOpen: () => {
               app.onOpen();
             },

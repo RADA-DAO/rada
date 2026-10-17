@@ -55,3 +55,9 @@ DAO is a platform tile without a tier mark. Its proposal, advisory voting,
 steward decision and settings screens come from `modules/governance/ui`, using
 the shared navigation stack and sheets. Steward controls require the caller's
 explicit role projection; membership alone grants no steward authority.
+
+DAO, Holders and SPLASH load their screen implementations on demand. The shell
+keeps their stack entry active while shared loading or retry states are visible;
+leaving a pending screen prevents its eventual import from replacing the next view.
+The production build emits `screen-chunks.json` beside `index.html`; serve it with
+the build assets so retries can bypass browsers' cached module-fetch failures.
