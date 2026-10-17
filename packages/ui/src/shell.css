@@ -60,3 +60,19 @@ body {
   background: var(--rada-glass-fill);
   box-shadow: var(--rada-shadow-tile);
 }
+
+/* Leave room to scroll the last action clear of pinned navigation. */
+.rada-screen-body:has(~ .rada-tabs) {
+  padding-bottom: calc(
+    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
+}
+
+.rada-screen-view > .rada-tabs {
+  height: calc(
+    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
+  padding-bottom: calc(
+    var(--rada-space-1) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
+}

@@ -9,6 +9,7 @@ export const RADA_DESIGN_TOKEN_NAMES = [
   "--rada-font-size-tab",
   "--rada-font-weight-tab",
   "--rada-radius-tabs",
+  "--rada-tabbar-height",
   "--rada-field-height",
   "--rada-field-padding",
   "--rada-field-textarea-height",

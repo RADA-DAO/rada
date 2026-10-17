@@ -11,6 +11,10 @@
   --rada-font-size-tab: 13px;
   --rada-font-weight-tab: 680;
   --rada-radius-tabs: 17px;
+  --rada-tabbar-height: calc(
+    var(--rada-control-height) + 2 * var(--rada-space-1) + 2 *
+      var(--rada-border-width)
+  );
   --rada-field-height: 48px;
   --rada-field-padding: 12px 13px;
   --rada-field-textarea-height: 140px;
