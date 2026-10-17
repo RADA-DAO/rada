@@ -40,6 +40,7 @@ export type SubmitResult =
   | { status: "duplicate" };
 
 export interface SplashStore extends RoundStore {
+  reserveSubmissionAttempt(telegramId: string): Promise<number>;
   submit(telegramId: string, image: PreparedImage): Promise<SubmitResult>;
   pond(): Promise<PondFrog[]>;
   mine(telegramId: string): Promise<OwnSubmission[]>;
@@ -102,6 +103,14 @@ export class PostgresSplashStore implements SplashStore {
     } finally {
       client.release();
     }
+  }
+  async reserveSubmissionAttempt(telegramId: string): Promise<number> {
+    return await this.inSubjectTransaction(telegramId, async (client) => {
+      const result = await client.query<{ retry: number }>(
+        "SELECT splash.reserve_submission_attempt() AS retry",
+      );
+      return result.rows[0]?.retry ?? 60;
+    });
   }
   async submit(telegramId: string, image: PreparedImage) {
     const submissionId = crypto.randomUUID();

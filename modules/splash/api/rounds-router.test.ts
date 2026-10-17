@@ -356,3 +356,34 @@ test("the round scheduler never overlaps and logs only the error class", async (
   });
   assert.ok(!lines.join("").includes("secret"));
 });
+
+test("bid amounts fit the payment encoding at its inclusive boundary", () => {
+  const maximum = (1n << 120n) - 1n;
+  for (const amount of [maximum - 1n, maximum]) {
+    const parsed = parseBid(
+      JSON.stringify({
+        submission_id: FROG,
+        amount: String(amount),
+        name: "A",
+      }),
+    );
+    assert.notEqual(typeof parsed, "string");
+  }
+  assert.equal(
+    parseBid(
+      JSON.stringify({
+        submission_id: FROG,
+        amount: String(maximum + 1n),
+        name: "A",
+      }),
+    ),
+    "invalid_amount",
+  );
+});
+
+test("bid admission refusals include a retry delay", async () => {
+  const { bid } = build({ status: "rate_limited" });
+  const response = await bid({ submission_id: FROG, amount: "1", name: "A" });
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "60");
+});

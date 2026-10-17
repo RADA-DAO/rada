@@ -439,6 +439,7 @@ Deno.test(
         dataCalls++;
         return Promise.resolve([]);
       },
+      reserveSubmissionAttempt: () => Promise.resolve(0),
       submit: () => {
         return Promise.reject(Error("unexpected"));
       },

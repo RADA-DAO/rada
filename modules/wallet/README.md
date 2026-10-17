@@ -23,6 +23,9 @@ receipt matching sender, recipient, token, exact amount and intent-bound purpose
 a wallet response alone never means paid. The receipt hash is unique across
 intents. Unknown claims cannot be signed again.
 
+Payment amounts are positive integers at most `2^120 - 1`, the coin encoding
+maximum, checked before intent creation and by the database.
+
 Platform intents are created server-side by a platform module (for example
 SPLASH claims) with terms it fixed: amount, recipient and purpose. They need no
 app release grant, still need a linked sender wallet, and carry a signing
