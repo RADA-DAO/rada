@@ -3,6 +3,7 @@ import { promises as fs, createReadStream } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID, createHash } from "node:crypto";
+import { sanitizeStderr } from "./backup-diagnostics.mjs";
 import { retention, parseReceipt } from "./backup-policy.mjs";
 
 process.umask(0o077);
@@ -19,6 +20,11 @@ let locked = false;
 /** @type {import("node:child_process").ChildProcess | undefined} */
 let active;
 let interrupted = false;
+const secrets = Object.entries(process.env)
+  .filter(([name]) => /password|secret|token|key|url|dsn/i.test(name))
+  .flatMap(([, value]) => (value ? [value] : []));
+/** @param {string} value */
+const sanitize = (value) => sanitizeStderr(value, secrets);
 for (const signal of ["SIGTERM", "SIGINT"])
   process.on(signal, () => {
     interrupted = true;
@@ -27,7 +33,9 @@ for (const signal of ["SIGTERM", "SIGINT"])
 
 /** @param {Buffer} chunk */
 function record(chunk) {
-  log = Buffer.concat([log, chunk]).subarray(-1024 * 1024);
+  log = Buffer.concat([log, Buffer.from(sanitize(chunk.toString()))]).subarray(
+    -1024 * 1024,
+  );
 }
 /** @param {string} command @param {string[]} args @param {string} [input] */
 async function run(command, args, input) {
@@ -40,19 +48,38 @@ async function run(command, args, input) {
       });
       active = child;
       let output = Buffer.alloc(0);
+      let stderr = Buffer.alloc(0);
       const timer = setTimeout(() => child.kill("SIGKILL"), 25 * 60 * 1000);
       child.stdout.on("data", (/** @type {Buffer} */ chunk) => {
         output = Buffer.concat([output, chunk]).subarray(-1024 * 1024);
-        record(chunk);
       });
-      child.stderr.on("data", record);
+      child.stderr.on("data", (/** @type {Buffer} */ chunk) => {
+        stderr = Buffer.concat([stderr, chunk]).subarray(-64 * 1024);
+      });
       child.stdin.on("error", () => {});
-      child.on("error", reject);
-      child.on("close", (code) => {
+      child.on("error", (error) => {
+        clearTimeout(timer);
+        reject(
+          new Error(
+            `exit=unavailable ${"code" in error ? String(error.code) : "spawn-error"}`,
+          ),
+        );
+      });
+      child.on("close", (code, signal) => {
         clearTimeout(timer);
         active = undefined;
-        if (code !== 0 || interrupted) reject(new Error("Command failed"));
-        else accept(output.toString());
+        if (code !== 0 || interrupted) {
+          const detail = sanitize(stderr.toString());
+          const marker = /BACKUP_STAGE=(snapshot|encrypt|round-trip)\b/.exec(
+            detail,
+          );
+          if (marker?.[1]) phase = marker[1];
+          reject(
+            new Error(
+              `exit=${String(code)}${signal ? ` signal=${signal}` : ""}\n${detail}`,
+            ),
+          );
+        } else accept(output.toString());
       });
       child.stdin.end(input);
     },
@@ -64,10 +91,22 @@ const sandbox = `${prefix}-verify`;
 const capture = `${prefix}-capture`;
 let failed = false;
 let successLine;
-let phase = "configuration";
+let phase = "snapshot";
+let failureLine = "";
 try {
   if (!image || !/^sha256:[a-f0-9]{64}$/.test(image) || !network || !hook)
     throw new Error("Missing configuration");
+  // Read only for redaction; never execute configuration on the host.
+  for (const file of ["source.env"]) {
+    const content = await fs.readFile(join(config, file), "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const value = line
+        .slice(line.indexOf("=") + 1)
+        .trim()
+        .replace(/^(['"])(.*)\1$/, "$2");
+      if (value && !line.startsWith("#")) secrets.push(value);
+    }
+  }
   await fs.mkdir(state, { recursive: true, mode: 0o700 });
   await fs.chmod(state, 0o700);
   await fs.mkdir(join(state, "lock"));
@@ -82,7 +121,7 @@ try {
     .replace(/:/g, "")
     .replace(/\.\d{3}Z$/, "Z");
   const name = `${stamp}.tar.age`;
-  phase = "capture";
+  phase = "snapshot";
   await docker([
     "run",
     "--name",
@@ -94,6 +133,10 @@ try {
     "--read-only",
     "--tmpfs",
     "/tmp",
+    // Bind-mounted private files belong to the invoking user. With all
+    // capabilities dropped, container root cannot bypass their 0700/0600 modes.
+    "--user",
+    `${String(process.getuid?.() ?? 0)}:${String(process.getgid?.() ?? 0)}`,
     "--cap-drop",
     "ALL",
     "--security-opt",
@@ -107,6 +150,7 @@ try {
     image,
     "/backup/capture.sh",
   ]);
+  phase = "restore";
   // The same pinned image, no TCP connectivity, no host data mounts or app processes.
   await docker([
     "run",
@@ -164,6 +208,7 @@ try {
     "verify",
     "/tmp/backup/database.dump",
   ]);
+  phase = "compare";
   await docker([
     "exec",
     sandbox,
@@ -172,7 +217,7 @@ try {
     "psql -XqAt -v ON_ERROR_STOP=1 -U postgres -d verify -f /backup/counts.sql > /tmp/actual.jsonl",
   ]);
   await docker(["cp", `${sandbox}:/tmp/actual.jsonl`, `${work}/actual.jsonl`]);
-  phase = "inventory";
+  phase = "compare";
   const expected = await fs.readFile(join(work, "restored/counts.jsonl"));
   if (!expected.equals(await fs.readFile(join(work, "actual.jsonl"))))
     throw new Error("Inventory or counts differ");
@@ -194,6 +239,7 @@ try {
       sha256: digest,
     }),
   );
+  phase = "publish";
   await fs.link(candidate, join(archives, name));
   await fs.writeFile(
     join(state, "receipt.tmp"),
@@ -206,8 +252,10 @@ try {
   for (const obsolete of retention(names))
     await fs.unlink(join(archives, obsolete));
   successLine = JSON.stringify(receipt);
-} catch {
-  record(Buffer.from(`BACKUP_PHASE=${phase}\n`));
+} catch (error) {
+  const detail = error instanceof Error ? error.message : "Unknown failure";
+  failureLine = `RADA_BACKUP_FAILED stage=${phase} ${detail.startsWith("exit=") ? detail : `exit=n/a\n${sanitize(detail)}`}`;
+  record(Buffer.from(`${failureLine}\nBACKUP_PHASE=${phase}\n`));
   failed = true;
 } finally {
   // Cleanup also on timeouts/signals; do not leave plaintext or disposable databases.
@@ -230,7 +278,9 @@ try {
   }
 }
 if (failed) {
-  console.error("RADA_BACKUP_FAILED");
+  console.error(
+    failureLine || `RADA_BACKUP_FAILED stage=publish exit=n/a\nCleanup failed`,
+  );
   process.exitCode = 1;
 }
 

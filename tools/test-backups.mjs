@@ -47,6 +47,8 @@ try {
     "none",
     "-v",
     `${config}:/config`,
+    "--user",
+    `${String(process.getuid?.() ?? 0)}:${String(process.getgid?.() ?? 0)}`,
     "--entrypoint",
     "age-keygen",
     image,
@@ -60,6 +62,8 @@ try {
     "none",
     "-v",
     `${config}:/config`,
+    "--user",
+    `${String(process.getuid?.() ?? 0)}:${String(process.getgid?.() ?? 0)}`,
     "--entrypoint",
     "age-keygen",
     image,
@@ -114,11 +118,48 @@ try {
       JSON.stringify(receipt),
     );
     const before = readdirSync(join(state, "archives"));
+    // Capture failures report the inner stage, not just the outer docker run.
+    for (const [stage, file, contents] of [
+      [
+        "snapshot",
+        "source.env",
+        "PGHOST=source\nPGPORT=1\nPGCONNECT_TIMEOUT=2\nPGUSER=postgres\nPGDATABASE=rada_test\nPGPASSWORD=fixture-password\n",
+      ],
+      ["encrypt", "recipients.txt", "invalid-recipient\n"],
+      ["round-trip", "identity.txt", "AGE-SECRET-KEY-1INVALIDTESTKEY\n"],
+    ]) {
+      assert.ok(stage && file && contents);
+      const path = join(config, file);
+      // Read key material only in memory, never include it in assertion messages.
+      const original = readFileSync(path);
+      try {
+        writeFileSync(path, contents);
+        const failure = spawnSync(process.execPath, ["tools/backup-run.mjs"], {
+          env,
+          encoding: "utf8",
+        });
+        assert.equal(failure.status, 1);
+        assert.match(
+          failure.stderr,
+          new RegExp(`^RADA_BACKUP_FAILED stage=${stage} exit=[1-9]`),
+        );
+        assert.ok(!failure.stderr.includes("fixture-password"));
+        assert.ok(!failure.stderr.includes("AGE-SECRET-KEY-"));
+        assert.equal(failure.stdout, "");
+        assert.deepEqual(readdirSync(join(state, "archives")), before);
+        assert.equal(
+          readFileSync(join(state, "last-success.json"), "utf8").trim(),
+          JSON.stringify(receipt),
+        );
+      } finally {
+        writeFileSync(path, original);
+      }
+    }
     // Fault injection only in disposable test images: restore errors and a
     // mismatched inventory must block publication before the copy hook.
     for (const [kind, file] of [
       ["restore", "database.dump"],
-      ["inventory", "counts.jsonl"],
+      ["compare", "counts.jsonl"],
     ]) {
       assert.ok(kind && file);
       const badTag = `rada-backup:bad-${kind}`;
@@ -137,7 +178,12 @@ try {
         encoding: "utf8",
       });
       assert.equal(failure.status, 1);
-      assert.equal(failure.stderr.trim(), "RADA_BACKUP_FAILED");
+      assert.match(
+        failure.stderr,
+        new RegExp(
+          `^RADA_BACKUP_FAILED stage=${kind} exit=${kind === "restore" ? "1" : "n/a"}\\n`,
+        ),
+      );
       assert.equal(failure.stdout, "");
       assert.ok(
         readFileSync(join(state, "last-run.log"), "utf8").includes(
@@ -152,14 +198,25 @@ try {
       );
     }
     // A failed off-host copy must preserve the last receipt and every existing archive.
-    writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o700 });
+    writeFileSync(
+      hook,
+      '#!/bin/sh\ni=0; while [ "$i" -lt 30 ]; do echo "copy failed: $PGPASSWORD" >&2; i=$((i+1)); done\nexit 23\n',
+      { mode: 0o700 },
+    );
     const failure = spawnSync(process.execPath, ["tools/backup-run.mjs"], {
       env,
       encoding: "utf8",
     });
     assert.equal(failure.status, 1);
-    assert.equal(failure.stderr.trim(), "RADA_BACKUP_FAILED");
+    assert.match(failure.stderr, /^RADA_BACKUP_FAILED stage=copy exit=23/);
     assert.equal(failure.stdout, "");
+    assert.ok(!failure.stderr.includes("fixture-password"));
+    assert.ok(failure.stderr.trim().split("\n").length <= 21);
+    assert.ok(
+      !readFileSync(join(state, "last-run.log"), "utf8").includes(
+        "fixture-password",
+      ),
+    );
     assert.ok(
       readFileSync(join(state, "last-run.log"), "utf8").includes(
         "BACKUP_PHASE=copy",

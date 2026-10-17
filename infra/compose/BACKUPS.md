@@ -16,6 +16,9 @@ signed dated Debian snapshot. A build is selected by immutable local image ID in
 Debian signature and package hash validation because the base lacks CA certificates.
 No external binary, npm package, Python environment or runtime download is used.
 
+Capture runs as the invoking host UID/GID so private bind-mounted configuration
+and work directories remain accessible with all container capabilities dropped.
+
 A read-only superuser session exports one REPEATABLE READ snapshot and remains
 open while `pg_dump` and exact `count(*) FROM ONLY` queries import it. Inventory
 covers every non-system ordinary/partitioned table, including empty tables,
@@ -40,9 +43,12 @@ the newest backup on each of 14 distinct UTC days plus the newest in each of eig
 distinct ISO weeks (overlap allowed). Failed capture, decryption, restore,
 comparison or copy never rotates existing archives or replaces the success receipt.
 There is one JSON success line and `last-success.json`, containing only version,
-status, archive filename and ciphertext hash. Failure prints `RADA_BACKUP_FAILED`.
-Private diagnostics overwrite `last-run.log`, capped at 1 MiB; Docker logs are
-disabled. Work plaintext and sandbox containers are removed on ordinary failures
+status, archive filename and ciphertext hash. Failure prints `RADA_BACKUP_FAILED`, the stage (snapshot, encrypt, round-trip,
+restore, compare, copy or publish), command exit status (or `n/a` for a non-command
+failure), and at most 20 sanitized stderr lines. Command arguments and stdout are
+never logged; configured source values, credentials, connection strings and age
+keys are redacted. The same sanitized diagnostics overwrite `last-run.log`, capped
+at 1 MiB; Docker logs are disabled. Work plaintext and sandbox containers are removed on ordinary failures
 and handled termination. Monitor timer failures **and receipt age** externally;
 a stopped host cannot report failure. Keep enough RAM for the restored database
 (tmpfs defaults to half host RAM), and disk for plaintext, tar round trip and archives.

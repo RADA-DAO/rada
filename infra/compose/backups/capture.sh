@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
+stage=snapshot
+trap 'status=$?; printf "BACKUP_STAGE=%s exit=%s\n" "$stage" "$status" >&2' ERR
 umask 077
 cd /work
 set -a
@@ -30,7 +32,9 @@ wait "$snapshot_pid"
 trap - EXIT
 sha256sum database.dump counts.jsonl roles.sql verify-roles.sql > SHA256SUMS
 tar -cf bundle.tar database.dump counts.jsonl roles.sql verify-roles.sql SHA256SUMS
+stage=encrypt
 age -R /config/recipients.txt -o candidate.tar.age bundle.tar
+stage=round-trip
 age -d -i /config/identity.txt -o roundtrip.tar candidate.tar.age
 cmp bundle.tar roundtrip.tar
 mkdir restored
