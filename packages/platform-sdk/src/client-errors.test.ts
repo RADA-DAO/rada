@@ -4,41 +4,44 @@ import {
   buildReport,
   installClientErrors,
   reduceStack,
-  sanitizeMessage,
+  DIAGNOSTIC_CODES,
 } from "./client-errors.ts";
 
 const origin = "https://app.example";
 const ctx = { origin, build: "abc1234", route: "launcher" };
 
-await test("message: digits, hex, addresses, emails and URLs are removed", () => {
-  assert.equal(sanitizeMessage("balance 12345 failed"), "balance # failed");
-  assert.equal(
-    sanitizeMessage("tx 0xdeadbeefcafe and cafebabe1234"),
-    "tx <hex> and <hex>",
-  );
-  assert.equal(
-    sanitizeMessage(
-      "wallet UQDrjaLahLkMB-hMCmkzOyBuHbJ0hjHSy4Gw9AkX9Hn6sQVL bad",
-    ),
-    "wallet <addr> bad",
-  );
-  assert.equal(
-    sanitizeMessage(`raw 0:${"ab".repeat(32)} bad`),
-    "raw <addr> bad",
-  );
-  assert.equal(sanitizeMessage("mail a.b@example.com now"), "mail <email> now");
-  assert.equal(
-    sanitizeMessage("GET https://x.example/p?token=abc failed"),
-    "GET <url> failed",
-  );
-  assert.equal(sanitizeMessage("a\u0000b\n\nc"), "a b c");
-});
-
-await test("message: capped at 120 chars and idempotent", () => {
-  const long = sanitizeMessage("word ".repeat(100));
-  assert.equal(long.length, 120);
-  const once = sanitizeMessage("id 42 a@b.co https://x.y/z");
-  assert.equal(sanitizeMessage(once), once);
+await test("reports map known error classes to fixed codes without message text", () => {
+  const names = [
+    "TypeError",
+    "RangeError",
+    "ReferenceError",
+    "SyntaxError",
+    "URIError",
+    "EvalError",
+    "AggregateError",
+    "AbortError",
+    "TimeoutError",
+  ];
+  for (const [index, name] of names.entries()) {
+    const error = new Error(
+      '{"first_name":"Example Person","username":"example_person"}',
+    );
+    error.name = name;
+    const report = buildReport("error", error, ctx);
+    assert.equal(report.name, name);
+    assert.equal(report.message, DIAGNOSTIC_CODES[index + 1]);
+  }
+  for (const thrown of [
+    new Error("Example Person"),
+    "example_person",
+    { message: "Example Person" },
+    null,
+  ]) {
+    assert.equal(buildReport("error", thrown, ctx).message, "unknown");
+  }
+  const custom = new Error("type_error");
+  custom.name = "CustomError";
+  assert.equal(buildReport("error", custom, ctx).message, "unknown");
 });
 
 await test("stack: own-origin frames only, as file:line:col without query", () => {
@@ -63,7 +66,7 @@ await test("report: carries only the contract fields", () => {
   assert.deepEqual(buildReport("error", error, ctx), {
     kind: "error",
     name: "TypeError",
-    message: "bad # value",
+    message: "type_error",
     frames: ["a.js:1:2"],
     build: "abc1234",
     route: "launcher",
@@ -77,7 +80,7 @@ await test("report: carries only the contract fields", () => {
     },
   );
   assert.equal(odd.name, "NonError");
-  assert.equal(odd.message, "");
+  assert.equal(odd.message, "unknown");
   assert.equal(odd.route, "other");
   assert.equal(
     buildReport("error", new Error("x"), { ...ctx, build: "has space" }).build,
@@ -121,8 +124,11 @@ await test("listeners report errors and rejections, dedupe identical ones", () =
 
 await test("at most 10 reports per page session", () => {
   const { sent, fire } = harness();
-  for (let i = 0; i < 30; i++)
-    fire("error", { error: new Error(`distinct${"x".repeat(i)}`) });
+  for (let i = 0; i < 30; i++) {
+    const error = new Error("same message");
+    error.stack = `Error\n at https://app.example/main.js:${String(i + 1)}:1`;
+    fire("error", { error });
+  }
   assert.equal(sent.length, 10);
 });
 

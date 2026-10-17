@@ -1,21 +1,14 @@
-/**
- * Client failure capture. A report holds only: kind, error name, a redacted
- * short message, own-origin stack frames as `file:line:col`, the build version
- * and the current route key. Never initData, user ids, addresses or tokens.
- * Keep the redaction rules in step with modules/ops/api/sanitize.ts, which
- * re-sanitizes everything on the server.
- */
+/** Client failure capture with fixed diagnostic codes and own-origin frames. */
 export type ClientErrorReport = {
   kind: "error" | "unhandledrejection";
   name: string;
-  message: string;
+  message: DiagnosticCode;
   frames: string[];
   build: string;
   route: string;
 };
 
 export const MAX_REPORTS = 10;
-export const MAX_MESSAGE = 120;
 export const MAX_FRAMES = 10;
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const BUILD = /^[0-9A-Za-z._-]{1,32}$/;
@@ -29,19 +22,44 @@ export function buildVersion(): string {
   return BUILD.test(value) ? value : "dev";
 }
 
-export function sanitizeMessage(value: string): string {
-  return value
-    .slice(0, 1000)
-    .replace(/\p{Cc}/gu, " ")
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*|\bwww\.\S+/gi, "<url>")
-    .replace(/[^\s@<>()]+@[^\s@<>()]+/g, "<email>")
-    .replace(/-?\d+:[0-9a-fA-F]{64}/g, "<addr>")
-    .replace(/\b(?:0x)?[0-9a-fA-F]{8,}\b/g, "<hex>")
-    .replace(/[A-Za-z0-9_+/=-]{24,}/g, "<addr>")
-    .replace(/\d+/g, "#")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_MESSAGE);
+// Keep this allowlist in step with modules/ops/api/sanitize.ts and SQL.
+export const DIAGNOSTIC_CODES = [
+  "unknown",
+  "type_error",
+  "range_error",
+  "reference_error",
+  "syntax_error",
+  "uri_error",
+  "eval_error",
+  "aggregate_error",
+  "abort_error",
+  "timeout_error",
+] as const;
+export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
+
+function diagnosticCode(name: string): DiagnosticCode {
+  switch (name) {
+    case "TypeError":
+      return "type_error";
+    case "RangeError":
+      return "range_error";
+    case "ReferenceError":
+      return "reference_error";
+    case "SyntaxError":
+      return "syntax_error";
+    case "URIError":
+      return "uri_error";
+    case "EvalError":
+      return "eval_error";
+    case "AggregateError":
+      return "aggregate_error";
+    case "AbortError":
+      return "abort_error";
+    case "TimeoutError":
+      return "timeout_error";
+    default:
+      return "unknown";
+  }
 }
 
 /** Keeps only frames from `origin`, reduced to `file:line:col` (no path, no query). */
@@ -71,11 +89,10 @@ export function buildReport(
 ): ClientErrorReport {
   const error = thrown instanceof Error ? thrown : undefined;
   const name = error?.name ?? "";
-  const message = error?.message ?? (typeof thrown === "string" ? thrown : "");
   return {
     kind,
     name: NAME.test(name) ? name : error ? "Error" : "NonError",
-    message: sanitizeMessage(message),
+    message: diagnosticCode(name),
     frames: reduceStack(error?.stack ?? "", context.origin),
     build: BUILD.test(context.build) ? context.build : "dev",
     route: ROUTE.test(context.route) ? context.route : "other",
@@ -97,7 +114,7 @@ export function transmit(endpoint: string, body: string): void {
   try {
     if (
       typeof navigator !== "undefined" &&
-      navigator.sendBeacon(endpoint, new Blob([body], { type: "text/plain" }))
+      navigator.sendBeacon(endpoint, body)
     )
       return;
   } catch {

@@ -15,11 +15,11 @@ test("an uncaught error reaches the API once, sanitized", async ({
     !databaseUrl,
     "Runs through npm run e2e with a disposable database",
   );
-  const marker = `Boom ${info.project.name}`;
+  const marker = `ClientError${info.project.name.replace(/[^A-Za-z0-9]/g, "")}`;
   const bodies: string[] = [];
   page.on("request", (request) => {
     if (request.url().endsWith("/v1/client-errors"))
-      bodies.push(request.postData() ?? "");
+      bodies.push(request.postDataBuffer()?.toString("utf8") ?? "");
   });
   await page.goto("/");
   await expect(
@@ -29,7 +29,11 @@ test("an uncaught error reaches the API once, sanitized", async ({
   await page.evaluate((text) => {
     for (let i = 0; i < 2; i++)
       setTimeout(() => {
-        throw new TypeError(`${text} balance 98765 for a.b@example.com`);
+        const error = new TypeError(
+          `${text} balance 98765 for a.b@example.com`,
+        );
+        error.name = text;
+        throw error;
       });
   }, marker);
   const db = new pg.Pool({ connectionString: databaseUrl });
@@ -39,8 +43,8 @@ test("an uncaught error reaches the API once, sanitized", async ({
         async () =>
           (
             await db.query<{ n: number }>(
-              "SELECT count(*)::int AS n FROM ops.client_errors WHERE message = $1",
-              [`${marker} balance # for <email>`],
+              "SELECT count(*)::int AS n FROM ops.client_errors WHERE name = $1",
+              [marker],
             )
           ).rows[0]?.n,
         { timeout: 10_000 },
@@ -54,23 +58,23 @@ test("an uncaught error reaches the API once, sanitized", async ({
         build: string;
         frames: string[];
       }>(
-        "SELECT kind, name, route, build, frames FROM ops.client_errors WHERE message = $1",
-        [`${marker} balance # for <email>`],
+        "SELECT kind, name, route, build, frames FROM ops.client_errors WHERE name = $1",
+        [marker],
       )
     ).rows[0];
     if (!row) throw new Error("Missing report row");
     expect(row.kind).toBe("error");
-    expect(row.name).toBe("TypeError");
+    expect(row.name).toBe(marker);
     expect(row.route).toBe("launcher");
     expect(row.build).toMatch(/^[0-9A-Za-z._-]{1,32}$/);
     for (const frame of row.frames) expect(frame).toMatch(/^[\w.-]+:\d+:\d+$/);
-    await db.query("DELETE FROM ops.client_errors WHERE message = $1", [
-      `${marker} balance # for <email>`,
-    ]);
+    await db.query("DELETE FROM ops.client_errors WHERE name = $1", [marker]);
   } finally {
     await db.end();
   }
+  expect(bodies).toHaveLength(1);
   for (const body of bodies) {
+    expect((JSON.parse(body) as { message: string }).message).toBe("unknown");
     expect(body).not.toContain("98765");
     expect(body).not.toContain("example.com");
   }

@@ -1,5 +1,5 @@
 import type pg from "pg";
-import type { ClientErrorReport } from "./sanitize.ts";
+import { parseReport, type ClientErrorReport } from "./sanitize.ts";
 
 export interface ClientErrorStore {
   record(report: ClientErrorReport): Promise<void>;
@@ -15,15 +15,17 @@ export class PostgresClientErrorStore implements ClientErrorStore {
     private readonly now: () => number = () => Date.now(),
   ) {}
   async record(report: ClientErrorReport): Promise<void> {
+    const clean = parseReport(report);
+    if (!clean) return;
     await this.pool.query(
       "SELECT ops.record_client_error($1, $2, $3, $4, $5, $6::jsonb)",
       [
-        report.build,
-        report.route,
-        report.kind,
-        report.name,
-        report.message,
-        JSON.stringify(report.frames),
+        clean.build,
+        clean.route,
+        clean.kind,
+        clean.name,
+        clean.message,
+        JSON.stringify(clean.frames),
       ],
     );
     // No scheduler exists yet: retention runs opportunistically, at most hourly.
