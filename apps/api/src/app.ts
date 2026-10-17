@@ -1,4 +1,8 @@
 import {
+  registerGovernanceRoutes,
+  type GovernanceStore,
+} from "../../../modules/governance/index.ts";
+import {
   registerRankingRoutes,
   type RankingStore,
 } from "../../../modules/rankings/index.ts";
@@ -51,6 +55,7 @@ export function createApp(
   splash?: SplashStore,
   claims?: ClaimService,
   rankings?: RankingStore,
+  governance?: GovernanceStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -90,6 +95,7 @@ export function createApp(
     registerClientErrorRoutes(app, ops.clientErrors, ops.clientErrorLimiter);
   registerStagingGuard(app, authenticated, policy);
   if (rankings) registerRankingRoutes(app, rankings);
+  if (governance) registerGovernanceRoutes(app, governance, authenticated);
   app.get("/health", (c) => c.json({ status: "ok" }));
   if (registry && artifactOrigin)
     registerRegistryRoutes(app, registry, artifactOrigin, authenticated);
