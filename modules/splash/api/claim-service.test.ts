@@ -54,10 +54,13 @@ function build(
     reconcileError?: Error;
     open?: OpenClaimRow[];
     paid?: boolean;
+    refreshed?: OpenClaimRow[];
+    scanStatus?: PaymentView["scanStatus"];
   } = {},
 ) {
   const calls: string[] = [];
   const keys: string[] = [];
+  const burned = new Set<string>();
   const db: ClaimDb = {
     subjectOf: (id) => Promise.resolve(`subject-${id}`),
     prepare: () => Promise.resolve(options.prepared ?? terms()),
@@ -68,10 +71,24 @@ function build(
     mine: () => Promise.resolve([]),
     setRecipient: () => Promise.resolve(null),
     openClaims: () => Promise.resolve(options.open ?? []),
+    withLockedClaim: (id, run) =>
+      run(
+        db,
+        burned.has(id)
+          ? []
+          : (id === FROG
+              ? (options.refreshed ?? options.open ?? [])
+              : (options.open ?? [])
+            ).filter((attempt) => attempt.submissionId === id),
+      ),
     claimPayment: () =>
       Promise.resolve(
         options.paid
-          ? { intentId: "paid-intent", paidOnChainAt: DEADLINE, colorRound: 42 }
+          ? {
+              intentId: "paid-intent",
+              paidOnChainAt: new Date(DEADLINE.getTime() - 1000),
+              colorRound: 42,
+            }
           : null,
       ),
     complete: () => {
@@ -79,6 +96,7 @@ function build(
       return Promise.resolve("claimed");
     },
     burn: (id) => {
+      burned.add(id);
       calls.push(`burn:${id}`);
       return Promise.resolve(true);
     },
@@ -107,7 +125,10 @@ function build(
       calls.push(`reconcile:${intentId}`);
       assert.equal(appId, "splash");
       if (options.reconcileError) return Promise.reject(options.reconcileError);
-      return Promise.resolve(payment(intentId, options.current ?? "prepared"));
+      return Promise.resolve({
+        ...payment(intentId, options.current ?? "prepared"),
+        scanStatus: options.scanStatus,
+      });
     },
     cancelAs: (_s, _a, intentId) => {
       calls.push(`cancel:${intentId}`);
@@ -299,4 +320,43 @@ test("the committed colour round matches splash.color_round and the proofs fit S
     assert.equal(proof.protocolVersion, 1);
   }
   assert.notEqual(drop.background.colorHex, drop.accent.colorHex);
+});
+
+test("a 1,001-row boundary refreshes the later signed attempt after a cancellation", async () => {
+  const prior = Array.from({ length: 999 }, (_, index) =>
+    row({ submissionId: `frog-${index}` }),
+  );
+  const cancelled = row({ intentId: "cancelled", paymentStatus: "cancelled" });
+  const signed = row({ intentId: "signed", paymentStatus: "unknown" });
+  const { service, calls } = build({
+    open: [...prior, cancelled],
+    refreshed: [cancelled, signed],
+    scanStatus: "incomplete",
+  });
+  await service.settle(() => DEADLINE.getTime() + 31 * 60_000);
+  assert.ok(calls.includes("reconcile:signed"));
+  assert.ok(!calls.includes(`burn:${FROG}`));
+});
+
+test("only a complete negative scan after grace authorizes a burn", async () => {
+  for (const scanStatus of [
+    undefined,
+    "incomplete",
+    "confirmed-absent",
+  ] as const) {
+    const { service, calls } = build({
+      open: [row({ intentId: "signed", paymentStatus: "unknown" })],
+      scanStatus,
+    });
+    await service.settle(() => DEADLINE.getTime() + 31 * 60_000);
+    await service.settle(() => DEADLINE.getTime() + 32 * 60_000);
+    assert.equal(
+      calls.filter((call) => call === `burn:${FROG}`).length,
+      scanStatus === "confirmed-absent" ? 1 : 0,
+    );
+    assert.equal(
+      calls.includes(`burn:${FROG}`),
+      scanStatus === "confirmed-absent",
+    );
+  }
 });

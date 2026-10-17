@@ -2,6 +2,8 @@ export { registerWalletRoutes } from "./api/router.ts";
 export {
   PaymentChain,
   type PaymentConfirmation,
+  type PaymentScan,
+  type ScanOptions,
   type PaymentRecord,
 } from "./api/payment-chain.ts";
 export {

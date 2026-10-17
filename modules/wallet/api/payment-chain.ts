@@ -13,6 +13,14 @@ export type PaymentRecord = {
 };
 /** A finalized on-chain payment: receipt hash and the recipient transaction time (unix seconds). */
 export type PaymentConfirmation = { hash: string; onChainAt: number };
+export type PaymentScan =
+  | ({ status: "confirmed" } & PaymentConfirmation)
+  | { status: "confirmed-absent" | "incomplete" };
+export type ScanOptions = {
+  pageBudget?: number;
+  /** Trusted index coverage watermark; unavailable coverage always defers absence. */
+  indexedThrough?: () => Promise<number | null>;
+};
 export type SignRequest = {
   network: "-239";
   from: string;
@@ -69,6 +77,7 @@ const payload = (text: string) =>
 
 export class PaymentChain {
   private send: typeof fetch;
+  private scanOptions: ScanOptions;
   private resolveJettonWallet: ((owner: string) => Promise<string>) | undefined;
   private ton = new TonClient({
     endpoint: "https://toncenter.com/api/v2/jsonRPC",
@@ -77,8 +86,10 @@ export class PaymentChain {
   constructor(
     send: typeof fetch = fetch,
     resolveJettonWallet?: (owner: string) => Promise<string>,
+    scanOptions: ScanOptions = {},
   ) {
     this.send = send;
+    this.scanOptions = scanOptions;
     this.resolveJettonWallet = resolveJettonWallet;
   }
   private async json(path: string): Promise<Dict> {
@@ -193,58 +204,116 @@ export class PaymentChain {
     return await estimatePaymentFee(this.ton, await this.signRequest(intent));
   }
   async receipt(intent: PaymentRecord): Promise<string | null> {
-    return (await this.confirmation(intent))?.hash ?? null;
+    const result = await this.confirmation(intent);
+    return result.status === "confirmed" ? result.hash : null;
   }
   async confirmation(
     intent: PaymentRecord,
-  ): Promise<PaymentConfirmation | null> {
-    const start = Math.floor(new Date(intent.createdAt).getTime() / 1000);
-    if (!Number.isSafeInteger(start) || start <= 0)
-      throw new Error("invalid_intent");
-    if (intent.token === "TON") {
-      const query = new URLSearchParams({
-        account: intent.recipient,
-        start_utime: String(start),
-        limit: "100",
-      });
-      const transactions = (await this.json(`transactions?${query}`))
-        .transactions;
-      if (!Array.isArray(transactions)) throw new Error("chain_unavailable");
-      for (const candidate of transactions) {
-        const tx = object(candidate),
-          inbound = object(tx?.in_msg);
-        const content = object(inbound?.message_content);
-        const decoded = object(content?.decoded);
-        if (
-          tx?.finality !== "finalized" ||
-          tx?.emulated !== false ||
-          !after(tx.mc_block_seqno, 1) ||
-          object(tx.description)?.aborted !== false ||
-          inbound?.bounced !== false ||
-          !same(tx.account, intent.recipient) ||
-          !same(inbound?.source, intent.sender) ||
-          !same(inbound?.destination, intent.recipient) ||
-          inbound?.value !== intent.amount ||
-          !after(tx.now, start) ||
-          (decoded?.comment !== comment(intent) &&
-            decoded?.text !== comment(intent)) ||
-          !receiptHash(tx.hash)
-        )
-          continue;
-        return confirmed(tx.hash, tx.now);
-      }
-      return null;
+    until?: number,
+  ): Promise<PaymentScan> {
+    try {
+      return await this.scan(intent, until ?? Math.floor(Date.now() / 1000));
+    } catch {
+      return { status: "incomplete" };
     }
+  }
+  private async scan(intent: PaymentRecord, end: number): Promise<PaymentScan> {
+    const start = Math.floor(new Date(intent.createdAt).getTime() / 1000);
+    if (
+      !Number.isSafeInteger(start) ||
+      start <= 0 ||
+      !Number.isSafeInteger(end) ||
+      end < start
+    )
+      return { status: "incomplete" };
+    const ton = intent.token === "TON";
     const query = new URLSearchParams({
-      owner_address: intent.recipient,
-      direction: "in",
-      jetton_master: JPEGPE_JETTON_MASTER,
+      ...(ton
+        ? { account: intent.recipient }
+        : {
+            owner_address: intent.recipient,
+            direction: "in",
+            jetton_master: JPEGPE_JETTON_MASTER,
+          }),
       start_utime: String(start),
+      end_utime: String(end),
+      sort: "asc",
       limit: "100",
     });
-    const transfers = (await this.json(`jetton/transfers?${query}`))
-      .jetton_transfers;
-    if (!Array.isArray(transfers)) throw new Error("chain_unavailable");
+    const indexed = await this.scanOptions.indexedThrough?.();
+    let ambiguous = false;
+    const budget = Math.min(this.scanOptions.pageBudget ?? 10, 100);
+    for (let page = 0; page < budget; page++) {
+      query.set("offset", String(page * 100));
+      const response = await this.json(
+        `${ton ? "transactions" : "jetton/transfers"}?${query}`,
+      );
+      const rows = response[ton ? "transactions" : "jetton_transfers"];
+      if (!Array.isArray(rows)) return { status: "incomplete" };
+      const receipt = ton
+        ? this.tonConfirmation(intent, rows, start, end)
+        : await this.jettonConfirmation(intent, rows, start, end);
+      if (receipt) return { status: "confirmed", ...receipt };
+      // Unfinalized candidates may still become receipts after this read.
+      ambiguous ||= rows.some((value) => {
+        const row = object(value);
+        return ton
+          ? row?.finality !== "finalized"
+          : object(row?.decoded_forward_payload)?.comment === comment(intent);
+      });
+      if (rows.length < 100) {
+        return {
+          status:
+            !ambiguous &&
+            indexed != null &&
+            Number.isSafeInteger(indexed) &&
+            indexed >= end &&
+            end <= Math.floor(Date.now() / 1000)
+              ? "confirmed-absent"
+              : "incomplete",
+        };
+      }
+    }
+    return { status: "incomplete" };
+  }
+  private tonConfirmation(
+    intent: PaymentRecord,
+    transactions: unknown[],
+    start: number,
+    end: number,
+  ) {
+    for (const candidate of transactions) {
+      const tx = object(candidate),
+        inbound = object(tx?.in_msg);
+      const content = object(inbound?.message_content);
+      const decoded = object(content?.decoded);
+      if (
+        tx?.finality !== "finalized" ||
+        tx?.emulated !== false ||
+        !after(tx.mc_block_seqno, 1) ||
+        object(tx.description)?.aborted !== false ||
+        inbound?.bounced !== false ||
+        !same(tx.account, intent.recipient) ||
+        !same(inbound?.source, intent.sender) ||
+        !same(inbound?.destination, intent.recipient) ||
+        inbound?.value !== intent.amount ||
+        !after(tx.now, start) ||
+        Number(tx.now) > end ||
+        (decoded?.comment !== comment(intent) &&
+          decoded?.text !== comment(intent)) ||
+        !receiptHash(tx.hash)
+      )
+        continue;
+      return confirmed(tx.hash, tx.now);
+    }
+    return null;
+  }
+  private async jettonConfirmation(
+    intent: PaymentRecord,
+    transfers: unknown[],
+    start: number,
+    end: number,
+  ) {
     for (const candidate of transfers) {
       const row = object(candidate),
         decoded = object(row?.decoded_forward_payload);
@@ -255,6 +324,7 @@ export class PaymentChain {
         row?.amount !== intent.amount ||
         row?.transaction_aborted !== false ||
         !after(row?.transaction_now, start) ||
+        Number(row?.transaction_now) > end ||
         decoded?.comment !== comment(intent) ||
         typeof row?.trace_id !== "string"
       )
@@ -296,6 +366,7 @@ export class PaymentChain {
           !same(body?.sender, intent.sender) ||
           forward?.text !== comment(intent) ||
           !after(tx.now, start) ||
+          Number(tx.now) > end ||
           !receiptHash(tx.hash)
         )
           continue;

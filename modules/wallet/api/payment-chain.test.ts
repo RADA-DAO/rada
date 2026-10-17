@@ -44,10 +44,38 @@ test("TON receipt needs finalized successful inbound with exact sender, amount a
     await new PaymentChain(send({ transactions: [tx] })).receipt(intent),
     "a".repeat(64),
   );
+  for (const token of ["TON"] as const) {
+    let requests = 0;
+    const windowEnd = 1792022500;
+    const paginated = new PaymentChain((url) => {
+      const query = new URL(String(url)).searchParams;
+      assert.equal(query.get("start_utime"), "1792022400");
+      assert.equal(query.get("end_utime"), String(windowEnd));
+      assert.equal(query.get("sort"), "asc");
+      requests++;
+      const offset = Number(query.get("offset"));
+      return Promise.resolve(
+        Response.json({
+          transactions:
+            offset < 200
+              ? Array.from({ length: 100 }, () => ({
+                  ...tx,
+                  in_msg: { ...tx.in_msg, value: "1" },
+                }))
+              : [tx],
+        }),
+      );
+    });
+    assert.equal(
+      (await paginated.confirmation({ ...intent, token }, windowEnd)).status,
+      "confirmed",
+    );
+    assert.equal(requests, 3);
+  }
   // The confirmation carries the recipient transaction time for deadlines.
   assert.deepEqual(
     await new PaymentChain(send({ transactions: [tx] })).confirmation(intent),
-    { hash: "a".repeat(64), onChainAt: 1792022401 },
+    { status: "confirmed", hash: "a".repeat(64), onChainAt: 1792022401 },
   );
   for (const patch of [
     { finality: "pending" },
@@ -140,9 +168,31 @@ test("jetton receipt needs canonical wallets and successful recipient notificati
     );
   assert.equal(await chain(body()).receipt(payment), "b".repeat(64));
   assert.equal(
-    (await chain(body()).confirmation(payment))?.onChainAt,
+    ((await chain(body()).confirmation(payment)) as { onChainAt: number })
+      .onChainAt,
     Number(notification.now),
   );
+  let pages = 0;
+  const paginated = new PaymentChain(
+    (url) => {
+      if (String(url).includes("traces?")) return send(body()[1])("unused");
+      const offset = Number(new URL(String(url)).searchParams.get("offset"));
+      pages++;
+      return send({
+        jetton_transfers:
+          offset < 200
+            ? Array.from({ length: 100 }, () => ({ ...transfer, amount: "1" }))
+            : [transfer],
+      })("unused");
+    },
+    (owner) =>
+      Promise.resolve(owner === intent.sender ? sourceWallet : recipientWallet),
+  );
+  assert.equal(
+    (await paginated.confirmation(payment, 1792022500)).status,
+    "confirmed",
+  );
+  assert.equal(pages, 3);
   for (const patch of [
     { jetton_master: address("5") },
     { source: address("5") },
@@ -200,4 +250,44 @@ test("a signing deadline caps the signed message lifetime", async () => {
   assert.ok(
     (await chain.signRequest(intent, now + 9999)).validUntil <= now + 181,
   );
+});
+
+test("absence requires exhaustion and stable index coverage of the full window", async () => {
+  const end = 1792022500;
+  for (const token of ["TON", "JPEGPE"] as const) {
+    const key = token === "TON" ? "transactions" : "jetton_transfers";
+    for (const indexed of [null, end - 1, end]) {
+      const chain = new PaymentChain(send({ [key]: [] }), undefined, {
+        indexedThrough: () => Promise.resolve(indexed),
+      });
+      assert.equal(
+        (await chain.confirmation({ ...intent, token }, end)).status,
+        indexed === end ? "confirmed-absent" : "incomplete",
+      );
+    }
+    let pages = 0;
+    const chain = new PaymentChain(
+      () => {
+        pages++;
+        return send({
+          [key]: Array.from({ length: 100 }, () => ({ finality: "finalized" })),
+        })("unused");
+      },
+      undefined,
+      { pageBudget: 2, indexedThrough: () => Promise.resolve(end) },
+    );
+    assert.equal(
+      (await chain.confirmation({ ...intent, token }, end)).status,
+      "incomplete",
+    );
+    assert.equal(pages, 2);
+    assert.equal(
+      (
+        await new PaymentChain(() =>
+          Promise.reject(new Error("offline")),
+        ).confirmation({ ...intent, token }, end)
+      ).status,
+      "incomplete",
+    );
+  }
 });

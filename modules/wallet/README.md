@@ -52,3 +52,11 @@ unknown after any ambiguous signing result; retries reconcile and cannot sign ag
 verified wallets of current public profiles through identity's published SQL
 function and uses the same cached chain balance reader. HTTP callers cannot
 choose subjects or addresses through this interface.
+
+Receipt scans paginate up to ten pages of 100 entries in ascending order within
+fixed creation-to-settlement bounds, checking the intent reference on every
+candidate. Results distinguish confirmation, exhaustive absence and incomplete
+coverage. Exhaustive absence requires a trusted stable indexing watermark
+covering the window before pagination begins. The default provider adapter has
+no such watermark, so its negative reads remain incomplete; they cannot
+authorize a signed claim's burn. Injected providers can supply that coverage.
