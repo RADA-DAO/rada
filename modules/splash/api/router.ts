@@ -1,3 +1,5 @@
+import { BodyTooLarge, readBoundedBody } from "../../../packages/http/body.ts";
+import { processingBudget } from "./processing-budget.ts";
 import type { Hono } from "hono";
 import { MAX_UPLOAD_BYTES, prepareImage, SubmissionRejected } from "./image.ts";
 import type { ClaimService } from "./claim-service.ts";
@@ -5,36 +7,10 @@ import { registerClaimRoutes } from "./claims-router.ts";
 import { registerRoundRoutes, type Authenticated } from "./rounds-router.ts";
 import type { SplashStore } from "./store.ts";
 
+const budget = processingBudget();
+
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-async function boundedBody(request: Request): Promise<Uint8Array> {
-  const reader = request.body?.getReader();
-  if (!reader) throw new SubmissionRejected("invalid_image");
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const item = await reader.read();
-      if (item.done) break;
-      length += item.value.length;
-      if (length > MAX_UPLOAD_BYTES) {
-        await reader.cancel();
-        throw new SubmissionRejected("too_large");
-      }
-      chunks.push(item.value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return bytes;
-}
 
 /** Image URLs are relative to the API origin. */
 const imagePath = (id: string) => `/v1/splash/submissions/${id}/image`;
@@ -48,42 +24,58 @@ export function registerSplashRoutes(
   app.post("/v1/splash/submissions", async (c) => {
     const id = await authenticated(c, true);
     if (!id) return c.json({ error: "unauthorized" }, 401);
-    if (!/^image\/png(?:\s*;|$)/i.test(c.req.header("content-type") ?? ""))
-      return c.json({ error: "unsupported_type" }, 415);
-    if (Number(c.req.header("content-length") ?? 0) > MAX_UPLOAD_BYTES)
-      return c.json({ error: "too_large" }, 413);
-    let image;
-    try {
-      image = prepareImage(await boundedBody(c.req.raw));
-    } catch (error) {
-      if (!(error instanceof SubmissionRejected)) throw error;
-      const status =
-        error.code === "too_large"
-          ? 413
-          : error.code === "unsupported_type"
-            ? 415
-            : 400;
-      return c.json({ error: error.code }, status);
-    }
-    const result = await store.submit(id, image);
-    if (result.status === "rate_limited") {
-      c.header("Retry-After", String(result.retryAfterSeconds));
+    const release = budget.acquire();
+    if (!release) {
+      c.header("Retry-After", "1");
       return c.json({ error: "rate_limited" }, 429);
     }
-    if (result.status === "duplicate")
-      return c.json({ error: "duplicate_image" }, 409);
-    return c.json(
-      {
-        submission_id: result.submissionId,
-        state: "in_pond",
-        submitted_at: result.submittedAt,
-        width: image.width,
-        height: image.height,
-        background_removed: image.backgroundRemoved,
-        image_path: imagePath(result.submissionId),
-      },
-      201,
-    );
+    try {
+      if (!/^image\/png(?:\s*;|$)/i.test(c.req.header("content-type") ?? ""))
+        return c.json({ error: "unsupported_type" }, 415);
+      const retry = await store.reserveSubmissionAttempt(id);
+      if (retry > 0) {
+        c.header("Retry-After", String(retry));
+        return c.json({ error: "rate_limited" }, 429);
+      }
+      let image;
+      try {
+        image = prepareImage(
+          await readBoundedBody(c.req.raw, MAX_UPLOAD_BYTES),
+        );
+      } catch (error) {
+        if (error instanceof BodyTooLarge)
+          return c.json({ error: "too_large" }, 413);
+        if (!(error instanceof SubmissionRejected)) throw error;
+        const status =
+          error.code === "too_large"
+            ? 413
+            : error.code === "unsupported_type"
+              ? 415
+              : 400;
+        return c.json({ error: error.code }, status);
+      }
+      const result = await store.submit(id, image);
+      if (result.status === "rate_limited") {
+        c.header("Retry-After", String(result.retryAfterSeconds));
+        return c.json({ error: "rate_limited" }, 429);
+      }
+      if (result.status === "duplicate")
+        return c.json({ error: "duplicate_image" }, 409);
+      return c.json(
+        {
+          submission_id: result.submissionId,
+          state: "in_pond",
+          submitted_at: result.submittedAt,
+          width: image.width,
+          height: image.height,
+          background_removed: image.backgroundRemoved,
+          image_path: imagePath(result.submissionId),
+        },
+        201,
+      );
+    } finally {
+      release();
+    }
   });
   app.get("/v1/splash/pond", async (c) => {
     const frogs = await store.pond();

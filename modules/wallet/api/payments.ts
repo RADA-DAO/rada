@@ -1,3 +1,9 @@
+import {
+  PaymentConflict,
+  PaymentDenied,
+  PaymentExpired,
+} from "./payment-errors.ts";
+import { validPaymentAmount } from "../../../packages/payment-encoding/amount.ts";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { Address } from "@ton/ton";
@@ -45,17 +51,11 @@ type Row = {
   sign_before: Date | null;
   paid_on_chain_at: Date | null;
 };
-// Stable names, so platform modules can recognise these without importing classes.
-export class PaymentConflict extends Error {
-  override name = "PaymentConflict";
-}
-export class PaymentDenied extends Error {
-  override name = "PaymentDenied";
-}
-/** The intent's signing window (a platform deadline) has closed. */
-export class PaymentExpired extends Error {
-  override name = "PaymentExpired";
-}
+export {
+  PaymentConflict,
+  PaymentDenied,
+  PaymentExpired,
+} from "./payment-errors.ts";
 /** Last moment a platform intent can still be handed to the wallet for signing. */
 const SIGN_MARGIN_SECONDS = 30;
 
@@ -128,6 +128,7 @@ export class PostgresPaymentStore {
       throw new PaymentDenied();
   }
   async prepare(telegramId: string, input: PaymentInput): Promise<PaymentView> {
+    if (!validPaymentAmount(input.amount)) throw new PaymentDenied();
     return await this.withFee(
       await this.transaction(telegramId, (db) => this.insert(db, input, null)),
     );
@@ -141,6 +142,7 @@ export class PostgresPaymentStore {
     input: PaymentInput,
     signBefore: Date,
   ): Promise<PaymentView> {
+    if (!validPaymentAmount(input.amount)) throw new PaymentDenied();
     return await this.withFee(
       await this.asSubject(subjectId, (db) =>
         this.insert(db, input, signBefore),

@@ -1,12 +1,13 @@
+import { readBoundedJson } from "../../../packages/http/body.ts";
+import { validPaymentAmount } from "../../../packages/payment-encoding/amount.ts";
 import type { Hono } from "hono";
 import { Address } from "@ton/ton";
 import {
   PaymentConflict,
   PaymentDenied,
   PaymentExpired,
-  type PaymentInput,
-  type PostgresPaymentStore,
-} from "./payments.ts";
+} from "./payment-errors.ts";
+import type { PaymentInput, PostgresPaymentStore } from "./payments.ts";
 
 type Authenticated = (
   c: { req: { header(name: string): string | undefined } },
@@ -30,9 +31,7 @@ function validInput(value: unknown): value is PaymentInput {
     !/^[A-Za-z0-9_-]{8,128}$/.test(item.idempotencyKey) ||
     typeof item.token !== "string" ||
     !["TON", "JPEGPE"].includes(item.token) ||
-    typeof item.amount !== "string" ||
-    !/^[1-9][0-9]{0,76}$/.test(item.amount) ||
-    BigInt(item.amount) > (1n << 120n) - 1n ||
+    !validPaymentAmount(item.amount) ||
     typeof item.purpose !== "string" ||
     item.purpose.trim() !== item.purpose ||
     !/^[\p{L}\p{N} .,!?_\-]{1,80}$/u.test(item.purpose)
@@ -63,13 +62,10 @@ async function smallJson(request: Request): Promise<unknown> {
   if (
     !/^application\/json(?:\s*;|$)/i.test(
       request.headers.get("content-type") ?? "",
-    ) ||
-    Number(request.headers.get("content-length")) > 4096
+    )
   )
     throw new Error("invalid_request");
-  const text = await request.text();
-  if (text.length > 4096) throw new Error("invalid_request");
-  return JSON.parse(text) as unknown;
+  return await readBoundedJson(request, 4096);
 }
 export function registerPaymentRoutes(
   app: Hono,

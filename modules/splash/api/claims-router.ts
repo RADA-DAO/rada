@@ -1,3 +1,4 @@
+import { BodyTooLarge, readBoundedJson } from "../../../packages/http/body.ts";
 import type { Hono } from "hono";
 import { Address } from "@ton/ton";
 import type { ClaimService, StartResult } from "./claim-service.ts";
@@ -40,16 +41,13 @@ export function rawMainnetAddress(value: unknown): string | null {
 async function smallJson(
   request: Request,
 ): Promise<Record<string, unknown> | "too_large" | "invalid_body"> {
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY)
-    return "too_large";
-  const text = await request.text();
-  if (text.length > MAX_BODY) return "too_large";
   try {
-    const value: unknown = JSON.parse(text);
+    const value = await readBoundedJson(request, MAX_BODY);
     return value && typeof value === "object" && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : "invalid_body";
-  } catch {
+  } catch (error) {
+    if (error instanceof BodyTooLarge) return "too_large";
     return "invalid_body";
   }
 }

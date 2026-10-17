@@ -23,7 +23,7 @@ function png(width = 100, height = 100) {
         : [240, 240, 240, 255],
       i * 4,
     );
-  return encodePng({ width, height, rgba });
+  return new Uint8Array(encodePng({ width, height, rgba }));
 }
 function build(
   result: SubmitResult = {
@@ -31,10 +31,13 @@ function build(
     submissionId: ID,
     submittedAt: "2026-10-16T00:00:00.000Z",
   },
+  reserveSubmissionAttempt: (id: string) => Promise<number> = () =>
+    Promise.resolve(0),
 ) {
   const calls: { id: string; sha256: string }[] = [];
   const store: SplashStore = {
     ...idleRounds,
+    reserveSubmissionAttempt,
     submit: (id, image) => {
       calls.push({ id, sha256: image.sha256 });
       return Promise.resolve(result);
@@ -200,4 +203,79 @@ test("image route serves PNG bytes for known ids and 404 otherwise", async () =>
     ).status,
     404,
   );
+});
+
+test("failed and duplicate submissions consume admission before body reads", async () => {
+  let attempts = 0;
+  const { post, app, calls } = build({ status: "duplicate" }, (id) => {
+    assert.equal(id, "101");
+    return Promise.resolve(++attempts <= 10 ? 0 : 3600);
+  });
+  for (let i = 0; i < 5; i++)
+    assert.equal((await post(new Uint8Array(10))).status, 415);
+  for (let i = 0; i < 5; i++) assert.equal((await post(png())).status, 409);
+  let reads = 0;
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        reads++;
+        controller.enqueue(new Uint8Array(1));
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  const response = await app.request(
+    new Request("https://fixture.invalid/v1/splash/submissions", {
+      method: "POST",
+      headers: { authorization: "tma ok", "content-type": "image/png" },
+      body,
+      duplex: "half",
+    } as RequestInit),
+  );
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "3600");
+  assert.equal(reads, 0);
+  assert.equal(calls.length, 5);
+});
+
+test("global processing admission precedes body reads and releases after failures", async () => {
+  const releases: ((value: number) => void)[] = [];
+  const { post, app } = build(
+    undefined,
+    () => new Promise<number>((resolve) => releases.push(resolve)),
+  );
+  const pending = Array.from({ length: 4 }, () => post(new Uint8Array(10)));
+  while (releases.length < 4)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  let reads = 0;
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        reads++;
+        controller.enqueue(new Uint8Array(1));
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  const response = await app.request(
+    new Request("https://fixture.invalid/v1/splash/submissions", {
+      method: "POST",
+      headers: { authorization: "tma ok", "content-type": "image/png" },
+      body,
+      duplex: "half",
+    } as RequestInit),
+  );
+  assert.equal(response.status, 429);
+  assert.equal(reads, 0);
+  assert.equal(releases.length, 4);
+  releases.forEach((release) => release(0));
+  assert.deepEqual(
+    (await Promise.all(pending)).map((r) => r.status),
+    [415, 415, 415, 415],
+  );
+  const next = post(png());
+  while (releases.length < 5)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  releases[4]?.(0);
+  assert.equal((await next).status, 201);
 });

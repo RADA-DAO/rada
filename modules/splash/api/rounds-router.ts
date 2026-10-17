@@ -1,3 +1,5 @@
+import { BodyTooLarge, readBoundedBody } from "../../../packages/http/body.ts";
+import { validPaymentAmount } from "../../../packages/payment-encoding/amount.ts";
 import type { Hono } from "hono";
 import type { BidRefusal, PublicProfile, RoundStore } from "./rounds.ts";
 
@@ -9,7 +11,6 @@ export type Authenticated = (
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** Smallest JPEGPE units: a positive integer, as a decimal string (or safe integer). */
-const AMOUNT = /^[1-9][0-9]{0,77}$/;
 const ROUND_ID = /^[1-9][0-9]{0,15}$/;
 const MAX_BID_BODY = 1024;
 
@@ -21,7 +22,8 @@ const profile = (value: PublicProfile) =>
     background_color: value.backgroundColor,
     accent_color: value.accentColor,
   };
-const refusalStatus: Record<BidRefusal, 400 | 403 | 404 | 409> = {
+const refusalStatus: Record<BidRefusal, 400 | 403 | 404 | 409 | 429> = {
+  rate_limited: 429,
   invalid_amount: 400,
   invalid_name: 400,
   not_on_auction: 404,
@@ -50,8 +52,7 @@ export function parseBid(text: string): BidInput | "invalid_body" | BidRefusal {
     typeof amount === "number" && Number.isSafeInteger(amount)
       ? String(amount)
       : amount;
-  if (typeof digits !== "string" || !AMOUNT.test(digits))
-    return "invalid_amount";
+  if (!validPaymentAmount(digits)) return "invalid_amount";
   // The naming rule itself belongs to JPEGPE and is checked in SQL.
   if (typeof name !== "string" || name.length < 1 || name.length > 32)
     return "invalid_name";
@@ -93,10 +94,16 @@ export function registerRoundRoutes(
   app.post("/v1/splash/bids", async (c) => {
     const id = await authenticated(c, true);
     if (!id) return c.json({ error: "unauthorized" }, 401);
-    if (Number(c.req.header("content-length") ?? 0) > MAX_BID_BODY)
-      return c.json({ error: "too_large" }, 413);
-    const text = await c.req.text();
-    if (text.length > MAX_BID_BODY) return c.json({ error: "too_large" }, 413);
+    let text: string;
+    try {
+      text = new TextDecoder().decode(
+        await readBoundedBody(c.req.raw, MAX_BID_BODY),
+      );
+    } catch (error) {
+      if (error instanceof BodyTooLarge)
+        return c.json({ error: "too_large" }, 413);
+      throw error;
+    }
     const input = parseBid(text);
     if (typeof input === "string") return c.json({ error: input }, 400);
     const result = await store.placeBid(
@@ -105,6 +112,7 @@ export function registerRoundRoutes(
       input.amount,
       input.username,
     );
+    if (result.status === "rate_limited") c.header("Retry-After", "60");
     if (result.status !== "placed")
       return c.json({ error: result.status }, refusalStatus[result.status]);
     return c.json(

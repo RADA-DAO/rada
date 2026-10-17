@@ -49,7 +49,7 @@ a bid is a promise paid at claim):
   `name_contested` (another frog of the round has a bid proposing the same
   name). Errors: `400` (`invalid_body`, `invalid_amount`, `invalid_name`), `401`,
   `403` (`self_bid`), `404` (`not_on_auction`), `409` (`name_taken`,
-  `bid_too_low`, `bid_unchanged`, `round_closed`), `413`.
+  `bid_too_low`, `bid_unchanged`, `round_closed`), `413`, `429` with `Retry-After`.
 - `GET /v1/splash/bids/mine` (signed launch required): the caller's active bid per
   frog with `status` (`active`, `won`, `lost`); for wins also `granted_name`,
   `name_outcome` and `claim_deadline`.
@@ -108,15 +108,15 @@ launch credentials stay in the SDK. Screens never import `api/` code.
 - A round is one UTC day (00:00 to 24:00). Its frogs are those in the pond, with
   an image, submitted before the round started; frogs submitted later wait for
   the next round. At most one round is unclosed at a time.
-- A bid is a positive integer amount and a proposed permanent name. The name must
-  be valid and free under JPEGPE's rule (1 to 32 characters, a letter first, then
+- A bid is a positive integer amount at most `2^120 - 1` and a proposed permanent
+  name. The name must be valid and free under JPEGPE's rule (1 to 32 characters, a letter first, then
   letters, digits or `_`; unique ignoring case, including reserved names). The
   author cannot bid on their own frog. Any verified person may bid; owning a frog
   is not required.
 - One active bid per bidder per frog: a new bid replaces it and every version is
   kept. A replacement cannot lower the amount; the same amount is accepted only
-  with a different name. The amount time (for ties) is kept while the amount is
-  unchanged; the name choice time is kept while the name is unchanged (ignoring
+  with a different name (ignoring case). The amount time (for ties) is kept while
+  the amount is unchanged; the name choice time is kept while the name is unchanged (ignoring
   case).
 - Closing: per frog the highest amount wins; on a tie the bidder who reached that
   amount first wins. Winners then claim names in order of amount (higher first),
@@ -199,6 +199,13 @@ implementation and that table, not the routes or the submission flow.
 
 ## Rules and data
 
+- Processing admission allows 10 attempts per verified subject per 24-hour window,
+  including invalid images and duplicates, before reading the image. At most 4
+  uploads are in flight per API process; a shared 200-attempt/minute budget also
+  bounds admission. The accepted-submission quota remains separate.
+- Bid attempts allow 20 per subject and lot per minute and 200 globally per minute,
+  including refused attempts. SQL admission counters expire after their window;
+  exhausted budgets return `429` with `Retry-After`. Accepted history stays immutable.
 - At most 5 submissions per author in any rolling 24 hours, enforced in
   `splash.submit_frog` under a per-author advisory lock, so concurrent requests
   cannot exceed it.

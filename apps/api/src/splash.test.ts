@@ -34,6 +34,7 @@ function build(access: boolean = false) {
   const submitted: string[] = [];
   const store: SplashStore = {
     ...idleRounds,
+    reserveSubmissionAttempt: () => Promise.resolve(0),
     submit: (id) => {
       submitted.push(id);
       return Promise.resolve({

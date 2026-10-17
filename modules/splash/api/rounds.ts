@@ -29,6 +29,7 @@ export type CurrentRound = {
   lots: RoundLot[];
 };
 export type BidRefusal =
+  | "rate_limited"
   | "invalid_amount"
   | "invalid_name"
   | "name_taken"
