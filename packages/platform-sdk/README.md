@@ -90,3 +90,8 @@ Confirmation shows the full amount and destination plus an expiring numeric send
 fee estimate. Unknown-wallet fee estimation fails closed. Host disposal cancels
 unanswered confirmation; once sent to a wallet, a late transaction may still land
 and must be reconciled. The platform blocks Back during the active payment request.
+
+`readFrogArtwork` accepts only canonical hashed API artwork paths, resolves them
+against the configured API base, and keeps authentication inside the SDK.
+`readFrogDetails` validates the owner-only, privacy-safe detail projection before
+screens render it. Neither method exposes launch credentials to components.

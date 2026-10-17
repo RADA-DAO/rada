@@ -179,6 +179,8 @@ async function measure(
   const background = (await backgroundPage.screenshot({ fullPage })).toString(
     "base64",
   );
+  // WebKit can suspend image decoding in the background measurement tab.
+  await page.bringToFront();
   return await page.evaluate(
     async ({ background, samples }) => {
       const image = new Image();

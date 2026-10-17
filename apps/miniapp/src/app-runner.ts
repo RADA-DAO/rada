@@ -99,5 +99,14 @@ export function createAppRunner(options: {
       dismiss();
     };
   }
-  return { mount, dismiss };
+  return {
+    mount,
+    dismiss,
+    expose() {
+      window.RadaAppHost = Object.freeze({
+        mount: (release, container, origin) =>
+          mount(release, container, origin),
+      });
+    },
+  };
 }

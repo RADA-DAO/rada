@@ -108,3 +108,12 @@ Existing profile, collection, SPLASH and ranking HTTP projections gain nullable
 `artwork_url` (`artworkUrl` for camel-case ranking projections), relative to the
 API origin. Enrichment batches metadata reads and preserves the existing frog
 selection and private fields; the legacy `artwork_path` field is unchanged.
+
+## Own frog details
+
+`readOwnFrogDetails` uses the caller's verified transaction and
+`jpegpe.own_frog_details(uuid)`. The owner-only projection contains creator and
+current owner public frog names, colour provenance, and dated ownership events.
+Names resolve through the current selected, still-owned profile frog; private
+people are null. No subject IDs, Telegram fields, wallets or event import keys
+leave this projection. `/me/frogs/:frogId` returns 404 after ownership is lost.

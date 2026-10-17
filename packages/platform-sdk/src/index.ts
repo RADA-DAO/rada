@@ -1,3 +1,5 @@
+import { frogAdapter } from "./frog-details.ts";
+export type { FrogDetails } from "./frog-details.ts";
 import { rankingsAdapter } from "./rankings.ts";
 export type { HolderEntry, HoldersPage, RankingToken } from "./rankings.ts";
 export type AppConsent = { app_id: string; capability: string };
@@ -221,6 +223,7 @@ export function initializePlatform(options: {
         throw new Error("unavailable");
     },
     ...profileAdapter(profileUrl, authHeaders),
+    ...frogAdapter(profileUrl, authHeaders),
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...rankingsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...moduleApiAdapter(apiOrigin?.origin ?? "/api", authHeaders),

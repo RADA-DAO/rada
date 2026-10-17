@@ -1,6 +1,8 @@
 export {
   readOwnPublicFrog,
   readOwnFrogs,
+  readOwnFrogDetails,
+  type FrogDetails,
   type PublicFrog,
   type OwnFrog,
 } from "./api/store.ts";

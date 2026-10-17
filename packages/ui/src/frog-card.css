@@ -82,3 +82,29 @@
 .profile-collection > div {
   min-width: 0;
 }
+
+.rada-frog-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--rada-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rada-frog-gallery[data-size="medium"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.rada-frog-gallery[data-size="compact"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.rada-frog-gallery-item {
+  min-width: 0;
+}
+.rada-frog-gallery-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+.rada-frog-gallery-button .jpegpe-card {
+  width: 100%;
+}

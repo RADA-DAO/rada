@@ -63,6 +63,8 @@ export default defineConfig({
       generateBundle(_, bundle) {
         const sources = {
           governance: "/modules/governance/ui/screen.ts",
+          profile: "/apps/miniapp/src/profile-panel.ts",
+          collection: "/apps/miniapp/src/collection.ts",
           holders: "/apps/miniapp/src/holders.ts",
           splash: "/apps/miniapp/src/splash-shell.ts",
         };

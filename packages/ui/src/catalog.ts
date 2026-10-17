@@ -16,6 +16,7 @@ import {
   ErrorState,
   Field,
   FrogCard,
+  FrogGallery,
   Group,
   Identity,
   List,
@@ -62,6 +63,40 @@ const themeName: ThemeName =
 applyTheme(document.documentElement, themes[themeName]());
 
 const noop = () => undefined;
+
+function gallery(): Node {
+  return Section({
+    title: t("en", "profile.collection"),
+    children: [
+      FrogGallery({
+        label: t("en", "profile.collection"),
+        items: [true, false].map((art, index) => ({
+          label: t("en", "collection.view", { name: text("identityName") }),
+          selected: index === 0,
+          onOpen: noop,
+          card: FrogCard(
+            {
+              username: text("identityName"),
+              background_color: "#344C40",
+              accent_color: "#F2C94C",
+            },
+            {
+              missingArtLabel: text("frogMissing"),
+              ...(art
+                ? {
+                    image: {
+                      url: CATALOG_ARTWORK_PATH,
+                      alt: text("identityName"),
+                    },
+                  }
+                : {}),
+            },
+          ),
+        })),
+      }),
+    ],
+  });
+}
 
 function buttons(): Node {
   const variants = ["primary", "secondary", "ghost"] as const;
@@ -304,6 +339,7 @@ ScreenHost(root).append(
       }),
       frogCards(),
       mediaSection(),
+      gallery(),
     ],
     footer: Tabs({
       label: text("tabsLabel"),

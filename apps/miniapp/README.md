@@ -61,3 +61,20 @@ keeps their stack entry active while shared loading or retry states are visible;
 leaving a pending screen prevents its eventual import from replacing the next view.
 The production build emits `screen-chunks.json` beside `index.html`; serve it with
 the build assets so retries can bypass browsers' cached module-fetch failures.
+
+Profile and collection implementations load on demand. The profile uses the API's
+hashed artwork URL; the credential-holding SDK fetches it with the server's cache
+policy (public immutable, private no-store). Blob URLs live only for the mounted
+screen. Collection artwork loads when visible, with fixed 4:5 cards and an error
+fallback. The gallery preserves the old large/medium/compact size choices; the
+old gallery had no sort/filter controls. Opening a card pushes its detail screen;
+only the explicit selection action changes the public profile and shell theme.
+Ownership dates are shown in UTC. Creator, owner and event names follow current
+public-profile rules; private people appear as Anonymous.
+
+The profile/collection change moves the profile, wallet panel and collectible
+renderer into lazy chunks and adds the gallery and detail screens. Compared with
+the parent commit, the measured production initial JS falls from 46,147/39,781
+bytes (gzip/Brotli) to 45,293/38,928; lazy JS grows from 175,289/145,701 to
+180,650/150,400. Only the lazy JS budgets change to 181,500/151,500 bytes; initial
+JS, CSS, font and lazy CSS limits stay unchanged. No dependency was added.
