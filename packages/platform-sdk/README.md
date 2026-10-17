@@ -31,15 +31,19 @@ same reconciliation rules as payment requests below.
 ## Community app host v1
 
 `rada.app.json` follows `rada.app.schema.json`; `parseAppManifest` also validates
-it at runtime. Its requested trust level, design route and permissions are
-declarations. A trusted registry release must separately provide the allowed
-permission subset, artifact URL and SHA-256.
+it at runtime. Design route and permissions are declarations. Manifests may not
+claim `official`: official status is the registry's `tier`, changed through
+`apps.set_tier` by the `apps.steward` role. Legacy `trustLevel: "community"` is
+accepted and dropped by the parser. A trusted registry release must separately
+provide the allowed permission subset, artifact URL and SHA-256.
 The optional `icon` is a relative path to a square PNG, WebP or SVG of at most
-64 KB. It is served from `/artifacts/<sha256>/<icon>` on the artifact origin and
-is part of the manifest the reviewer approves; the launcher falls back to the
-monogram if it is missing, too large or of another type. The current shell has no release
-registry or published apps yet. Its `RadaAppHost.mount` adapter is ready for a
-trusted launcher to supply that release record.
+64 KB and 1024 px per side. It is served from `/artifacts/<sha256>/<icon>` on
+the artifact origin and is part of the manifest the reviewer approves; the launcher falls back to the
+monogram if it is missing, invalid, non-square, too large or of another type.
+The signed-in launcher reads published releases from `/apps/published`, uses the
+registry tier for each tile (defaulting to `community` when absent), and supplies
+the approved release to `RadaAppHost.mount`. Guests do not fetch the catalog;
+built-in official modules remain available.
 
 The host fetches an immutable HTML artifact without credentials, checks its
 size and SHA-256, and only then starts it in an opaque-origin `allow-scripts`
