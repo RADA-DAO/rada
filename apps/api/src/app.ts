@@ -1,4 +1,8 @@
 import {
+  registerNotificationRoutes,
+  type NotificationStore,
+} from "../../../modules/notifications/index.ts";
+import {
   registerArtworkRoutes,
   type ArtworkStore,
 } from "../../../modules/jpegpe/index.ts";
@@ -62,6 +66,7 @@ export function createApp(
   rankings?: RankingStore,
   governance?: GovernanceStore,
   artwork?: ArtworkStore,
+  notifications?: NotificationStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -109,6 +114,8 @@ export function createApp(
       policy.mode !== "production",
     );
   }
+  if (notifications)
+    registerNotificationRoutes(app, notifications, authenticated);
   if (rankings) registerRankingRoutes(app, rankings);
   if (governance) registerGovernanceRoutes(app, governance, authenticated);
   app.get("/health", (c) => c.json({ status: "ok" }));

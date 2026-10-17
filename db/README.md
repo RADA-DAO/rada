@@ -5,18 +5,19 @@ Identity uses a stable `subject_id` UUID across applications. Tables belong to
 Community applications receive no database credentials. Provision separate login
 credentials for these non-login roles outside migrations:
 
-| Role                 | Allowed access                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| `identity_auth`      | Execute `identity.resolve_telegram(bigint)` after verified Telegram authentication  |
-| `identity_service`   | Read own identity, Telegram link, roles and consents; insert/update own consents    |
-| `identity_operator`  | Read, insert and delete explicit role grants                                        |
-| `apps_service`       | Execute registry transitions and read the approved live projection only             |
-| `jpegpe_service`     | Execute own-frog public projection only                                             |
-| `jpegpe_operator`    | Create and transfer frogs through checked functions                                 |
-| `wallet_service`     | Own proof challenges and identity-owned wallet link, revoke and consent functions   |
-| `splash_service`     | Execute SPLASH submission, pond, image, round, bid, result and claim functions only |
-| `governance_service` | Execute governance functions and private identity membership input only             |
-| `ops_service`        | Execute `ops.record_client_error(...)` and `ops.purge_client_errors(interval)` only |
+| Role                    | Allowed access                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| `identity_auth`         | Execute `identity.resolve_telegram(bigint)` after verified Telegram authentication  |
+| `identity_service`      | Read own identity, Telegram link, roles and consents; insert/update own consents    |
+| `identity_operator`     | Read, insert and delete explicit role grants                                        |
+| `apps_service`          | Execute registry transitions and read the approved live projection only             |
+| `jpegpe_service`        | Execute own-frog public projection only                                             |
+| `jpegpe_operator`       | Create and transfer frogs through checked functions                                 |
+| `wallet_service`        | Own proof challenges and identity-owned wallet link, revoke and consent functions   |
+| `splash_service`        | Execute SPLASH submission, pond, image, round, bid, result and claim functions only |
+| `governance_service`    | Execute governance functions and private identity membership input only             |
+| `notifications_service` | Execute own notification preferences and private delivery functions only            |
+| `ops_service`           | Execute `ops.record_client_error(...)` and `ops.purge_client_errors(interval)` only |
 
 `apps_owner` owns the registry schema and is `NOLOGIN`. The API must use a
 separate login inheriting only `apps_service`; it has no base-table writes or

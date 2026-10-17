@@ -174,3 +174,9 @@ See [JPEGPE runtime artwork](../../modules/jpegpe/README.md#runtime-artwork-read
 for visibility, response fields, cache lifetime and legacy JPEG validation.
 CORS allows `If-None-Match` and exposes `ETag` and `Content-Location` to configured
 app origins. Private images require the existing signed Authorization header.
+
+Platform Telegram notifications use a separate `NOTIFICATIONS_SERVICE_DATABASE_URL`
+login with only `notifications_service`. Apply migrations 0050–0053 first.
+The API minute worker is off unless `NOTIFICATIONS_ENABLED=true`; synthetic
+staging never sends. See [notifications](../../modules/notifications/README.md)
+for consent, delivery limits and uncertain outcomes.

@@ -6,6 +6,7 @@
 \getenv ops_password OPS_PASSWORD
 \getenv splash_password SPLASH_PASSWORD
 \getenv governance_password GOVERNANCE_PASSWORD
+\getenv notifications_password NOTIFICATIONS_PASSWORD
 BEGIN;
 REVOKE ALL ON DATABASE rada_staging FROM PUBLIC;
 SELECT 'CREATE ROLE staging_auth LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_auth') \gexec
@@ -34,4 +35,8 @@ ALTER ROLE staging_rankings_worker PASSWORD :'rankings_worker_password';
 GRANT rankings_service TO staging_rankings;
 GRANT rankings_worker TO staging_rankings_worker;
 GRANT CONNECT ON DATABASE rada_staging TO staging_rankings, staging_rankings_worker;
+SELECT 'CREATE ROLE staging_notifications LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_notifications') \gexec
+ALTER ROLE staging_notifications PASSWORD :'notifications_password';
+GRANT notifications_service TO staging_notifications;
+GRANT CONNECT ON DATABASE rada_staging TO staging_notifications;
 COMMIT;

@@ -2,6 +2,7 @@
 # Disposable local containers only; no proxy listeners or ACME requests.
 set -eu
 export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password OPS_PASSWORD=synthetic-ops-password SPLASH_PASSWORD=synthetic-splash-password GOVERNANCE_PASSWORD=synthetic-governance-password RANKINGS_PASSWORD=synthetic-rankings-password RANKINGS_WORKER_PASSWORD=synthetic-rankings-worker-password
+export NOTIFICATIONS_PASSWORD=synthetic-notifications-password NOTIFICATIONS_ENABLED=false
 export RANKINGS_WORKER_ENABLED=false
 export TELEGRAM_BOT_TOKEN=synthetic-fixture-bot-token
 export STAGING_AUTH_MODE=synthetic STAGING_SYNTHETIC_ONLY=true STAGING_API_HOSTNAME=api.staging.example.invalid
@@ -44,7 +45,15 @@ assert(holders.status === 200);
 const ranking = await holders.json();
 assert(ranking.token === "TON" && ranking.entries.length === 0 && ranking.nextCursor === null);
 assert((await fetch("http://127.0.0.1:8000/v1/rankings/holders?token=TON")).status === 401);
-console.log("Container health, signed synthetic identity, rankings and rejection passed.");
+const notificationsHeaders = { authorization: `tma ${await signed({ user: JSON.stringify({ id: 101 }) })}`, "content-type": "application/json" };
+const preferences = await fetch("http://127.0.0.1:8000/v1/notifications/preferences", { headers: notificationsHeaders });
+assert(preferences.status === 200);
+assert((await preferences.json()).preferences.every((p: { enabled: boolean }) => !p.enabled));
+const preference = { category: "splash", enabled: true, locale: "en", quiet_start: null, quiet_end: null };
+assert((await fetch("http://127.0.0.1:8000/v1/notifications/preferences", { method: "POST", headers: notificationsHeaders, body: JSON.stringify(preference) })).status === 200);
+assert((await fetch("http://127.0.0.1:8000/v1/notifications/test", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ category: "splash" }) })).status === 202);
+assert((await fetch("http://127.0.0.1:8000/v1/notifications/preferences", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ ...preference, enabled: false }) })).status === 200);
+console.log("Container health, signed identity, notifications, rankings and rejection passed.");
 '
 compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 < modules/identity/db/identity.test.sql
 compose run --rm migrate

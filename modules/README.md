@@ -12,3 +12,6 @@ Each domain owns its API, database migrations, SQL tests and public `index.ts`.
 Import another module only through its public entry point. Runtime SQL accesses
 owned tables or a published SQL function; historical migrations remain immutable.
 The [API](../apps/api/README.md) composes routers and HTTP/authentication policy.
+
+[Notifications](notifications/README.md) owns consent-based platform Telegram
+preferences, the event outbox and delivery attempts.

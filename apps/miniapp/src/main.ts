@@ -128,8 +128,9 @@ const swipe = installShellSwipe(
   () => payment.paymentBusy,
   back,
 );
+const notes = platform.moduleApi("notifications");
 function showSettings() {
-  showShellSettings(locale, navigation, settingsButton, changeLocale);
+  showShellSettings(locale, navigation, settingsButton, changeLocale, notes);
 }
 function changeLocale(value: Locale) {
   locale = value;
