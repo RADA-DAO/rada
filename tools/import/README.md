@@ -125,8 +125,8 @@ mappings, source changes, missing rows and changed target contents prevent `ok`.
 No balances, financial amounts, active wallet links, wallet evidence, roles,
 admin rights, consents, sessions, nonces, challenges or delivery queues are
 imported. Unowned `splash` and `archived` frogs are counted and skipped: the target
-requires an owner, so the importer does not invent one. Media bytes, presentation
-skins, inventory and legacy workflows are outside this importer.
+requires an owner, so the importer does not invent one. Presentation skins, inventory and legacy workflows are outside this importer.
+Artwork is an opt-in extension described below.
 
 Reports list full-source counts, eligible planned counts, actual/projected
 counts, conflicts with hashed source keys, skipped whole tables with row counts,
@@ -166,3 +166,68 @@ inventing missing historical transfers. Confirm same-time event ordering
 and pre-market transfers on that copy. Archived frogs need
 a separate archive contract. These questions require isolated evidence, not
 access to a live database.
+
+## Frog artwork rehearsal
+
+Set both `IMPORT_ARTWORK_ROOT` and `IMPORT_ARTWORK_MANIFEST` to the orchestrator's
+frozen isolated storage tree and JSON manifest. `IMPORT_ISOLATED_RESTORE=yes`
+remains mandatory. With neither setting, the existing people/frogs flow is
+unchanged; supplying only one fails. No network media retrieval occurs.
+The source reader additionally needs SELECT on `jpegpe_frog_submissions.storage_path`.
+The tree is `<root>/jpegpe-frog-images/<storage_path>`; manifest objects must have
+`bucket`, `key`, and `metadata: { size, mimetype, eTag }`, where eTag is MD5
+(optionally quoted). Duplicate object keys and invalid manifests fail closed.
+
+Optionally set both `IMPORT_ARTWORK_JOURNAL` and `IMPORT_ARTWORK_BLOBS`.
+The journal is JSON lines of
+`{ "op": "put", "key": "<bucket>/<key>", "object": { "bucket": "...", "key": "...", "sha256": "...", "metadata": { "size": 123, "mimetype": "image/png" } } }`.
+The latest put per key overrides the manifest, including entries absent from it.
+Blobs live at `<blobs>/<sha256>`; lowercase SHA-256 and exact size are verified.
+Both journal settings are required together; journal-only imports are supported.
+Malformed entries fail closed, and missing/corrupt latest blobs remain conflicts
+without falling back to older data. Keep the journal and blobs frozen too.
+
+Use the same dry-run/import/verify commands above with the artwork settings. Artwork
+requires an existing successful frog mapping; a first dry-run before importing
+frogs reports `frog_not_imported`. Rehearse people/frogs first without artwork,
+then enable artwork and repeat all three modes. Each artwork batch atomically
+commits JPEGPE bytes, an ops mapping, and a checkpoint. The separate
+`FAIRGROUND_ARTWORK` namespace preserves existing domain mappings/checksums.
+Checkpoints never suppress retries. Reruns compare source path, source SHA-256,
+normalized SHA-256, type, normalization status, mapping and actual stored bytes.
+Verification reads every planned image and rejects unexpected mappings.
+The JSON `artwork` result has its own counts, checksums and hashed conflicts;
+any artwork conflict makes the combined report fail with exit 2.
+
+PNG uses SPLASH's bounded codec from this offline tool: maximum input
+8 MiB, source sides 32–8192 pixels, bounded inflation, verified chunk checksums,
+8-bit RGB/RGBA non-interlaced images. The decoder enforces an explicit
+`width * height * 4 <= 256 MiB` allocation bound before inflation (inflated scanlines
+are separately bounded by the header). Larger images are area-averaged to fit
+1024 pixels, preserving aspect ratio to pixel rounding and averaging premultiplied
+alpha. Re-encoding strips metadata without cutting the background; output is
+capped at 4 MiB. No JPEG or WebP decoder is installed. JPEG originals pass size,
+extension/MIME, SOI/EOI, marker bounds and frame-dimension checks and are stored
+with `needs_normalization=true` (32–8192 pixels per side, at most 4 MiB
+for unchanged stored JPEG bytes). This is envelope validation, not decoded pixel
+validation; JPEG metadata is retained until a future normalization pass. These
+bytes are private import storage and must not be served as normalized artwork.
+WebP and other unsupported types produce explicit conflicts. Missing paths,
+missing manifest entries/files, checksum or size mismatches, unsafe paths and
+invalid images also produce conflicts; none silently disappear. Invalid-image
+conflicts include a fixed detected signature label (`png`, `jpeg`, `gif`, `webp`,
+or `unknown`) alongside the hashed key, never arbitrary magic bytes or paths. Symlink paths
+are rejected. The orchestrator must keep the tree immutable during a run.
+
+Migration 0048 owns immutable JPEGPE bytea storage behind an `ImageStorage`
+interface and import-only SQL functions. It does not change existing immutable
+`artwork_path` values or add a media HTTP route. Hosting is a separate concern.
+Reports contain no original paths. Protect the manifest, restore and reports.
+The planner holds prepared bytes in memory, so this targets a small legacy set.
+
+Synthetic file tests run in `npm run test:unit`; the existing CI import database
+test also rehearses artwork dry-run, rollback, rerun, exact verification,
+changed-source/target detection and least-privilege access using temporary files.
+
+Node 22 runs with `--experimental-strip-types`: the importer uses dedicated
+strip-safe public storage and codec entries, also re-exported by module indexes.

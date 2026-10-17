@@ -13,7 +13,9 @@ cross-schema foreign key and ownership-transfer coordination.
 
 `db/migrations` contains immutable, globally versioned SQL history.
 `db/*.test.sql` verifies the module with synthetic, rolled-back fixtures.
-Cross-module TypeScript imports use only the other module's `index.ts`.
+Cross-module TypeScript imports use public entries only. The strip-safe
+`storage.ts` entry exposes the import storage contract and is re-exported by
+`index.ts`.
 
 `readOwnFrogs(client)` exposes the current person's collection through
 `jpegpe.own_frogs()`. Its five-field projection adds nullable `artwork_path`
@@ -66,3 +68,14 @@ or payments. Only `legacy_import` can call these import functions.
 Migration 0046 records imported colour provenance through those public functions.
 `colour_source = legacy_unverified` preserves authored colours without linked
 proofs; `proof` marks colours with linked evidence. Import never fabricates a proof.
+
+## Imported artwork storage
+
+Migration 0048 adds immutable `jpegpe.artwork` bytea storage. The public
+`PostgresImageStorage` / `ImageStorage` interface saves and loads artwork inside
+the caller's transaction through import-only functions granted to `legacy_import`.
+It can later be replaced with an object-store adapter. Runtime roles cannot read
+these private originals. PNG artwork is normalized; JPEG originals explicitly
+carry `needsNormalization` and await a decoder. This import does not mutate
+`artwork_path` or publish a media route. See the offline importer's rehearsal
+instructions for file validation, mappings and checksums.
