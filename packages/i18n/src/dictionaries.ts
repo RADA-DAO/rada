@@ -1,3 +1,5 @@
+import enTreasury from "../locales/en.treasury.json" with { type: "json" };
+import ukTreasury from "../locales/uk.treasury.json" with { type: "json" };
 import enCollection from "../locales/en.collection.json" with { type: "json" };
 import ukCollection from "../locales/uk.collection.json" with { type: "json" };
 import enNotifications from "../locales/en.notifications.json" with { type: "json" };
@@ -9,12 +11,14 @@ import ukSplash from "../locales/uk.splash.json" with { type: "json" };
 
 export const en = {
   ...enBase,
+  treasury: enTreasury,
   collection: enCollection,
   splash: enSplash,
   notifications: enNotifications,
 };
 export const uk = {
   ...ukBase,
+  treasury: ukTreasury,
   collection: ukCollection,
   splash: ukSplash,
   notifications: ukNotifications,

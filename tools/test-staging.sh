@@ -4,6 +4,7 @@ set -eu
 export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password OPS_PASSWORD=synthetic-ops-password SPLASH_PASSWORD=synthetic-splash-password GOVERNANCE_PASSWORD=synthetic-governance-password RANKINGS_PASSWORD=synthetic-rankings-password RANKINGS_WORKER_PASSWORD=synthetic-rankings-worker-password
 export NOTIFICATIONS_PASSWORD=synthetic-notifications-password NOTIFICATIONS_ENABLED=false
 export RANKINGS_WORKER_ENABLED=false
+export TREASURY_PASSWORD=synthetic-treasury-password TREASURY_WORKER_ENABLED=false
 export TELEGRAM_BOT_TOKEN=synthetic-fixture-bot-token
 export STAGING_AUTH_MODE=synthetic STAGING_SYNTHETIC_ONLY=true STAGING_API_HOSTNAME=api.staging.example.invalid
 unset STAGING_ALLOWED_TELEGRAM_IDS
@@ -53,6 +54,10 @@ const preference = { category: "splash", enabled: true, locale: "en", quiet_star
 assert((await fetch("http://127.0.0.1:8000/v1/notifications/preferences", { method: "POST", headers: notificationsHeaders, body: JSON.stringify(preference) })).status === 200);
 assert((await fetch("http://127.0.0.1:8000/v1/notifications/test", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ category: "splash" }) })).status === 202);
 assert((await fetch("http://127.0.0.1:8000/v1/notifications/preferences", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ ...preference, enabled: false }) })).status === 200);
+const treasury = await fetch("http://127.0.0.1:8000/v1/treasury/overview", { headers: notificationsHeaders });
+assert(treasury.status === 200 && (await treasury.json()).wallets.length === 0);
+assert((await fetch("http://127.0.0.1:8000/v1/treasury/overview")).status === 401);
+assert((await fetch("http://127.0.0.1:8000/v1/treasury/config", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ address: "0:" + "1".repeat(64), enabled: true, reason: "Fixture" }) })).status === 403);
 console.log("Container health, signed identity, notifications, rankings and rejection passed.");
 '
 compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 < modules/identity/db/identity.test.sql

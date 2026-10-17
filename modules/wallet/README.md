@@ -76,3 +76,8 @@ through deadline plus its 30-minute grace, so default negative evidence requires
 index coverage through deadline plus 40 minutes. Indexing outages never hide a
 positive receipt. Injected adapters can supply an explicitly trusted
 `indexedThrough` callback; the same margin and exhaustion checks still apply.
+
+`createTreasuryChainReader` is a GET-only recent treasury projection interface.
+It shares the balance reader and indexed coverage checks, bounds and paces
+TONCenter history/signers reads, and normalizes only TON and canonical JPEGPE
+movements. It never calls intents, signing, fee emulation or broadcast APIs.

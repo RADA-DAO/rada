@@ -139,3 +139,14 @@ The worker rechecks the allowlist before every send. Synthetic mode never sends.
 Users must explicitly opt into each category in Settings. No old consents migrate.
 Restart the API after changing environment values; disabling the worker preserves
 preferences and pending events (expired events are discarded on restart).
+
+## Read-only treasury
+
+Apply migrations 0055–0058 and set a distinct `TREASURY_PASSWORD` before bootstrap.
+Compose creates `staging_treasury`, granting only `treasury_service`, and derives
+`TREASURY_SERVICE_DATABASE_URL`. Leave `TREASURY_WORKER_ENABLED=false` until an
+identity operator grants `treasury.steward` and that steward configures the public
+DAO multisig through `POST /v1/treasury/config` with address, enabled and reason.
+No production address is seeded. To refresh chain projections, explicitly set
+`TREASURY_WORKER_ENABLED=true`; synthetic mode ignores this flag. No funds can be
+moved by this module. Disabled or failed workers leave visibly stale samples.

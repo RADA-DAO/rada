@@ -110,3 +110,4 @@ export type RadaTokenName =
 export { RankingRow } from "./ranking-row.ts";
 export { Tally, EvidenceLink } from "./tally.ts";
 export { FrogGallery } from "./frog-gallery.ts";
+export { TransactionRow } from "./transaction-row.ts";

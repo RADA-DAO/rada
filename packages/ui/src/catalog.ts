@@ -1,3 +1,4 @@
+import { TransactionRow } from "./transaction-row.ts";
 // Development and test pages only: vite.config.ts adds this entry when CATALOG=true.
 // Every component in every variant and state, with fixed data, for visual tests.
 import "./design-system.css";
@@ -332,6 +333,24 @@ ScreenHost(root).append(
                 asOf: t("en", "holders.asOf", { time: "Oct 16, 2026, 10:00" }),
                 staleLabel: t("en", "holders.stale"),
                 viewerLabel: t("en", "holders.you"),
+              }),
+            ],
+          }),
+        ],
+      }),
+      Section({
+        title: t("en", "treasury.transactions"),
+        children: [
+          List({
+            children: [
+              TransactionRow({
+                name: t("en", "treasury.anonymous"),
+                direction: t("en", "treasury.incoming"),
+                amount: t("en", "holders.amount", {
+                  amount: "123.45",
+                  token: "TON",
+                }),
+                time: t("en", "treasury.asOf", { time: "Oct 18, 2026, 10:00" }),
               }),
             ],
           }),

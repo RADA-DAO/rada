@@ -21,6 +21,7 @@ type Page =
   | "frog"
   | "profile"
   | "review"
+  | "treasury"
   | "holders"
   | SplashRoute
   | GovernanceRoute;
@@ -32,6 +33,7 @@ const pages: readonly string[] = [
   "frog",
   "review",
   "holders",
+  "treasury",
   ...SPLASH_ROUTES,
   ...GOVERNANCE_ROUTES,
 ];

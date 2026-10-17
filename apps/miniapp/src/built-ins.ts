@@ -1,3 +1,4 @@
+import { loadTreasury as loadTreasuryScreen } from "../../../modules/treasury/ui/index.ts";
 import { createChunkLoader } from "./chunk-loader.ts";
 import { createLazyScreen } from "./lazy-screen.ts";
 import type { createSplashShell } from "./splash-shell.ts";
@@ -19,8 +20,8 @@ const isSplashRoute = (route: string): route is SplashRoute =>
   (SPLASH_ROUTES as readonly string[]).includes(route);
 export const isBuiltInRoute = (
   route: string,
-): route is SplashRoute | GovernanceRoute =>
-  isSplashRoute(route) || isGovernanceRoute(route);
+): route is SplashRoute | GovernanceRoute | "treasury" =>
+  route === "treasury" || isSplashRoute(route) || isGovernanceRoute(route);
 /** Module screens share only the shell frame and platform navigation lifecycle. */
 export function createBuiltIns(options: {
   platform: ReturnType<typeof initializePlatform>;
@@ -38,8 +39,9 @@ export function createBuiltIns(options: {
     () => import("./splash-shell.ts"),
     "splash",
   );
+  const loadTreasury = createChunkLoader(loadTreasuryScreen, "treasury");
   const lazy = createLazyScreen();
-  const open = (key: SplashRoute | GovernanceRoute) => {
+  const open = (key: SplashRoute | GovernanceRoute | "treasury") => {
     options.navigation.push({ key, edgeBack: true });
   };
   return {
@@ -57,20 +59,50 @@ export function createBuiltIns(options: {
           open("governance");
         },
       },
+      {
+        name: t(options.locale(), "treasury.title"),
+        tier: "platform" as const,
+        onOpen: () => {
+          open("treasury");
+        },
+      },
     ],
     render(
       host: HTMLElement,
-      route: SplashRoute | GovernanceRoute,
+      route: SplashRoute | GovernanceRoute | "treasury",
       frame: { brand: string; actions: Node[] },
     ) {
       lazy.render(host, {
         locale: options.locale(),
         title: t(
           options.locale(),
-          isGovernanceRoute(route) ? "governance.title" : "splash.title",
+          route === "treasury"
+            ? "treasury.title"
+            : isGovernanceRoute(route)
+              ? "governance.title"
+              : "splash.title",
         ),
         ...frame,
         load: async () => {
+          if (route === "treasury") {
+            const { showTreasury } = await loadTreasury();
+            return () =>
+              showTreasury(host, {
+                ...frame,
+                locale: options.locale(),
+                api: options.platform.moduleApi("treasury"),
+                authenticated: options.platform.authenticatedLaunch,
+                openDecision: async (id: string) => {
+                  governance ??= (await loadDAO()).createGovernance({
+                    ...options,
+                    api: options.platform.moduleApi("governance"),
+                    authenticated: options.platform.authenticatedLaunch,
+                  });
+                  if (options.navigation.top.key === "treasury")
+                    governance.selectProposal(id);
+                },
+              });
+          }
           if (isGovernanceRoute(route)) {
             governance ??= (await loadDAO()).createGovernance({
               ...options,

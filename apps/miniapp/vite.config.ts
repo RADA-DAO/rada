@@ -62,6 +62,7 @@ export default defineConfig({
       name: "secondary-screen-retries",
       generateBundle(_, bundle) {
         const sources = {
+          treasury: "/modules/treasury/ui/screen.ts",
           governance: "/modules/governance/ui/screen.ts",
           profile: "/apps/miniapp/src/profile-panel.ts",
           collection: "/apps/miniapp/src/collection.ts",

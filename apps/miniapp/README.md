@@ -78,3 +78,14 @@ the parent commit, the measured production initial JS falls from 46,147/39,781
 bytes (gzip/Brotli) to 45,293/38,928; lazy JS grows from 175,289/145,701 to
 180,650/150,400. Only the lazy JS budgets change to 181,500/151,500 bytes; initial
 JS, CSS, font and lazy CSS limits stay unchanged. No dependency was added.
+
+Treasury is a lazy platform tile using the module's read-only screen, with TON and
+JPEGPE balances, freshness, signer names and filtered cursor transaction history.
+Decision links open DAO detail through the existing navigation stack. No signing
+or payment control is present. The API publishes live public frog names only.
+
+The treasury screen adds about 1.6 KB gzip of lazy JS. Against the parent revision,
+production initial JS measures 46,962 to 47,995 bytes gzip (40,280 to 41,219
+Brotli), while lazy JS measures 180,647 to 182,239 bytes gzip (150,406 to 151,796
+Brotli). Only lazy limits rise to 183,000/152,500 bytes for this new screen;
+initial JS, CSS and font limits remain unchanged. No dependency was added.

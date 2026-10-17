@@ -15,3 +15,6 @@ The [API](../apps/api/README.md) composes routers and HTTP/authentication policy
 
 [Notifications](notifications/README.md) owns consent-based platform Telegram
 preferences, the event outbox and delivery attempts.
+
+[Treasury](treasury/README.md) owns public DAO wallet configuration history and
+read-only balances, transaction and signer projections.
