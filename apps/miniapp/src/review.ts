@@ -1,3 +1,4 @@
+import type { AppReport } from "../../../packages/platform-sdk/src/app-capabilities.ts";
 import {
   Actions,
   Button,
@@ -23,6 +24,7 @@ export function mountReview(
   container: HTMLElement,
   options: {
     locale: Locale;
+    reports?(signal: AbortSignal): Promise<AppReport[]>;
     read(signal: AbortSignal): Promise<ReviewVersion[]>;
     decide(
       appId: string,
@@ -110,6 +112,7 @@ export function mountReview(
           .mount(
             {
               appId: version.appId,
+              versionId: version.versionId,
               manifest: version.manifest,
               artifactUrl: version.artifactUrl,
               artifactSha256: version.artifactSha256,
@@ -184,6 +187,15 @@ export function mountReview(
       description: `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`,
       children: [
         declarations,
+        ...(version.manifest.boards
+          ? [
+              Text(
+                t(options.locale, "appReport.boards", {
+                  boards: JSON.stringify(version.manifest.boards),
+                }),
+              ),
+            ]
+          : []),
         ...(icon ? [icon] : []),
         para("review.requested"),
         requested,
@@ -200,10 +212,42 @@ export function mountReview(
     closePreview();
     container.replaceChildren(Loading({ message: text("common.loading") }));
     try {
-      const versions = await options.read(lifecycle.signal);
+      const [versions, reports] = await Promise.all([
+        options.read(lifecycle.signal),
+        options.reports?.(lifecycle.signal) ?? [],
+      ]);
       if (!current(id)) return;
       container.replaceChildren();
-      if (!versions.length)
+      if (reports.length)
+        container.append(
+          List({
+            label: text("appReport.queue"),
+            children: reports.map((report) =>
+              ListItem({
+                title: report.appId,
+                description: text(
+                  report.category === "other"
+                    ? "appReport.otherCategory"
+                    : `appReport.${report.category}`,
+                ),
+                children: [
+                  Text(report.text),
+                  Text(
+                    t(options.locale, "appReport.version", {
+                      id: report.versionId,
+                    }),
+                  ),
+                  Text(
+                    t(options.locale, "appReport.reporter", {
+                      id: report.reporterId,
+                    }),
+                  ),
+                ],
+              }),
+            ),
+          }),
+        );
+      if (!versions.length && !reports.length)
         container.append(
           EmptyState({
             title: text("review.empty"),

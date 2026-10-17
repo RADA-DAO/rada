@@ -1,3 +1,4 @@
+import type { appCapabilitiesAdapter } from "./app-capabilities.ts";
 import { frogAdapter } from "./frog-details.ts";
 export type { FrogDetails } from "./frog-details.ts";
 import { rankingsAdapter } from "./rankings.ts";
@@ -226,6 +227,24 @@ export function initializePlatform(options: {
     ...frogAdapter(profileUrl, authHeaders),
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...rankingsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
+    async appCapability(
+      ...args: Parameters<
+        ReturnType<typeof appCapabilitiesAdapter>["appCapability"]
+      >
+    ) {
+      const { appCapabilitiesAdapter } = await import("./app-capabilities.ts");
+      return appCapabilitiesAdapter(
+        apiOrigin?.origin ?? "/api",
+        authHeaders,
+      ).appCapability(...args);
+    },
+    async readAppReports(signal?: AbortSignal) {
+      const { appCapabilitiesAdapter } = await import("./app-capabilities.ts");
+      return appCapabilitiesAdapter(
+        apiOrigin?.origin ?? "/api",
+        authHeaders,
+      ).readAppReports(signal);
+    },
     ...moduleApiAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...walletAdapter(profileUrl, authHeaders),
     ...paymentAdapter(profileUrl, authHeaders, options.navigation),

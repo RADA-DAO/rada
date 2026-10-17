@@ -11,17 +11,27 @@
     "minPlatformVersion"
   ],
   "properties": {
-    "name": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "author": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
     "trustLevel": {
       "const": "community",
       "description": "Retired. Official status is a registry decision and cannot be declared."
     },
-    "designRoute": { "enum": ["standard", "free-style"] },
+    "designRoute": {
+      "enum": ["standard", "free-style"]
+    },
     "permissions": {
       "type": "array",
       "uniqueItems": true,
-      "maxItems": 18,
+      "maxItems": 19,
       "items": {
         "enum": [
           "identity.self.read",
@@ -41,7 +51,8 @@
           "governance.vote",
           "treasury.request",
           "frog.issue",
-          "rewards.grant"
+          "rewards.grant",
+          "scores"
         ]
       }
     },
@@ -53,6 +64,52 @@
     "minPlatformVersion": {
       "type": "string",
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "boards": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 10,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]{0,31}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["min", "max"],
+        "properties": {
+          "min": {
+            "type": "integer",
+            "minimum": -1000000000,
+            "maximum": 1000000000
+          },
+          "max": {
+            "type": "integer",
+            "minimum": -1000000000,
+            "maximum": 1000000000
+          }
+        }
+      }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "permissions": {
+            "contains": {
+              "const": "scores"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["boards"]
+      },
+      "else": {
+        "not": {
+          "required": ["boards"]
+        }
+      }
+    }
+  ]
 }

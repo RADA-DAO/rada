@@ -89,3 +89,15 @@ production initial JS measures 46,962 to 47,995 bytes gzip (40,280 to 41,219
 Brotli), while lazy JS measures 180,647 to 182,239 bytes gzip (150,406 to 151,796
 Brotli). Only lazy limits rise to 183,000/152,500 bytes for this new screen;
 initial JS, CSS and font limits remain unchanged. No dependency was added.
+
+Community games use platform consent for private progress and app-local
+leaderboards, plus a platform report sheet and reviewer report list. The app host,
+including records, scores, consent and report UI, loads only when launching an app
+or preview. Review UI loads when opening the review queue; capability API code
+loads on first use. App launches retain the existing loading and error states,
+retry failed chunks through `screen-chunks.json`, and ignore imports after Back.
+Production initial JS measures 45,696/39,245 bytes (gzip/Brotli), down from
+50,069/42,837 before splitting. Initial limits remain 49,319/42,676 bytes.
+Lazy JS measures 188,640/157,467 bytes; only lazy limits change to
+189,000/158,000 to account for deferred code. Styles and fonts remain unchanged.
+No dependency was added.

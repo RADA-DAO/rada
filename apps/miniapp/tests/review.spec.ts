@@ -2,6 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 import { createHmac, createHash, randomUUID } from "node:crypto";
 import pg from "pg";
 import { t } from "../../../packages/i18n/src/index.ts";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/apps/review-queue/reports", (route) =>
+    route.fulfill({ json: { reports: [] } }),
+  );
+});
 function signed(id = 102, age = 0) {
   const data = new URLSearchParams({
     auth_date: String(Math.floor(Date.now() / 1000) - age),

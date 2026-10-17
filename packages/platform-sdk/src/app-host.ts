@@ -1,3 +1,7 @@
+import { childDocument, verifyAppArtifact } from "./app-artifact.ts";
+export { verifyAppArtifact } from "./app-artifact.ts";
+import { runAppCapability } from "./app-capabilities.ts";
+import { reportWindow, type ReportCopy } from "./app-report.ts";
 import type { SheetNavigation } from "../../ui/src/index.ts";
 import { consentWindow } from "./app-host-consent.ts";
 import {
@@ -10,6 +14,7 @@ import {
 
 export type AppRelease = {
   appId: string;
+  versionId?: string;
   manifest: AppManifest;
   artifactUrl: string;
   artifactSha256: string;
@@ -35,6 +40,14 @@ export type AppHostOptions = {
     permission: string,
     granted: boolean,
   ): Promise<boolean>;
+  reportCopy?: ReportCopy;
+  appCapability?(
+    appId: string,
+    hash: string,
+    operation: string,
+    payload: unknown,
+    signal: AbortSignal,
+  ): Promise<unknown>;
   ownSubject(): Promise<string | null>;
   readWalletAddress?(appId: string, signal: AbortSignal): Promise<unknown>;
   readWalletBalances?(appId: string, signal: AbortSignal): Promise<unknown>;
@@ -49,7 +62,6 @@ export type AppHostOptions = {
   navigation?: SheetNavigation;
   onError?(code: string): void;
 };
-const maxArtifactBytes = 1024 * 1024;
 const allowedRequestId = (value: unknown): value is string =>
   typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);
 const isAppPermission = (value: unknown): value is AppPermission =>
@@ -60,77 +72,6 @@ const isConsentPermission = (
 ): value is (typeof CONSENT_PERMISSIONS)[number] =>
   typeof value === "string" &&
   (CONSENT_PERMISSIONS as readonly string[]).includes(value);
-export async function verifyAppArtifact(
-  response: Response,
-  expectedHash: string,
-): Promise<string> {
-  if (!response.ok || !/^[a-f0-9]{64}$/.test(expectedHash))
-    throw new Error("artifact_unavailable");
-  const size = Number(response.headers.get("content-length"));
-  if (size > maxArtifactBytes) throw new Error("artifact_too_large");
-  const body: unknown = response.body;
-  if (!(body instanceof ReadableStream))
-    throw new Error("artifact_unavailable");
-  const reader = (body as ReadableStream<Uint8Array>).getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    for (;;) {
-      const item = await reader.read();
-      if (item.done) break;
-      length += item.value.length;
-      if (length > maxArtifactBytes) {
-        await reader.cancel();
-        throw new Error("artifact_too_large");
-      }
-      chunks.push(item.value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const hash = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-  if (hash !== expectedHash) throw new Error("artifact_integrity_failed");
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-}
-
-function childDocument(
-  hostOrigin: string,
-  channel: string,
-  artifact: string,
-): string {
-  const state = JSON.stringify({ hostOrigin, channel }).replace(
-    /</g,
-    "\\u003c",
-  );
-  const bridge = `(() => { const state = ${state}; let seq = 0; const pending = new Map();
-    const send = (message) => parent.postMessage({ ...message, bridgeVersion: 1, channel: state.channel }, state.hostOrigin);
-    window.rada = Object.freeze({ member: Object.freeze({
-      request(type, payload = {}) { if (typeof type !== 'string' || !type.startsWith('rada.member.')) return Promise.reject(Error('invalid_request'));
-    const requestId = 'r' + (++seq); return new Promise((resolve, reject) => { const timeout = setTimeout(() => { pending.delete(requestId); reject(Error('timeout')); }, type === 'rada.member.payment.request' ? 300000 : 10000); pending.set(requestId, { resolve, reject, timeout }); send({ type, requestId, payload }); }); },
-      back() { send({ type: 'rada.member.navigation.back' }); }
-    }) });
-    addEventListener('message', event => { if (event.source !== parent || event.origin !== state.hostOrigin) return;
-      const message = event.data; if (!message || message.bridgeVersion !== 1 || message.channel !== state.channel) return;
-      const request = pending.get(message.requestId); if (!request) return;
-      clearTimeout(request.timeout); pending.delete(message.requestId);
-      if (message.type === 'rada.member.result') request.resolve(message.result);
-      else if (message.type === 'rada.member.error') request.reject(Error(message.error));
-    }); send({ type: 'rada.member.boot' });
-  })();`;
-  // The opaque iframe has no same-origin storage. This policy blocks fetch, frames,
-  // forms and remote assets even when the artifact contains another CSP declaration.
-  return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'"><meta name="referrer" content="no-referrer"><script>${bridge.replace(/<\/script/gi, "<\\/script")}</script></head><body>${artifact}</body></html>`;
-}
-
 export async function mountAppHost(
   options: AppHostOptions,
 ): Promise<() => void> {
@@ -259,7 +200,13 @@ export async function mountAppHost(
       () => {
         controller.abort();
       },
-      message.type === "rada.member.payment.request" ? 300000 : 10000,
+      [
+        "rada.member.payment.request",
+        "rada.member.report",
+        "rada.member.permission.request",
+      ].includes(message.type)
+        ? 300000
+        : 10000,
     );
     const run = async () => {
       if (message.type === "rada.member.context.get")
@@ -269,6 +216,51 @@ export async function mountAppHost(
         granted.has("identity.self.read")
       )
         return { subjectId: await options.ownSubject() };
+      if (/^rada\.member\.(records|scores)\./.test(message.type as string)) {
+        const request = options.appCapability?.bind(options);
+        if (!request) throw new Error("capability_denied");
+        return runAppCapability({
+          type: message.type as string,
+          payload: message.payload,
+          appId: release.appId,
+          hash: release.artifactSha256,
+          granted,
+          readConsent: (appId, permission) =>
+            options.readConsent(appId, permission),
+          request: (operation, payload) =>
+            request(
+              release.appId,
+              release.artifactSha256,
+              operation,
+              payload,
+              controller.signal,
+            ),
+        });
+      }
+      if (message.type === "rada.member.report") {
+        if (!options.reportCopy || !options.appCapability || promptOwner)
+          throw new Error("capability_denied");
+        promptOwner = id;
+        try {
+          const report = await reportWindow(
+            options.reportCopy,
+            manifest.name,
+            controller.signal,
+            options.navigation,
+          );
+          if (!report || isAborted() || isDisposed() || !isActive())
+            return { submitted: false };
+          return await options.appCapability(
+            release.appId,
+            release.artifactSha256,
+            "report",
+            { ...report, versionId: release.versionId },
+            controller.signal,
+          );
+        } finally {
+          if (promptOwner === id) promptOwner = null;
+        }
+      }
       if (message.type === "rada.member.wallet.address.read") {
         if (
           !granted.has("wallet.address.read") ||
@@ -371,9 +363,14 @@ export async function mountAppHost(
         reply(id, "rada.member.error", {
           error:
             error instanceof Error &&
-            ["capability_denied", "rate_limited", "timeout"].includes(
-              error.message,
-            )
+            [
+              "capability_denied",
+              "rate_limited",
+              "timeout",
+              "version_conflict",
+              "limit_exceeded",
+              "invalid_request",
+            ].includes(error.message)
               ? error.message
               : "request_failed",
         });

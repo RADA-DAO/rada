@@ -51,7 +51,9 @@
       "walletAddress": "your wallet address",
       "walletBalances": "your token balances",
       "frogCollection": "your frog collection",
-      "notifications": "notifications"
+      "notifications": "notifications",
+      "storage": "your personal app records (deleted when you revoke consent)",
+      "scores": "your app scores (shown by public frog name or anonymously)"
     },
     "revokePermissionFor": "Revoke permission {{app}} — {{permission}}"
   },
@@ -129,7 +131,8 @@
       },
       "rewards": {
         "grant": "Rewards"
-      }
+      },
+      "scores": "App leaderboards"
     },
     "accessUnavailable": "Review access could not be checked. Try again."
   },

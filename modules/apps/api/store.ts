@@ -9,6 +9,14 @@ export type SubmittedVersion = {
   status: string;
 };
 export interface RegistryStore {
+  capability?(
+    id: string,
+    appId: string,
+    hash: string,
+    operation: string,
+    payload: unknown,
+  ): Promise<unknown>;
+  reports?(id: string): Promise<unknown[]>;
   submit(
     id: string,
     appId: string,
@@ -153,6 +161,37 @@ export class PostgresRegistryStore implements RegistryStore {
     return this.own<unknown[]>(id, "SELECT apps.tier_changes($1) AS result", [
       appId,
     ]);
+  }
+  capability(
+    id: string,
+    appId: string,
+    hash: string,
+    operation: string,
+    payload: unknown,
+  ) {
+    const [kind, action] = operation.split(".");
+    if (operation === "report")
+      return this.own<unknown>(
+        id,
+        "SELECT apps.report_problem($1,$2,$3::jsonb) AS result",
+        [appId, hash, JSON.stringify(payload)],
+      );
+    const query =
+      kind === "records"
+        ? "SELECT apps.own_records($1,$2,$3,$4::jsonb) AS result"
+        : kind === "scores"
+          ? "SELECT apps.app_scores($1,$2,$3,$4::jsonb) AS result"
+          : null;
+    if (!query) throw new Error("invalid_request");
+    return this.own<unknown>(id, query, [
+      appId,
+      hash,
+      action,
+      JSON.stringify(payload),
+    ]);
+  }
+  reports(id: string) {
+    return this.own<unknown[]>(id, "SELECT apps.report_queue() AS result");
   }
   async published() {
     const result = await this.service.query<{ result: unknown[] }>(

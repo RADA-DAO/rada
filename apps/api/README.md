@@ -180,3 +180,12 @@ login with only `notifications_service`. Apply migrations 0050–0053 first.
 The API minute worker is off unless `NOTIFICATIONS_ENABLED=true`; synthetic
 staging never sends. See [notifications](../../modules/notifications/README.md)
 for consent, delivery limits and uncertain outcomes.
+
+Community capabilities use `POST /apps/:appId/capabilities/:operation` with
+`{ hash, payload }` and a privileged verified launch. Operations are
+`records.get/list/put/delete`, `scores.submit/list/rank`, and `report`.
+The SDK supplies release context; report payloads include the mounted `versionId`.
+The apps service rechecks published permission grants, consent and board bounds.
+`GET /apps/review-queue/reports` requires `apps.reviewer` and exposes report text
+and reporter identity only to that reviewer. Existing `APPS_SERVICE_DATABASE_URL`
+is sufficient after migrations 0059–0062; no new staging environment is required.

@@ -1,14 +1,14 @@
-import * as payment from "./payment-copy.ts";
-import { consentCopy } from "./permissions.ts";
 import type { Locale } from "../../../packages/i18n/src/index.ts";
 import type {
   initializePlatform,
   Navigation,
 } from "../../../packages/platform-sdk/src/index.ts";
-import {
-  mountAppHost,
-  type AppRelease,
-} from "../../../packages/platform-sdk/src/app-host.ts";
+import type { AppRelease } from "../../../packages/platform-sdk/src/app-host.ts";
+import { createChunkLoader } from "./chunk-loader.ts";
+const loadHost = createChunkLoader(
+  () => import("./community-app.ts"),
+  "community-app",
+);
 
 /** The single running app: one "app" stack entry, replaced by the next mount. */
 export function createAppRunner(options: {
@@ -58,30 +58,22 @@ export function createAppRunner(options: {
       },
     });
     const locale = options.locale();
-    const dispose = await mountAppHost({
-      signal: controller.signal,
-      navigation,
-      release,
-      container,
-      artifactOrigin,
-      locale,
-      consentCopy: (permission, appName) =>
-        consentCopy(locale, permission, appName),
-      readConsent: (appId, permission) =>
-        platform.readAppConsent(appId, permission),
-      writeConsent: (appId, permission, granted) =>
-        platform.writeAppConsent(appId, permission, granted),
-      ownSubject: async () =>
-        (await platform.readOwnProfile())?.subject_id ?? null,
-      readWalletAddress: (appId, signal) =>
-        platform.readAppWalletAddress(appId, signal),
-      readWalletBalances: (appId, signal) =>
-        platform.readAppWalletBalances(appId, signal),
-      ...payment.paymentHostAdapter(platform, locale, payment.setPaymentBusy),
-      onNavigateBack: () => {
-        options.back();
-      },
-    }).catch((error: unknown) => {
+    const dispose = await (async () => {
+      const { mountCommunityApp } = await loadHost();
+      if (controller.signal.aborted) throw new Error("app_replaced");
+      return mountCommunityApp({
+        platform,
+        navigation,
+        release,
+        container,
+        artifactOrigin,
+        locale,
+        signal: controller.signal,
+        back: () => {
+          options.back();
+        },
+      });
+    })().catch((error: unknown) => {
       if (pendingAppMount === controller) {
         pendingAppMount = undefined;
         navigation.drop("app");
