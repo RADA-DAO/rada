@@ -44,6 +44,8 @@ jobs:
           deno-version: 2.9.7
       - run: npm ci --ignore-scripts
       - run: npm run check
+      - name: Enforce production miniapp size budget
+        run: npm run check:bundle
       - run: npm run commits
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
