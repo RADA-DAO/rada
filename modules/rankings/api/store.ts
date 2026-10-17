@@ -65,13 +65,15 @@ export async function projectHolders(pool: pg.Pool, source: HolderSource) {
       },
     });
   } finally {
+    // A failed unlock discards the connection, which ends its session and
+    // with it the advisory lock; the original error, if any, still propagates.
+    let unlocked = true;
     try {
       if (locked) await client.query("SELECT pg_advisory_unlock(724221, 1)");
-    } catch (error) {
-      client.release(true);
-      throw error;
+    } catch {
+      unlocked = false;
     }
-    client.release();
+    client.release(!unlocked);
   }
 }
 export function startHolderScheduler(
