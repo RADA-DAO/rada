@@ -106,3 +106,7 @@ every 15 seconds while visible and no sheet is open, including after loading add
 control changes and withdrawals; settings show current values and public version
 history. Public names come only from the API's live frog projection. No Telegram
 fields or subject identifiers are rendered. Evidence links accept HTTPS only.
+
+Migration 0056 publishes `governance.transaction_evidence(text)` only to the
+NOLOGIN treasury owner. Exact transaction-hash matches return proposal/evidence
+IDs, title, evidence body and decision outcome, never actors or private identity.

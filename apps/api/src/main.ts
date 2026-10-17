@@ -1,4 +1,9 @@
 import {
+  PostgresTreasuryStore,
+  startTreasuryScheduler,
+  treasuryWorkerEnabled,
+} from "../../../modules/treasury/index.ts";
+import {
   NotificationStore,
   NotificationWorker,
   notificationConfig,
@@ -173,6 +178,10 @@ if (import.meta.main) {
   const rankings = rankingsUrl
     ? new PostgresRankingStore(new pg.Pool({ connectionString: rankingsUrl }))
     : undefined;
+  const treasuryUrl = Deno.env.get("TREASURY_SERVICE_DATABASE_URL");
+  const treasuryPool = treasuryUrl
+    ? new pg.Pool({ connectionString: treasuryUrl })
+    : undefined;
   const governanceUrl = Deno.env.get("GOVERNANCE_SERVICE_DATABASE_URL");
   const governance = governanceUrl
     ? new PostgresGovernanceStore(
@@ -215,6 +224,7 @@ if (import.meta.main) {
     notificationPool
       ? new NotificationStore(auth, notificationPool)
       : undefined,
+    treasuryPool ? new PostgresTreasuryStore(auth, treasuryPool) : undefined,
   );
   if (
     rankingsWorkerUrl &&
@@ -223,6 +233,11 @@ if (import.meta.main) {
     const worker = new pg.Pool({ connectionString: rankingsWorkerUrl });
     startHolderScheduler(worker, new PostgresHolderSource(worker), console.log);
   }
+  if (
+    treasuryPool &&
+    treasuryWorkerEnabled(policy.mode, Deno.env.get("TREASURY_WORKER_ENABLED"))
+  )
+    startTreasuryScheduler(treasuryPool, console.log);
   if (notificationPool)
     startNotificationScheduler(
       new NotificationWorker(notificationPool, notificationSettings),

@@ -1,3 +1,4 @@
+\getenv treasury_password TREASURY_PASSWORD
 \getenv rankings_password RANKINGS_PASSWORD
 \getenv rankings_worker_password RANKINGS_WORKER_PASSWORD
 \getenv auth_password AUTH_PASSWORD
@@ -39,4 +40,8 @@ SELECT 'CREATE ROLE staging_notifications LOGIN NOSUPERUSER NOCREATEDB NOCREATER
 ALTER ROLE staging_notifications PASSWORD :'notifications_password';
 GRANT notifications_service TO staging_notifications;
 GRANT CONNECT ON DATABASE rada_staging TO staging_notifications;
+SELECT 'CREATE ROLE staging_treasury LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_treasury') \gexec
+ALTER ROLE staging_treasury PASSWORD :'treasury_password';
+GRANT treasury_service TO staging_treasury;
+GRANT CONNECT ON DATABASE rada_staging TO staging_treasury;
 COMMIT;

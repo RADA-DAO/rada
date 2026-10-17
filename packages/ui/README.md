@@ -121,3 +121,7 @@ optional artwork loader starts on intersection, preserves card geometry while
 loading, falls back on failure, and revokes its blob URL on screen disposal.
 The catalog includes synthetic artwork and missing-art gallery cards; plain Node
 component tests cover activation, selection and aborted artwork reads.
+
+`TransactionRow` composes a read-only monetary movement with localized direction,
+amount, counterparty, time and optional decision actions. Its catalog entry and
+component tests cover the anonymous fallback and plain-text rendering.

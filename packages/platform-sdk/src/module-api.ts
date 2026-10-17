@@ -3,6 +3,7 @@ export const OFFICIAL_MODULES = [
   "splash",
   "governance",
   "notifications",
+  "treasury",
 ] as const;
 export type OfficialModule = (typeof OFFICIAL_MODULES)[number];
 
@@ -39,13 +40,20 @@ export function modulePath(module: OfficialModule, path: string): string {
     extra.length ||
     (query !== undefined &&
       !(
-        module === "governance" &&
-        ((pathname === "/v1/governance/proposals" &&
-          /^before=[0-9a-f-]{36}$/i.test(query)) ||
-          (/^\/v1\/governance\/proposals\/[0-9a-f-]{36}\/votes$/i.test(
+        (module === "treasury" &&
+          /^\/v1\/treasury\/(transactions|config\/history)$/.test(
             pathname ?? "",
           ) &&
-            /^after=\d{1,18}$/.test(query)))
+          /^(?:(?:before=[1-9][0-9]{0,17}|direction=(?:in|out)|token=(?:TON|JPEGPE))(?:&|$))+$/.test(
+            query,
+          )) ||
+        (module === "governance" &&
+          ((pathname === "/v1/governance/proposals" &&
+            /^before=[0-9a-f-]{36}$/i.test(query)) ||
+            (/^\/v1\/governance\/proposals\/[0-9a-f-]{36}\/votes$/i.test(
+              pathname ?? "",
+            ) &&
+              /^after=\d{1,18}$/.test(query))))
       ))
   )
     throw new Error("invalid_request");

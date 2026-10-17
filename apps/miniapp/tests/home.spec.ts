@@ -102,8 +102,8 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
   const grid = page.getByRole("list", { name: t("en", "home.gridLabel") });
-  await expect(grid.getByRole("listitem")).toHaveCount(5);
-  for (const name of ["Holders", "DAO"]) {
+  await expect(grid.getByRole("listitem")).toHaveCount(6);
+  for (const name of ["Holders", "DAO", "Treasury"]) {
     await expect(tile(page, name)).toBeVisible();
     await expect(tile(page, name)).toHaveAccessibleDescription("");
   }
@@ -131,7 +131,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   const returned = async () => {
     await expect(appsHeading(page)).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await expect(grid.getByRole("listitem")).toHaveCount(5);
+    await expect(grid.getByRole("listitem")).toHaveCount(6);
   };
 
   await official.click();
@@ -183,8 +183,8 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   ).toBeVisible();
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
-  // Built-in SPLASH and platform Holders and DAO tiles remain.
-  await expect(page.getByRole("listitem")).toHaveCount(3);
+  // Built-in SPLASH and platform Holders, Treasury and DAO tiles remain.
+  await expect(page.getByRole("listitem")).toHaveCount(4);
 });
 
 test("a guest sees how to sign in and no catalog request is made", async ({
@@ -286,7 +286,7 @@ test("home keeps a generic identity when the profile cannot be read", async ({
   await expect(
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("listitem")).toHaveCount(6);
 });
 
 test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({

@@ -30,6 +30,7 @@ services:
       WALLET_PASSWORD: ${WALLET_PASSWORD:?Set separate wallet login password}
       OPS_PASSWORD: ${OPS_PASSWORD:?Set separate ops login password}
       NOTIFICATIONS_PASSWORD: ${NOTIFICATIONS_PASSWORD:?Set separate notifications login password}
+      TREASURY_PASSWORD: ${TREASURY_PASSWORD:?Set separate treasury login password}
       GOVERNANCE_PASSWORD: ${GOVERNANCE_PASSWORD:?Set separate governance login password}
       RANKINGS_PASSWORD: ${RANKINGS_PASSWORD:?Set separate rankings login password}
       RANKINGS_WORKER_PASSWORD: ${RANKINGS_WORKER_PASSWORD:?Set separate rankings worker login password}
@@ -54,6 +55,8 @@ services:
       CLIENT_ERRORS_DATABASE_URL: postgresql://staging_ops:${OPS_PASSWORD:?Set ops password}@postgres:5432/rada_staging
       NOTIFICATIONS_SERVICE_DATABASE_URL: postgresql://staging_notifications:${NOTIFICATIONS_PASSWORD:?Set notifications password}@postgres:5432/rada_staging
       NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-false}
+      TREASURY_SERVICE_DATABASE_URL: postgresql://staging_treasury:${TREASURY_PASSWORD:?Set treasury password}@postgres:5432/rada_staging
+      TREASURY_WORKER_ENABLED: ${TREASURY_WORKER_ENABLED:-false}
       GOVERNANCE_SERVICE_DATABASE_URL: postgresql://staging_governance:${GOVERNANCE_PASSWORD:?Set governance password}@postgres:5432/rada_staging
       SPLASH_SERVICE_DATABASE_URL: postgresql://staging_splash:${SPLASH_PASSWORD:?Set splash password}@postgres:5432/rada_staging
       RANKINGS_SERVICE_DATABASE_URL: postgresql://staging_rankings:${RANKINGS_PASSWORD:?Set rankings password}@postgres:5432/rada_staging

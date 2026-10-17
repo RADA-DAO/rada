@@ -37,7 +37,7 @@ try {
   });
   if (migrations.status !== 0) throw new Error("E2E migrations failed");
   await db.query(
-    "CREATE ROLE shell_fixture_auth LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_auth TO shell_fixture_auth; CREATE ROLE shell_fixture_service LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_service TO shell_fixture_service; CREATE ROLE shell_fixture_apps LOGIN PASSWORD 'fixture-only' INHERIT; GRANT apps_service TO shell_fixture_apps; CREATE ROLE shell_fixture_wallet LOGIN PASSWORD 'fixture-only' INHERIT; GRANT wallet_service TO shell_fixture_wallet; CREATE ROLE shell_fixture_ops LOGIN PASSWORD 'fixture-only' INHERIT; GRANT ops_service TO shell_fixture_ops; CREATE ROLE shell_fixture_notifications LOGIN PASSWORD 'fixture-only' INHERIT; GRANT notifications_service TO shell_fixture_notifications;",
+    "CREATE ROLE shell_fixture_auth LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_auth TO shell_fixture_auth; CREATE ROLE shell_fixture_service LOGIN PASSWORD 'fixture-only' INHERIT; GRANT identity_service TO shell_fixture_service; CREATE ROLE shell_fixture_apps LOGIN PASSWORD 'fixture-only' INHERIT; GRANT apps_service TO shell_fixture_apps; CREATE ROLE shell_fixture_wallet LOGIN PASSWORD 'fixture-only' INHERIT; GRANT wallet_service TO shell_fixture_wallet; CREATE ROLE shell_fixture_ops LOGIN PASSWORD 'fixture-only' INHERIT; GRANT ops_service TO shell_fixture_ops; CREATE ROLE shell_fixture_notifications LOGIN PASSWORD 'fixture-only' INHERIT; GRANT notifications_service TO shell_fixture_notifications; CREATE ROLE shell_fixture_treasury LOGIN PASSWORD 'fixture-only' INHERIT; GRANT treasury_service TO shell_fixture_treasury;",
   );
   const auth = new URL(url);
   auth.username = "shell_fixture_auth";
@@ -52,6 +52,8 @@ try {
   ops.username = "shell_fixture_ops";
   const notifications = new URL(auth);
   notifications.username = "shell_fixture_notifications";
+  const treasury = new URL(auth);
+  treasury.username = "shell_fixture_treasury";
   api = spawn(
     "deno",
     [
@@ -75,6 +77,8 @@ try {
         CLIENT_ERRORS_DATABASE_URL: ops.toString(),
         NOTIFICATIONS_SERVICE_DATABASE_URL: notifications.toString(),
         NOTIFICATIONS_ENABLED: "false",
+        TREASURY_SERVICE_DATABASE_URL: treasury.toString(),
+        TREASURY_WORKER_ENABLED: "false",
         WALLET_APP_ORIGIN: "https://wallet.fixture.example",
         APP_ARTIFACT_ORIGIN: "https://artifacts.example",
         TELEGRAM_BOT_TOKEN: "synthetic-fixture-bot-token",
@@ -119,7 +123,7 @@ try {
     await new Promise((resolve) => api?.on("exit", resolve));
   }
   await db.query(
-    "DROP ROLE IF EXISTS shell_fixture_auth; DROP ROLE IF EXISTS shell_fixture_service; DROP ROLE IF EXISTS shell_fixture_apps; DROP ROLE IF EXISTS shell_fixture_wallet; DROP ROLE IF EXISTS shell_fixture_ops; DROP ROLE IF EXISTS shell_fixture_notifications;",
+    "DROP ROLE IF EXISTS shell_fixture_auth; DROP ROLE IF EXISTS shell_fixture_service; DROP ROLE IF EXISTS shell_fixture_apps; DROP ROLE IF EXISTS shell_fixture_wallet; DROP ROLE IF EXISTS shell_fixture_ops; DROP ROLE IF EXISTS shell_fixture_notifications; DROP ROLE IF EXISTS shell_fixture_treasury;",
   );
   await db.end();
 }

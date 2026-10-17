@@ -47,6 +47,10 @@ export function createGovernance(options: {
     options.navigation.push({ key, edgeBack: true });
   };
   return {
+    selectProposal: (id: string) => {
+      selected = id;
+      open("governance-proposal");
+    },
     open: () => {
       open("governance");
     },

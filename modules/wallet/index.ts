@@ -25,3 +25,8 @@ export {
   createWalletBalanceReader,
 } from "./api/balances.ts";
 export { PostgresHolderSource, type HolderWallet } from "./api/holders.ts";
+export {
+  createTreasuryChainReader,
+  treasuryAddress,
+  type TreasurySample,
+} from "./api/treasury-chain.ts";

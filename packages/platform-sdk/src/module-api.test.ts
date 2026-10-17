@@ -87,3 +87,17 @@ await test("governance pagination permits only its explicit opaque cursor querie
   ])
     assert.throws(() => modulePath("governance", path));
 });
+
+await test("treasury permits only its scoped read cursors and filters", () => {
+  assert.equal(
+    modulePath(
+      "treasury",
+      "/v1/treasury/transactions?direction=in&token=TON&before=42",
+    ),
+    "/v1/treasury/transactions?direction=in&token=TON&before=42",
+  );
+  assert.throws(() =>
+    modulePath("treasury", "/v1/treasury/transactions?address=private"),
+  );
+  assert.throws(() => modulePath("treasury", "/v1/wallet/payments"));
+});
