@@ -113,4 +113,9 @@ export {
 export type ThemeTokenName = (typeof RADA_THEME_TOKEN_NAMES)[number];
 export type RadaTokenName =
   ThemeTokenName | import("./design-tokens.ts").DesignTokenName;
+<<<<<<< HEAD
 export { RankingRow } from "./ranking-row.ts";
+=======
+
+export { Tally, EvidenceLink } from "./tally.ts";
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)

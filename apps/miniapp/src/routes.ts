@@ -1,5 +1,9 @@
 import { isSheetOpen } from "../../../packages/ui/src/index.ts";
 import {
+  GOVERNANCE_ROUTES,
+  type GovernanceRoute,
+} from "../../../modules/governance/ui/index.ts";
+import {
   createNavigation,
   installSwipeBack,
   pageBackNavigation,
@@ -12,14 +16,23 @@ import {
   type SplashRoute,
 } from "../../../modules/splash/ui/index.ts";
 
+<<<<<<< HEAD
 type Page = "profile" | "review" | "holders" | SplashRoute;
+=======
+type Page = "profile" | "review" | SplashRoute | GovernanceRoute;
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 export type Route = "launcher" | Page;
 export const home: NavEntry = { key: "launcher" };
 const pages: readonly string[] = [
   "profile",
   "review",
+<<<<<<< HEAD
   "holders",
   ...SPLASH_ROUTES,
+=======
+  ...SPLASH_ROUTES,
+  ...GOVERNANCE_ROUTES,
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 ];
 
 /** Screens are stack entries; sheets and running apps sit above them. */

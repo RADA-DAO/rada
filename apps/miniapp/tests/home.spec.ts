@@ -179,7 +179,11 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   ).toBeVisible();
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
+<<<<<<< HEAD
   // The built-in SPLASH and platform Holders tiles remain.
+=======
+  // Built-in SPLASH and platform DAO tiles remain.
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
   await expect(page.getByRole("listitem")).toHaveCount(2);
 });
 

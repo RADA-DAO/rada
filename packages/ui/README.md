@@ -24,6 +24,10 @@ tokens, controls show focus rings, and motion honors reduced-motion preferences.
   `Field` also takes `inputMode`, a polite `hint` (`setHint`) and `onInput`.
 - `RankingRow`: rank, stable frog-ID avatar fallback, public name, formatted
   amount and freshness, with optional stale and viewer labels.
+
+- `Tally`: labelled count bars with native progress semantics, including empty
+  tallies. `EvidenceLink`: an external HTTPS link that rejects credentials and
+  unsafe protocols. Both are covered in the catalog and component unit tests.
 - `AppTile`, `AppGrid` and `Identity`: the home screen launcher. A tile is one
   button named by the app, with its tier mark (official or community; platform
   apps carry none) as its accessible description. A tile shows `iconUrl` when

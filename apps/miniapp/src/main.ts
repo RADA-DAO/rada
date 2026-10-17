@@ -3,7 +3,6 @@ import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
-import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
@@ -30,11 +29,23 @@ import {
 import {
   initializePlatform,
   configurePageBack,
+<<<<<<< HEAD
+=======
+  pageBackNavigation,
+  installSwipeBack,
+  type OwnProfile,
+  setPageBackActive,
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
 import { createAppRunner } from "./app-runner.ts";
+<<<<<<< HEAD
 import { createSplashShell } from "./splash-shell.ts";
 import { isSplashRoute } from "../../../modules/splash/ui/index.ts";
+=======
+import { createBuiltIns, isBuiltInRoute } from "./built-ins.ts";
+
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
 let reviewAuthorized = false;
@@ -75,7 +86,8 @@ const runner = createAppRunner({
   },
   onLeave: render,
 });
-const splash = createSplashShell({
+const builtIns = createBuiltIns({
+  membership: () => membership,
   platform,
   navigation,
   locale: () => locale,
@@ -107,6 +119,7 @@ const launcher = createHome({
       origin,
       true,
     ),
+<<<<<<< HEAD
   render,
   builtIn: () => [
     { name: text("splash.title"), onOpen: splash.open },
@@ -118,6 +131,12 @@ const launcher = createHome({
       },
     },
   ],
+=======
+  render: () => {
+    render();
+  },
+  builtIn: builtIns.tiles,
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
 const swipe = installShellSwipe(
@@ -198,9 +217,13 @@ function render() {
   reviewDispose = undefined;
   profileDispose?.();
   profileDispose = undefined;
+<<<<<<< HEAD
   splash.dispose();
   holdersDispose?.();
   holdersDispose = undefined;
+=======
+  builtIns.dispose();
+>>>>>>> 5ace018 (feat(miniapp): governance screens for advisory votes and steward decisions)
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -227,8 +250,8 @@ function render() {
       onClick: showSettings,
     },
   );
-  if (isSplashRoute(route)) {
-    splash.render(screen, route, {
+  if (isBuiltInRoute(route)) {
+    builtIns.render(screen, route, {
       brand: text("shell.brand"),
       actions: [settingsButton],
     });
@@ -390,7 +413,7 @@ window.addEventListener(
     holdersDispose?.();
     profileDispose?.();
     reviewDispose?.();
-    splash.dispose();
+    builtIns.dispose();
     dismissApp();
     swipe.dispose();
     platform.dispose();

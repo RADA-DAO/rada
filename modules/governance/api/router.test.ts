@@ -18,6 +18,7 @@ const rules = {
 function fixture(signed = true) {
   const calls: unknown[] = [];
   const store: GovernanceStore = {
+    viewer: async () => ({ steward: false }),
     list: async () => [
       { proposal_id: p, tally: { for: 1, against: 0, abstain: 0 } },
     ],
@@ -135,4 +136,16 @@ test("SQL authorization and state errors are sanitized", async () => {
     assert.equal(response.status, status);
     assert.equal((await response.text()).includes("private data"), false);
   }
+});
+
+test("viewer authority requires authentication and is explicit", async () => {
+  assert.equal(
+    (await fixture(false).app.request("/v1/governance/viewer")).status,
+    401,
+  );
+  const { app, store } = fixture();
+  store.viewer = async () => ({ steward: true });
+  assert.deepEqual(await (await app.request("/v1/governance/viewer")).json(), {
+    viewer: { steward: true },
+  });
 });

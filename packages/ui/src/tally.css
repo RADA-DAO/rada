@@ -1,0 +1,45 @@
+.rada-tally {
+  display: grid;
+  gap: var(--rada-space-3);
+}
+.rada-tally-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--rada-space-2);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.rada-tally-bar {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: var(--rada-space-2);
+  border: 0;
+  border-radius: var(--rada-radius-small);
+  overflow: hidden;
+  background: var(--surface-soft);
+  color: var(--accent-indicator);
+  accent-color: var(--accent-indicator);
+}
+.rada-tally-bar::-webkit-progress-bar {
+  background: var(--surface-soft);
+}
+.rada-tally-bar::-webkit-progress-value {
+  background: var(--accent-indicator);
+}
+.rada-tally-bar::-moz-progress-bar {
+  background: var(--accent-indicator);
+}
+.rada-evidence-link,
+.rada-evidence-text {
+  display: flex;
+  align-items: center;
+  min-height: var(--rada-control-height);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.rada-evidence-link {
+  text-decoration: underline;
+}
+.rada-evidence-link:focus-visible {
+  outline: var(--rada-focus-width) solid var(--theme-ring);
+}

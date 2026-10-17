@@ -50,3 +50,8 @@ Holders is a platform launcher entry with JPEGPE/TON tabs, cursor pagination and
 per-row sample times. It highlights the selected viewer frog when present. Public
 IDs seed the shared frog avatar fallback; no artwork lookup or private identity
 is needed. Values older than six hours carry a stale label.
+
+DAO is a platform tile without a tier mark. Its proposal, advisory voting,
+steward decision and settings screens come from `modules/governance/ui`, using
+the shared navigation stack and sheets. Steward controls require the caller's
+explicit role projection; membership alone grants no steward authority.

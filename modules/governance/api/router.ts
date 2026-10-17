@@ -12,6 +12,11 @@ export function registerGovernanceRoutes(
   store: GovernanceStore,
   authenticated: Authenticated,
 ) {
+  app.get(`${base}/viewer`, async (c) => {
+    const actor = await authenticated(c, false);
+    if (!actor) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ viewer: await store.viewer(actor) });
+  });
   app.get(`${base}/proposals`, async (c) => {
     const before = c.req.query("before") ?? null;
     if (before !== null && !uuid(before))

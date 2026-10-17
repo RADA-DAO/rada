@@ -1,5 +1,5 @@
 /** Official app modules whose screens are built into the shell. */
-export const OFFICIAL_MODULES = ["splash"] as const;
+export const OFFICIAL_MODULES = ["splash", "governance"] as const;
 export type OfficialModule = (typeof OFFICIAL_MODULES)[number];
 
 export type ModuleResponse = {
@@ -28,9 +28,24 @@ export type ModuleApi = {
 };
 
 const segment = /^[A-Za-z0-9_.~%-]+$/;
-/** Only plain `/v1/<module>/a/b` paths: no traversal, query or fragment. */
+/** Module paths without traversal or fragments; governance permits explicit cursors. */
 export function modulePath(module: OfficialModule, path: string): string {
-  const parts = path.split("/");
+  const [pathname, query, ...extra] = path.split("?");
+  if (
+    extra.length ||
+    (query !== undefined &&
+      !(
+        module === "governance" &&
+        ((pathname === "/v1/governance/proposals" &&
+          /^before=[0-9a-f-]{36}$/i.test(query)) ||
+          (/^\/v1\/governance\/proposals\/[0-9a-f-]{36}\/votes$/i.test(
+            pathname ?? "",
+          ) &&
+            /^after=\d{1,18}$/.test(query)))
+      ))
+  )
+    throw new Error("invalid_request");
+  const parts = (pathname ?? "").split("/");
   if (
     !OFFICIAL_MODULES.includes(module) ||
     parts[0] !== "" ||
