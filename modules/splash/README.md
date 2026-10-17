@@ -232,3 +232,7 @@ implementation and that table, not the routes or the submission flow.
   for recipient settings, claim attempts and claim outcomes.
 - `splash_service` has no table privileges and can execute only the published
   functions listed in the migrations.
+
+The strip-safe public `png.ts` entry exposes the bounded PNG codec for offline
+imports and is re-exported by `index.ts`. Its decoder caps RGBA allocation at
+256 MiB before inflation; the submission API keeps its existing upload limits.

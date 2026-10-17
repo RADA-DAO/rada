@@ -3,6 +3,9 @@ import { deflateSync, inflateSync } from "node:zlib";
 
 export type Raster = { width: number; height: number; rgba: Uint8Array };
 
+// Hard pixel allocation ceiling, independent of caller validation (256 MiB RGBA).
+export const MAX_DECODED_BYTES = 8192 * 8192 * 4;
+
 const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 export class InvalidPng extends Error {}
@@ -49,6 +52,8 @@ function paeth(a: number, b: number, c: number): number {
  */
 export function decodePng(bytes: Uint8Array): Raster {
   const { width, height } = pngDimensions(bytes);
+  if (!width || !height || width * height * 4 > MAX_DECODED_BYTES)
+    throw new InvalidPng("memory_bound");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const depth = bytes[24];
   const colorType = bytes[25];

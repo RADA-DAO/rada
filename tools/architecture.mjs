@@ -62,14 +62,15 @@ export function moduleImportViolations(path, source) {
     const module = /^modules\/([^/]+)\/(.*)$/.exec(target);
     if (owner && target.startsWith("apps/"))
       errors.push(`${path}: modules cannot depend on application composition`);
-    // Public entries: index.ts (server) and ui/index.ts (screens for the shell).
+    // Public entries plus two explicitly published strip-safe offline contracts.
     if (
       module &&
       module[1] !== owner &&
-      !["index.ts", "ui/index.ts"].includes(module[2] ?? "")
+      !["index.ts", "ui/index.ts"].includes(module[2] ?? "") &&
+      !["modules/jpegpe/storage.ts", "modules/splash/png.ts"].includes(target)
     )
       errors.push(
-        `${path}: import ${specifier} must use modules/${module[1] ?? ""}/index.ts or ui/index.ts`,
+        `${path}: import ${specifier} must use modules/${module[1] ?? ""}/index.ts, ui/index.ts or a published strip-safe entry`,
       );
     if (owner && /^modules\/[^/]+\/ui\//.test(path) && /\/api\//.test(target))
       errors.push(`${path}: module screens cannot import server code`);

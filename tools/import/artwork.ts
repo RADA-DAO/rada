@@ -2,8 +2,15 @@ import type { Client } from "pg";
 import {
   PostgresImageStorage,
   type ArtworkImage,
-} from "../../modules/jpegpe/index.ts";
-import { digest, prepareArtwork, readManifest } from "./artwork-files.ts";
+} from "../../modules/jpegpe/storage.ts";
+import {
+  digest,
+  prepareArtwork,
+  readManifest,
+  readJournal,
+  InvalidArtwork,
+  type ManifestObject,
+} from "./artwork-files.ts";
 import { hash, type Snapshot, type Conflict } from "./model.ts";
 import type { Mode } from "./runner.ts";
 const system = "FAIRGROUND_ARTWORK";
@@ -28,9 +35,16 @@ export async function planArtwork(
   source: Client,
   snapshot: Snapshot,
   root: string,
-  manifest: string,
+  manifest?: string,
+  journal?: string,
+  blobs?: string,
 ): Promise<ArtworkPlan> {
-  const objects = await readManifest(manifest);
+  if (Boolean(journal) !== Boolean(blobs))
+    throw new Error("Both journal settings required");
+  const objects = manifest
+    ? await readManifest(manifest)
+    : new Map<string, ManifestObject>();
+  if (journal) await readJournal(journal, objects);
   const rows = (
     await source.query<{ id: string; storage_path: string | null }>(
       "SELECT id::text, storage_path FROM public.jpegpe_frog_submissions ORDER BY id",
@@ -47,7 +61,7 @@ export async function planArtwork(
       if (!row.storage_path) throw new Error("missing_storage_path");
       const object = objects.get(row.storage_path);
       if (!object) throw new Error("missing_manifest_entry");
-      const image = await prepareArtwork(root, object);
+      const image = await prepareArtwork(root, object, blobs);
       plan.records.push({
         id: row.id,
         key: row.id,
@@ -77,7 +91,14 @@ export async function planArtwork(
           : known.includes(e.message)
             ? e.message
             : "file_read_failed";
-      plan.conflicts.push({ entity: "artwork", key: row.id, reason });
+      plan.conflicts.push({
+        entity: "artwork",
+        key: row.id,
+        reason,
+        ...(error instanceof InvalidArtwork
+          ? { detected_type: error.detectedType }
+          : {}),
+      });
     }
   }
   return plan;
