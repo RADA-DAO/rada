@@ -4,11 +4,13 @@ import { tables } from "./model.ts";
 import { skippedInventory } from "./inventory.ts";
 const stamp = (column: string) =>
   `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
-interface RawFrog extends Omit<Frog, "creator" | "owner" | "events"> {
+interface RawFrog extends Omit<
+  Frog,
+  "creator" | "owner" | "events" | "colour_source"
+> {
   creator: string;
   owner: string | null;
   splash_state: string;
-  proof_missing: boolean;
 }
 interface Transfer {
   frog: string;
@@ -44,6 +46,8 @@ const histories = [
   ],
 ] as const;
 export async function readSource(client: Client): Promise<Snapshot> {
+  // Fail rather than silently reading policy-filtered subsets on an RLS restore.
+  await client.query("SET LOCAL row_security = off");
   const result: Snapshot = {
     records: [],
     conflicts: [],
@@ -95,17 +99,29 @@ export async function readSource(client: Client): Promise<Snapshot> {
     transfers.push(...rows.rows);
   }
   if (names.has("jpegpe_notification_events")) {
-    // The migrations reserve this event type without defining a transfer payload.
-    // Do not silently discard a newer producer's ownership evidence.
-    const unknown = await client.query<{ id: string }>(
-      "SELECT id::text FROM public.jpegpe_notification_events WHERE event_type = 'frog.transferred'",
+    // Only the reviewed notification shape is known to contain no ownership evidence.
+    const unknown = await client.query<{
+      id: string;
+      notification_only: boolean;
+    }>(
+      `SELECT id::text, coalesce(jsonb_typeof(payload) = 'object'
+        AND payload ?& ARRAY['frogId','frogName','frogUsername','level']
+        AND payload - ARRAY['frogId','frogName','frogUsername','level'] = '{}'::jsonb,
+        false) AS notification_only
+       FROM public.jpegpe_notification_events WHERE event_type = 'frog.transferred'`,
     );
     for (const e of unknown.rows)
-      result.conflicts.push({
-        entity: "ownership_events",
-        key: e.id,
-        reason: "unrecognized_transfer_payload_requires_adapter",
-      });
+      if (e.notification_only)
+        result.skipped.push({
+          category: "transfer_notification_without_endpoints",
+          count: 1,
+        });
+      else
+        result.conflicts.push({
+          entity: "ownership_events",
+          key: e.id,
+          reason: "unrecognized_transfer_payload_requires_adapter",
+        });
   }
   // SPLASH wins are ownership evidence only; amounts and payouts are never read.
   if (names.has("jpegpe_splash_bids")) {
@@ -117,10 +133,19 @@ export async function readSource(client: Client): Promise<Snapshot> {
       WHERE b.status = 'won'`);
     transfers.push(...rows.rows);
   }
+  const peopleCount = (
+    await client.query<{ n: string }>(
+      "SELECT count(*)::text AS n FROM public.ecosystem_users",
+    )
+  ).rows[0]?.n;
   const people = (
     await client.query<Person>(`SELECT id::text, telegram_id::text,
     ${stamp("created_at")} AS created_at FROM public.ecosystem_users ORDER BY id`)
   ).rows;
+  if (people.length === 0 && Number(peopleCount) > 0)
+    throw new Error(
+      "People source returned zero rows despite non-zero inventory count",
+    );
   const telegram = new Map<string, string>();
   const duplicate = new Set<string>();
   for (const p of people)
@@ -147,20 +172,16 @@ export async function readSource(client: Client): Promise<Snapshot> {
     id && !duplicate.has(id) ? telegram.get(id) : undefined;
   let proofJoin = "";
   let proofs = "NULL::jsonb AS background_proof, NULL::jsonb AS accent_proof";
-  let missing =
-    "f.background_drop_request_id IS NOT NULL OR f.accent_drop_request_id IS NOT NULL";
   if (names.has("jpegpe_color_drop_requests")) {
     used.add("jpegpe_color_drop_requests");
     proofJoin = `LEFT JOIN public.jpegpe_color_drop_requests bg ON bg.request_id = f.background_drop_request_id
       LEFT JOIN public.jpegpe_color_drop_requests ac ON ac.request_id = f.accent_drop_request_id`;
     proofs = "bg.proof AS background_proof, ac.proof AS accent_proof";
-    missing =
-      "(f.background_drop_request_id IS NOT NULL AND bg.proof IS NULL) OR (f.accent_drop_request_id IS NOT NULL AND ac.proof IS NULL)";
   }
   const frogs = (
     await client.query<RawFrog>(`SELECT f.id::text, f.username, f.name AS display_name,
     f.creator_telegram_user_id::text AS creator, f.owner_telegram_user_id::text AS owner,
-    f.splash_state, (${missing}) AS proof_missing, f.background_color, f.accent_color, ${proofs}, ${stamp("f.created_at")} AS created_at
+    f.splash_state, f.background_color, f.accent_color, ${proofs}, ${stamp("f.created_at")} AS created_at
     FROM public.jpegpe_frog_submissions f ${proofJoin} ORDER BY f.id`)
   ).rows;
   for (const f of frogs) {
@@ -171,14 +192,16 @@ export async function readSource(client: Client): Promise<Snapshot> {
       });
       continue;
     }
-    if (f.proof_missing) {
-      result.conflicts.push({
-        entity: "frogs",
-        key: f.id,
-        reason: "missing_linked_colour_proof",
+    const colour_source =
+      (f.background_color !== null && f.background_proof === null) ||
+      (f.accent_color !== null && f.accent_proof === null)
+        ? "legacy_unverified"
+        : "proof";
+    if (colour_source === "legacy_unverified")
+      result.skipped.push({
+        category: "legacy_colour_without_proof",
+        count: 1,
       });
-      continue;
-    }
     const creator = subject(f.creator),
       owner = subject(f.owner);
     if (
@@ -256,7 +279,6 @@ export async function readSource(client: Client): Promise<Snapshot> {
     }
     const authored = { ...f };
     delete (authored as Partial<RawFrog>).splash_state;
-    delete (authored as Partial<RawFrog>).proof_missing;
 
     result.records.push({
       entity: "frogs",
@@ -264,6 +286,7 @@ export async function readSource(client: Client): Promise<Snapshot> {
       id: f.id,
       value: {
         ...authored,
+        colour_source,
         username: f.username.replace(/^@/, ""),
         creator,
         owner,
