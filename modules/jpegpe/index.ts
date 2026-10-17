@@ -10,3 +10,8 @@ export {
   type ColorDrop,
 } from "./api/color-drop.ts";
 export * from "./color-protocol/protocol.ts";
+export {
+  PostgresImageStorage,
+  type ImageStorage,
+  type ArtworkImage,
+} from "./storage.ts";

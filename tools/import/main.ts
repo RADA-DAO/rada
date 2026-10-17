@@ -2,6 +2,15 @@ import pg from "pg";
 import { writeFile } from "node:fs/promises";
 import { readSource } from "./source.ts";
 import { runImport, type Mode } from "./runner.ts";
+import { planArtwork, runArtwork } from "./artwork.ts";
+const artworkRoot = process.env.IMPORT_ARTWORK_ROOT;
+const artworkManifest = process.env.IMPORT_ARTWORK_MANIFEST;
+if (Boolean(artworkRoot) !== Boolean(artworkManifest))
+  throw new Error("Both artwork settings required");
+const artworkJournal = process.env.IMPORT_ARTWORK_JOURNAL;
+const artworkBlobs = process.env.IMPORT_ARTWORK_BLOBS;
+if (Boolean(artworkJournal) !== Boolean(artworkBlobs))
+  throw new Error("Both journal settings required");
 const mode = process.argv[2] as Mode;
 if (!["dry-run", "import", "verify"].includes(mode))
   throw new Error("Usage: main.ts dry-run|import|verify");
@@ -35,21 +44,51 @@ try {
   await source.connect();
   await source.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const snapshot = await readSource(source);
+  const artworkPlan =
+    (artworkRoot && artworkManifest) || artworkJournal
+      ? await planArtwork(
+          source,
+          snapshot,
+          artworkRoot ?? "",
+          artworkManifest,
+          artworkJournal,
+          artworkBlobs,
+        )
+      : null;
   await source.query("COMMIT");
   await target.connect();
   await target.query("SET ROLE legacy_import");
-  const report = await runImport(
+  const domain = await runImport(
     target,
     snapshot,
     mode,
     Number(process.env.IMPORT_BATCH_SIZE ?? 100),
   );
+  const artwork = artworkPlan
+    ? await runArtwork(
+        target,
+        artworkPlan,
+        mode,
+        Number(process.env.IMPORT_BATCH_SIZE ?? 100),
+      )
+    : null;
+  const report = {
+    ...domain,
+    artwork,
+    ok: domain.ok && (artwork?.ok ?? true),
+    skipped: domain.skipped.filter(
+      (entry) =>
+        !artworkPlan ||
+        entry.category !==
+          "excluded_field:public.jpegpe_frog_submissions.storage_path",
+    ),
+  };
   const json = JSON.stringify(report, null, 2) + "\n";
   if (process.env.IMPORT_REPORT)
     await writeFile(process.env.IMPORT_REPORT, json, { mode: 0o600 });
   process.stdout.write(json);
   process.stderr.write(
-    `${mode}: ${report.ok ? "ok" : "review required"}; ${String(report.conflicts.length)} conflicts; ` +
+    `${mode}: ${report.ok ? "ok" : "review required"}; ${String(report.conflicts.length + (artwork?.conflicts.length ?? 0))} conflicts; ` +
       Object.entries(report.entities)
         .map(([key, e]) => `${key} ${String(e.imported)}/${String(e.planned)}`)
         .join(", ") +
