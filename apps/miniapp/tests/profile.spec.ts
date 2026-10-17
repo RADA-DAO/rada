@@ -95,6 +95,7 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     ).toEqual([
       "accent_color",
       "artwork_path",
+      "artwork_url",
       "background_color",
       "frog_id",
       "username",

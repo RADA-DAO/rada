@@ -18,10 +18,7 @@ export class PostgresArtworkStore implements ArtworkStore {
   // Explicit fields keep this module loadable under Node's type stripping.
   private readonly service: pg.Pool;
   private readonly resolve: (viewer: string) => Promise<string>;
-  constructor(
-    service: pg.Pool,
-    resolve: (viewer: string) => Promise<string>,
-  ) {
+  constructor(service: pg.Pool, resolve: (viewer: string) => Promise<string>) {
     this.service = service;
     this.resolve = resolve;
   }

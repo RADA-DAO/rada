@@ -11,6 +11,7 @@ export type OwnProfile = {
           username: string;
           background_color: string | null;
           accent_color: string | null;
+          artwork_url?: string | null;
         };
       };
   membership: { status: MembershipStatus };
@@ -25,8 +26,15 @@ function validPublicFrog(value: unknown): boolean {
     value === null ||
     (typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value));
   return (
-    Object.keys(frog).length === 4 &&
+    Object.keys(frog).length === ("artwork_url" in frog ? 5 : 4) &&
     typeof frog.frog_id === "string" &&
+    (!("artwork_url" in frog) ||
+      frog.artwork_url === null ||
+      (typeof frog.artwork_url === "string" &&
+        frog.artwork_url.startsWith(`/v1/frogs/${frog.frog_id}/artwork/`) &&
+        /^\/v1\/frogs\/[0-9a-f-]{36}\/artwork\/[0-9a-f]{64}$/.test(
+          frog.artwork_url,
+        ))) &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       frog.frog_id,
     ) &&
@@ -67,7 +75,6 @@ export function profileAdapter(
             !item ||
             typeof item !== "object" ||
             Array.isArray(item) ||
-            Object.keys(item).length !== 5 ||
             !("artwork_path" in item)
           )
             return false;
