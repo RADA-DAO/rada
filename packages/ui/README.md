@@ -50,14 +50,18 @@ Vite and TypeScript aliases. Applications must not import internal CSS files.
 compiler-owned semantic color roles; `RadaTokenName` covers both groups.
 Foundations include Onest body and Outfit heading stacks, the spacing and type
 scales, offset panel/control/small radii, semantic shadows, motion durations and
-curves, and ordered layers. Fonts use local/system fallbacks; this package does
-not fetch font files. Reduced motion is honored by the shared recipes.
+curves, and ordered layers. OFL-licensed Onest, Outfit, Sora and Unbounded are bundled as WOFF2 data in
+`fonts.css`, with Latin and Cyrillic glyphs and licenses in `src/fonts/`. No
+external font requests are needed. Onest is the body/control face, Outfit the
+workspace heading face, Unbounded the OS badge, and Sora the collectible name. Reduced motion is honored by the shared recipes.
 
 The guest palette matches `compileTheme(DEFAULT_THEME_BACKGROUND)` at first paint.
 Colors remain compiler-owned. Collectible geometry and material tokens resolve
 on each card so its own authored colors remain independent of the viewer's theme.
-Existing shell typography and dimensions are named migration tokens, preserving
-the current composition until the shared component migration. Add future styles
+The shell uses the compiled top/mid/bottom water environment. Panels and tiles
+use raised-to-base glass, glints, quiet edges and shadows; fields use soft glass.
+The segmented tabs, offset controls and wallet-style sheets share this material.
+Screens use compact spacing and reserve safe insets for the platform. Add future styles
 to this library and consume its tokens instead of adding screen stylesheets.
 
 Run `node --test packages/ui/scripts/test-design-tokens.ts` to verify the typed
@@ -72,7 +76,7 @@ exact authored colors and AA contrast across sampled themes, and
 loading and disabled, fields with an error, selected tab, loading, empty and error
 states, avatars with a picture and with initials, launcher tiles of every tier with an identity, list, card, section, frog cards
 with and without artwork, and an open sheet) from fixed data and i18n keys. Open it
-at `/catalog.html?theme=guest|light|dark` (add `&sheet=open` for the sheet) from
+at `/catalog.html?theme=guest|light|dark|neutral|close` (add `&sheet=open` for the sheet) from
 `npm run dev:miniapp`. The page is a separate Vite entry that only exists when
 `CATALOG=true`; the production build never contains it (`tools/catalog.test.mjs`
 checks this).

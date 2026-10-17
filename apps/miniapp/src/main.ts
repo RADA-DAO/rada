@@ -227,10 +227,15 @@ function render() {
         : {}),
     canSwipe: () => !isSheetOpen(),
   });
-  settingsButton = Button(text("shell.settings"), {
-    variant: "ghost",
-    onClick: showSettings,
-  });
+  settingsButton = Button(
+    text(route === "launcher" ? "shell.brand" : "shell.settings"),
+    {
+      ariaLabel: text("shell.settings"),
+      ...(route === "launcher" ? {} : { icon: "settings" as const }),
+      variant: "ghost",
+      onClick: showSettings,
+    },
+  );
   if (isSplashRoute(route)) {
     splash.render(screen, route, {
       brand: text("shell.brand"),
@@ -309,7 +314,9 @@ function render() {
           ? "review.title"
           : "shell.profile",
     ),
-    brand: text("shell.brand"),
+    ...(route === "launcher"
+      ? { titleHidden: true }
+      : { brand: text("shell.brand") }),
     ...(route === "launcher"
       ? {
           top: launcher.identity({

@@ -48,3 +48,36 @@ for (const theme of themes) {
     await expect(page).toHaveScreenshot(`sheet-${theme}.png`);
   });
 }
+
+// The standard's phone widths catch overflow and shrunken controls independently
+// of the fixed screenshot sizes. Neutral and close hues exercise fallback roles.
+test("workspace geometry and bundled fonts", async ({ page }) => {
+  for (const theme of [...themes, "neutral", "close"]) {
+    for (const width of [320, 375, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await open(page, `theme=${theme}`);
+      const layout = await page.evaluate(() => {
+        const screen = document.querySelector<HTMLElement>(".screen");
+        if (!screen) throw new Error("Missing screen");
+        const buttons = [...document.querySelectorAll<HTMLElement>("button")];
+        return {
+          overflow: screen.scrollWidth > screen.clientWidth,
+          controlsFit: buttons.every((button) => {
+            const rect = button.getBoundingClientRect();
+            return (
+              rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44
+            );
+          }),
+          fonts: ["Onest", "Outfit", "Sora", "Unbounded"].every((font) =>
+            document.fonts.check(`700 16px ${font}`),
+          ),
+        };
+      });
+      expect(layout, `${theme} at ${String(width)}px`).toEqual({
+        overflow: false,
+        controlsFit: true,
+        fonts: true,
+      });
+    }
+  }
+});

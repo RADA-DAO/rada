@@ -35,6 +35,8 @@ const themes = {
   guest: () => compileTheme(DEFAULT_THEME_BACKGROUND),
   light: () => compileTheme("#E8EEF2", "#2B6CB0"),
   dark: () => compileTheme("#1B2A4A", "#F2C94C"),
+  neutral: () => compileTheme("#E5E5E5"),
+  close: () => compileTheme("#344C40", "#385544"),
 };
 type ThemeName = keyof typeof themes;
 
@@ -53,7 +55,9 @@ const text = (key: string) => t("en", `catalog.${key}` as MessageKey);
 const params = new URLSearchParams(location.search);
 const requested = params.get("theme");
 const themeName: ThemeName =
-  requested === "light" || requested === "dark" ? requested : "guest";
+  requested && Object.hasOwn(themes, requested)
+    ? (requested as ThemeName)
+    : "guest";
 applyTheme(document.documentElement, themes[themeName]());
 
 const noop = () => undefined;
@@ -258,7 +262,7 @@ ScreenHost(root).append(
   Screen({
     title: text("title"),
     brand: text("brand"),
-    actions: [Button(text("settings"), { variant: "ghost" })],
+    actions: [Button(text("settings"), { variant: "ghost", icon: "settings" })],
     children: [
       buttons(),
       fields(),
