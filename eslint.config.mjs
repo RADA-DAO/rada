@@ -28,7 +28,7 @@ export default defineConfig(
   {
     ...strict,
     files: [
-      "tools/**/*.mjs",
+      "tools/**/*.{mjs,ts}",
       "packages/*/scripts/**/*.{mjs,ts}",
       "packages/*/src/**/*.test.ts",
       "apps/miniapp/tests/**/*.ts",

@@ -99,6 +99,10 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - run: npm run test:db
+      - name: Rehearse synthetic legacy import
+        run: node --experimental-strip-types --no-warnings --test tools/import/import.database.test.ts
+        env:
+          IMPORT_TEST_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
       - run: npm run test:api:db
         env:
           API_TEST_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test

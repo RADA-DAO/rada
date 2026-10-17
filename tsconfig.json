@@ -21,6 +21,7 @@
   },
   "include": [
     "tools/**/*.mjs",
+    "tools/**/*.ts",
     "packages/**/*.ts",
     "packages/**/*.mjs",
     "apps/miniapp/**/*.ts",

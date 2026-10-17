@@ -24,3 +24,8 @@ Allowlist and synthetic staging modes suppress external membership calls.
 wallet link versions to `rankings_owner`. `identity.holder_wallets()` is a private
 worker-only wallet source used through wallet's public TypeScript interface.
 Neither function is available to the public ranking reader login.
+
+The offline legacy importer uses restricted `import_person`, state/availability
+checks and ownership-checked `import_selection` SQL functions. Only the
+`legacy_import` role can execute these functions; it receives no base-table
+access or role-grant authority. See [runbook](../../tools/import/README.md).

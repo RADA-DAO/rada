@@ -56,3 +56,9 @@ three-relay, two-matching-verified-beacon rule used when a new proof is built.
 Tests use the published synthetic fixtures and injected relay results; they do
 not contact drand. Run `npm run check:jpegpe-color` for protocol, proof,
 signature and quorum compatibility checks.
+
+The offline [legacy importer](../../tools/import/README.md) uses restricted public
+`import_frog` and `import_frog_state` SQL functions. Imported display names are
+stored separately from permanent usernames. Imported ownership events carry an
+immutable `imported` flag and unique source key; import never replays settlement
+or payments. Only `legacy_import` can call these import functions.
