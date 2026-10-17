@@ -110,3 +110,19 @@ Governance requires the orchestrator to add a distinct `GOVERNANCE_PASSWORD` to
 identity operator must separately grant `governance.steward`; no grants are seeded.
 Staging membership remains unavailable by platform policy, so creating proposals
 and voting fail closed. No Telegram membership calls run in staging.
+
+## Holders ranking projection
+
+Add distinct `RANKINGS_PASSWORD` and `RANKINGS_WORKER_PASSWORD` secrets to the
+staging environment before migrating. Bootstrap creates `staging_rankings` and
+`staging_rankings_worker`, granted only `rankings_service` and `rankings_worker`.
+Compose derives `RANKINGS_SERVICE_DATABASE_URL` and `RANKINGS_WORKER_DATABASE_URL`
+from these passwords; do not reuse administrator or wallet credentials. Passwords
+must be URL-safe, as with the other Compose connection strings.
+
+Set `RANKINGS_WORKER_ENABLED=true` explicitly to enable startup and hourly
+projection refreshes in staging allowlist mode. It defaults to false; synthetic
+mode never starts chain reads. Recreate the API after changing the flag. The
+signed-launch allowlist still guards holders reads. Production keeps its existing
+worker behavior. The worker reads mainnet balances; only selected, still-owned
+frogs with active verified wallets appear, and incomplete samples stay absent.

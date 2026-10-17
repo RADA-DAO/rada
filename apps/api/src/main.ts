@@ -52,6 +52,14 @@ function secondsSetting(name: string, fallback: number): number {
     throw new Error(`Invalid ${name}`);
   return value;
 }
+
+/** Production keeps its scheduler; staging requires a deliberate opt-in. */
+export function rankingsWorkerEnabled(
+  mode: "production" | "allowlist" | "synthetic",
+  flag: string | undefined,
+): boolean {
+  return mode === "production" || (mode === "allowlist" && flag === "true");
+}
 if (import.meta.main) {
   const policy = identityAuthPolicy(Deno.env.toObject());
   const auth = new pg.Pool({
@@ -189,7 +197,10 @@ if (import.meta.main) {
     rankings,
     governance,
   );
-  if (rankingsWorkerUrl && policy.mode === "production") {
+  if (
+    rankingsWorkerUrl &&
+    rankingsWorkerEnabled(policy.mode, Deno.env.get("RANKINGS_WORKER_ENABLED"))
+  ) {
     const worker = new pg.Pool({ connectionString: rankingsWorkerUrl });
     startHolderScheduler(worker, new PostgresHolderSource(worker), console.log);
   }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fake, fakeDocument } from "./fake-dom.ts";
 import {
+  RankingRow,
   Actions,
   Avatar,
   Button,
@@ -319,4 +320,34 @@ await test("Avatar falls back to initials", () => {
   assert.equal(image.src, "/a.png");
   image.dispatch("error");
   assert.equal(named.children.length, 0);
+});
+
+await test("ranking rows preserve exact values, freshness and viewer identity", () => {
+  const options = {
+    rank: "1",
+    frogId: "00000000-0000-4000-8000-000000000001",
+    name: "@frog",
+    amount: "9,007,199,254.1234 TON",
+    asOf: "As of 10:00",
+  };
+  const row = fake(
+    RankingRow({
+      ...options,
+      staleLabel: "Older than 6 h",
+      viewerLabel: "You",
+    }),
+  );
+  assert.equal(row.tagName, "li");
+  assert.equal(row.getAttribute("aria-current"), "true");
+  assert.match(
+    row.textContent,
+    /@frogYou9,007,199,254.1234 TONAs of 10:00Older than 6 h/,
+  );
+  assert.equal(row.child(1).getAttribute("aria-hidden"), "true");
+  const avatar = fake(Avatar({ name: options.name, frogId: options.frogId }));
+  assert.equal(
+    avatar.child(0).getAttribute("style"),
+    row.child(1).child(0).getAttribute("style"),
+  );
+  assert.equal(fake(RankingRow(options)).getAttribute("aria-current"), null);
 });

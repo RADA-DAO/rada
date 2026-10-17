@@ -30,6 +30,8 @@ services:
       WALLET_PASSWORD: ${WALLET_PASSWORD:?Set separate wallet login password}
       OPS_PASSWORD: ${OPS_PASSWORD:?Set separate ops login password}
       GOVERNANCE_PASSWORD: ${GOVERNANCE_PASSWORD:?Set separate governance login password}
+      RANKINGS_PASSWORD: ${RANKINGS_PASSWORD:?Set separate rankings login password}
+      RANKINGS_WORKER_PASSWORD: ${RANKINGS_WORKER_PASSWORD:?Set separate rankings worker login password}
       SPLASH_PASSWORD: ${SPLASH_PASSWORD:?Set separate splash login password}
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
       STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
@@ -51,6 +53,9 @@ services:
       CLIENT_ERRORS_DATABASE_URL: postgresql://staging_ops:${OPS_PASSWORD:?Set ops password}@postgres:5432/rada_staging
       GOVERNANCE_SERVICE_DATABASE_URL: postgresql://staging_governance:${GOVERNANCE_PASSWORD:?Set governance password}@postgres:5432/rada_staging
       SPLASH_SERVICE_DATABASE_URL: postgresql://staging_splash:${SPLASH_PASSWORD:?Set splash password}@postgres:5432/rada_staging
+      RANKINGS_SERVICE_DATABASE_URL: postgresql://staging_rankings:${RANKINGS_PASSWORD:?Set rankings password}@postgres:5432/rada_staging
+      RANKINGS_WORKER_DATABASE_URL: postgresql://staging_rankings_worker:${RANKINGS_WORKER_PASSWORD:?Set rankings worker password}@postgres:5432/rada_staging
+      RANKINGS_WORKER_ENABLED: ${RANKINGS_WORKER_ENABLED:-false}
       WALLET_APP_ORIGIN: ${WALLET_APP_ORIGIN:?Set exact Worker HTTPS origin for proofs}
       STAGING_RUNTIME: "true"
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}

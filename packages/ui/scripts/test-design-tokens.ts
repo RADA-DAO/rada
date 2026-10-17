@@ -70,6 +70,7 @@ await test("one public entry supplies all recipes with resolvable token referenc
     "primitives.css",
     "components.css",
     "launcher.css",
+    "ranking.css",
     "frog-card.css",
     "shell.css",
   ]);

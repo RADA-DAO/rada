@@ -17,6 +17,10 @@ async function open(page: Page, query: string) {
   await page.goto(`/catalog.html?${query}`);
   await page.locator("html[data-catalog-ready]").waitFor();
   await page.evaluate(() => document.fonts.ready);
+  // Full-page fixtures must load artwork even when new catalog sections move it offscreen.
+  await page.evaluate(() => {
+    for (const image of document.images) image.loading = "eager";
+  });
   await page.waitForFunction(() =>
     [...document.images].every((image) => image.complete),
   );

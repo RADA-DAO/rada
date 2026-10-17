@@ -2,6 +2,7 @@
 // Every component in every variant and state, with fixed data, for visual tests.
 import "./design-system.css";
 import {
+  RankingRow,
   Actions,
   AppGrid,
   AppTile,
@@ -270,6 +271,37 @@ ScreenHost(root).append(
       avatars(),
       launcher(),
       lists(),
+      Section({
+        title: t("en", "holders.title"),
+        children: [
+          List({
+            children: [
+              RankingRow({
+                rank: "1",
+                frogId: "00000000-0000-4000-8000-000000000001",
+                name: "@frog_fixture",
+                amount: t("en", "holders.amount", {
+                  amount: "12,345.6789",
+                  token: "JPEGPE",
+                }),
+                asOf: t("en", "holders.asOf", { time: "Oct 17, 2026, 10:00" }),
+              }),
+              RankingRow({
+                rank: "2",
+                frogId: "00000000-0000-4000-8000-000000000002",
+                name: "@a_long_frog_name",
+                amount: t("en", "holders.amount", {
+                  amount: "123.4567",
+                  token: "TON",
+                }),
+                asOf: t("en", "holders.asOf", { time: "Oct 16, 2026, 10:00" }),
+                staleLabel: t("en", "holders.stale"),
+                viewerLabel: t("en", "holders.you"),
+              }),
+            ],
+          }),
+        ],
+      }),
       frogCards(),
       mediaSection(),
     ],

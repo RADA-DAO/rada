@@ -1,4 +1,5 @@
 import {
+  type AppTier,
   AppGrid,
   AppTile,
   Embed,
@@ -36,8 +37,8 @@ export function createHome(options: {
     origin: string,
   ): Promise<() => void>;
   render(): void;
-  /** Official apps built into the shell, shown before registry apps for everyone. */
-  builtIn(): { name: string; onOpen(): void }[];
+  /** Built-in apps in the shell, shown before registry apps for everyone. */
+  builtIn(): { name: string; tier?: AppTier; onOpen(): void }[];
 }) {
   const lifecycle = new AbortController();
   let status: Status = options.authenticated ? "loading" : "guest";
@@ -124,7 +125,7 @@ export function createHome(options: {
         ...options.builtIn().map((app) =>
           AppTile({
             name: app.name,
-            tier: "official",
+            tier: app.tier ?? "official",
             tierLabel: text("home.tier.official"),
             onOpen: () => {
               app.onOpen();

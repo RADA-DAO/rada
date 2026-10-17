@@ -1,10 +1,11 @@
+import { showHolders } from "./holders.ts";
 import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
 import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
-import { createRoutes, home, type Route } from "./routes.ts";
+import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
 import { loadAppIcon } from "./app-icon.ts";
 import "@rada/ui/design-system.css";
@@ -29,16 +30,11 @@ import {
 import {
   initializePlatform,
   configurePageBack,
-  pageBackNavigation,
-  installSwipeBack,
-  setPageBackActive,
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
-import type { AppRelease } from "../../../packages/platform-sdk/src/app-host.ts";
 import { createAppRunner } from "./app-runner.ts";
 import { createSplashShell } from "./splash-shell.ts";
 import { isSplashRoute } from "../../../modules/splash/ui/index.ts";
-
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
 let reviewAuthorized = false;
@@ -49,6 +45,7 @@ let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
 let selectedFrog: OwnProfile["profile"]["public"] = null;
+let holdersDispose: (() => void) | undefined;
 let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let settingsButton: HTMLElement | null = null;
@@ -76,9 +73,7 @@ const runner = createAppRunner({
   onClosed: () => {
     launcher.close();
   },
-  onLeave: () => {
-    render();
-  },
+  onLeave: render,
 });
 const splash = createSplashShell({
   platform,
@@ -89,11 +84,9 @@ const splash = createSplashShell({
     if (platform.authenticatedLaunch) void loadProfile();
   },
 });
-const dismissApp = () => {
-  runner.dismiss();
-};
+const dismissApp = runner.dismiss;
 window.RadaAppHost = Object.freeze({
-  mount: (release: AppRelease, container: HTMLElement, origin: string) =>
+  mount: (release, container, origin) =>
     runner.mount(release, container, origin),
 });
 const launcher = createHome({
@@ -114,24 +107,25 @@ const launcher = createHome({
       origin,
       true,
     ),
-  render: () => {
-    render();
-  },
-  builtIn: () => [{ name: text("splash.title"), onOpen: splash.open }],
+  render,
+  builtIn: () => [
+    { name: text("splash.title"), onOpen: splash.open },
+    {
+      name: text("holders.title"),
+      tier: "platform",
+      onOpen: () => {
+        routes.open("holders");
+      },
+    },
+  ],
 });
 applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
-const swipe = installSwipeBack(screen, {
-  canStart: () =>
-    !payment.paymentBusy &&
-    !isSheetOpen() &&
-    document.documentElement.dataset.appViewportReduced !== "true" &&
-    navigation.top.edgeBack === true,
+const swipe = installShellSwipe(
+  screen,
+  navigation,
+  () => payment.paymentBusy,
   back,
-  preview: () => pageBackNavigation(screen).preview(),
-  onActiveChange: (active) => {
-    setPageBackActive(screen, active);
-  },
-});
+);
 function showSettings() {
   openSettings({
     locale,
@@ -147,15 +141,10 @@ function showSettings() {
 function showAppPermissions(opener: HTMLElement | null) {
   return openAppPermissions({ text, platform, navigation, opener });
 }
-const onProfileRoute = () => route === "profile";
-/**
- * Reads the viewer's own profile. At start (`initial`) it only fills the
- * identity shown on home; on the Profile route it also probes review access.
- */
 async function loadProfile(initial = false) {
   const generation = ++profileGeneration;
   const stale = () =>
-    generation !== profileGeneration || (!initial && !onProfileRoute());
+    generation !== profileGeneration || (!initial && route !== "profile");
   reviewAuthorized = false;
   reviewProbeFailed = false;
   profile = "loading";
@@ -210,6 +199,8 @@ function render() {
   profileDispose?.();
   profileDispose = undefined;
   splash.dispose();
+  holdersDispose?.();
+  holdersDispose = undefined;
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -241,6 +232,19 @@ function render() {
       brand: text("shell.brand"),
       actions: [settingsButton],
     });
+    return;
+  }
+  if (route === "holders") {
+    holdersDispose = showHolders(
+      screen,
+      {
+        locale,
+        viewerFrogId: selectedFrog?.frog_id ?? null,
+        read: (token, cursor, signal) =>
+          platform.readHolders(token, cursor, signal),
+      },
+      [settingsButton],
+    );
     return;
   }
   const content: Node[] = [];
@@ -383,6 +387,7 @@ window.addEventListener(
     if (event.persisted) return;
     profileGeneration++;
     launcher.dispose();
+    holdersDispose?.();
     profileDispose?.();
     reviewDispose?.();
     splash.dispose();
