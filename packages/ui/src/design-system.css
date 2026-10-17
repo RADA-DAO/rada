@@ -5,6 +5,7 @@
 @import "./ranking.css";
 @import "./frog-card.css";
 @import "./shell.css";
+@import "./tally.css";
 
 :root {
   --theme-base: #243b34;

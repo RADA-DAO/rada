@@ -248,7 +248,8 @@
     "badgeStrong": "Claimed",
     "fieldHintLabel": "Frog name",
     "fieldHintValue": "Lily_1",
-    "fieldHint": "This name is free right now."
+    "fieldHint": "This name is free right now.",
+    "evidenceUnavailable": "Evidence link unavailable"
   },
   "home": {
     "gridLabel": "Installed apps",
@@ -428,5 +429,100 @@
     "empty": "No holders yet.",
     "error": "Could not load holders.",
     "changed": "The ranking has changed. Refresh to see the latest holders."
+  },
+  "governance": {
+    "title": "DAO",
+    "proposals": "Proposals",
+    "loading": "Loading proposals…",
+    "retry": "Retry",
+    "close": "Close",
+    "submit": "Confirm",
+    "create": "Create proposal",
+    "proposalTitle": "Title",
+    "body": "Proposal",
+    "required": "This field is required.",
+    "invalid": "Check the fields and try again.",
+    "advisory": "Votes are advisory. The steward makes the binding decision and publishes a public reason.",
+    "eligibility": "Only verified current members can create proposals and vote. You can read proposals, tallies and decisions.",
+    "tally": "Advisory tally",
+    "timeLeft": "Time left",
+    "remaining": "{{hours}} h {{minutes}} min",
+    "myVote": "My vote",
+    "receipt": "Receipt: {{receipt}}",
+    "confirmVote": "Confirm: {{choice}}",
+    "withdrawVote": "Withdraw vote",
+    "withdrawnVote": "Vote withdrawn",
+    "voteLocked": "Vote changes and withdrawals are disabled for this opening.",
+    "decision": "Steward decision",
+    "reason": "Public reason",
+    "outcome": "Decision",
+    "decide": "Record decision",
+    "openVoting": "Open voting",
+    "steward": "Steward actions",
+    "attachEvidence": "Attach execution evidence",
+    "evidence": "Execution evidence",
+    "evidenceBody": "What was executed?",
+    "link": "HTTPS evidence link",
+    "tx": "Transaction hash (optional)",
+    "transaction": "Transaction: {{hash}}",
+    "evidenceNote": "Evidence is recorded by the steward; it is not an independently verified payment confirmation.",
+    "votes": "Vote history",
+    "privacy": "Only public frog names are shown. Private voters remain anonymous, with a receipt for every vote version.",
+    "anonymous": "Anonymous",
+    "superseded": "Previous vote",
+    "excluded": "Excluded: membership lost at close",
+    "settings": "Voting settings",
+    "changeSettings": "Change settings",
+    "futureSettings": "Changes apply only to future voting openings. Existing openings keep their frozen settings. A public reason is required for every change.",
+    "currentValue": "Current · version {{version}}",
+    "version": "Version {{version}} · {{value}}",
+    "yes": "Yes",
+    "no": "No",
+    "empty": "No proposals in this tab.",
+    "more": "Load more proposals",
+    "moreVotes": "Load more vote history",
+    "tab": {
+      "open": "Open",
+      "closed": "Closed",
+      "decided": "Decided"
+    },
+    "choice": {
+      "for": "For",
+      "against": "Against",
+      "abstain": "Abstain"
+    },
+    "status": {
+      "created": "Awaiting opening",
+      "voting": "Voting",
+      "tally": "Tally",
+      "decision_pending": "Decision pending",
+      "accept": "Accepted",
+      "reject": "Rejected",
+      "defer": "Deferred",
+      "withdrawn": "Withdrawn"
+    },
+    "rule": {
+      "who_opens": "Who opens voting",
+      "duration_hours": "Voting duration (hours, 1–720)",
+      "decision_days": "Decision deadline (days, 1–365)",
+      "allow_vote_changes": "Allow vote changes and withdrawals",
+      "require_membership_at_open": "Require membership at opening",
+      "keep_departed_votes": "Keep votes from departed members",
+      "allow_majority_override": "Allow a decision against the majority"
+    },
+    "ruleValue": {
+      "steward-opens": "Steward",
+      "author-opens": "Proposal author or steward"
+    },
+    "error": {
+      "0": "Could not load DAO. Please retry.",
+      "400": "Check the fields and try again.",
+      "401": "Your session expired. Reopen RADA from Telegram.",
+      "403": "You are not eligible for this action under the proposal’s rules.",
+      "404": "Proposal not found.",
+      "409": "The proposal changed or this action is no longer available. Refresh and retry.",
+      "429": "Too many proposals or requests. Try again in {{seconds}} seconds.",
+      "503": "Membership could not be verified. Try again later."
+    }
   }
 }

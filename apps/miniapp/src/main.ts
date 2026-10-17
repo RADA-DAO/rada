@@ -1,9 +1,8 @@
-import { showHolders } from "./holders.ts";
+import { createHoldersScreen } from "./holders-screen.ts";
 import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
 import { mountProfilePanel } from "./profile-panel.ts";
-import type { OwnProfile } from "../../../packages/platform-sdk/src/index.ts";
 import { mountReview } from "./review.ts";
 import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
@@ -30,11 +29,11 @@ import {
 import {
   initializePlatform,
   configurePageBack,
+  type OwnProfile,
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
 import { createAppRunner } from "./app-runner.ts";
-import { createSplashShell } from "./splash-shell.ts";
-import { isSplashRoute } from "../../../modules/splash/ui/index.ts";
+import { createBuiltIns, isBuiltInRoute } from "./built-ins.ts";
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
 let reviewAuthorized = false;
@@ -45,7 +44,7 @@ let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
 let selectedFrog: OwnProfile["profile"]["public"] = null;
-let holdersDispose: (() => void) | undefined;
+const holders = createHoldersScreen();
 let profileDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let settingsButton: HTMLElement | null = null;
@@ -75,7 +74,8 @@ const runner = createAppRunner({
   },
   onLeave: render,
 });
-const splash = createSplashShell({
+const builtIns = createBuiltIns({
+  membership: () => membership,
   platform,
   navigation,
   locale: () => locale,
@@ -109,7 +109,7 @@ const launcher = createHome({
     ),
   render,
   builtIn: () => [
-    { name: text("splash.title"), onOpen: splash.open },
+    ...builtIns.tiles(),
     {
       name: text("holders.title"),
       tier: "platform",
@@ -198,9 +198,8 @@ function render() {
   reviewDispose = undefined;
   profileDispose?.();
   profileDispose = undefined;
-  splash.dispose();
-  holdersDispose?.();
-  holdersDispose = undefined;
+  builtIns.dispose();
+  holders.dispose();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -227,24 +226,24 @@ function render() {
       onClick: showSettings,
     },
   );
-  if (isSplashRoute(route)) {
-    splash.render(screen, route, {
+  if (isBuiltInRoute(route)) {
+    builtIns.render(screen, route, {
       brand: text("shell.brand"),
       actions: [settingsButton],
     });
     return;
   }
   if (route === "holders") {
-    holdersDispose = showHolders(
-      screen,
-      {
-        locale,
-        viewerFrogId: selectedFrog?.frog_id ?? null,
-        read: (token, cursor, signal) =>
-          platform.readHolders(token, cursor, signal),
-      },
-      [settingsButton],
-    );
+    const actions = [settingsButton];
+    holders.render(screen, {
+      locale,
+      title: text("holders.title"),
+      brand: text("shell.brand"),
+      actions,
+      viewerFrogId: selectedFrog?.frog_id ?? null,
+      read: (token, cursor, signal) =>
+        platform.readHolders(token, cursor, signal),
+    });
     return;
   }
   const content: Node[] = [];
@@ -387,10 +386,10 @@ window.addEventListener(
     if (event.persisted) return;
     profileGeneration++;
     launcher.dispose();
-    holdersDispose?.();
+    holders.dispose();
     profileDispose?.();
     reviewDispose?.();
-    splash.dispose();
+    builtIns.dispose();
     dismissApp();
     swipe.dispose();
     platform.dispose();

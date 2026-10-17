@@ -59,6 +59,31 @@ export default defineConfig({
   },
   plugins: [
     {
+      name: "secondary-screen-retries",
+      generateBundle(_, bundle) {
+        const sources = {
+          governance: "/modules/governance/ui/screen.ts",
+          holders: "/apps/miniapp/src/holders.ts",
+          splash: "/apps/miniapp/src/splash-shell.ts",
+        };
+        const files = Object.fromEntries(
+          Object.entries(sources).flatMap(([name, source]) => {
+            const chunk = Object.values(bundle).find(
+              (item) =>
+                item.type === "chunk" && item.facadeModuleId?.endsWith(source),
+            );
+            return chunk ? [[name, chunk.fileName]] : [];
+          }),
+        );
+        if (Object.keys(files).length)
+          this.emitFile({
+            type: "asset",
+            fileName: "screen-chunks.json",
+            source: JSON.stringify(files),
+          });
+      },
+    },
+    {
       name: "wallet-manifest",
       generateBundle() {
         const configured = process.env.VITE_TON_CONNECT_APP_ORIGIN;

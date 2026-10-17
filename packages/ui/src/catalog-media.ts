@@ -1,5 +1,7 @@
 // Development and test pages only: part of the component catalog (catalog.ts).
 import {
+  Tally,
+  EvidenceLink,
   Actions,
   Badge,
   Countdown,
@@ -67,6 +69,26 @@ export function mediaSection(): Node {
         Badge(text("badgeStrong"), { tone: "strong" }),
       ]),
       hinted.element,
+      Tally({
+        label: t("en", "governance.tally"),
+        items: [
+          { label: t("en", "governance.choice.for"), count: 12 },
+          { label: t("en", "governance.choice.against"), count: 3 },
+          { label: t("en", "governance.choice.abstain"), count: 2 },
+        ],
+      }),
+      Tally({
+        label: t("en", "governance.tally"),
+        items: [{ label: t("en", "governance.choice.for"), count: 0 }],
+      }),
+      EvidenceLink({
+        label: t("en", "governance.link"),
+        href: "https://example.com/evidence",
+      }),
+      EvidenceLink({
+        label: text("evidenceUnavailable"),
+        href: "javascript:alert(1)",
+      }),
     ],
   });
 }
