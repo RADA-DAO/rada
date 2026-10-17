@@ -19,7 +19,7 @@ test("an uncaught error reaches the API once, sanitized", async ({
   const bodies: string[] = [];
   page.on("request", (request) => {
     if (request.url().endsWith("/v1/client-errors"))
-      bodies.push(request.postData() ?? "");
+      bodies.push(request.postDataBuffer()?.toString("utf8") ?? "");
   });
   await page.goto("/");
   await expect(
@@ -72,6 +72,7 @@ test("an uncaught error reaches the API once, sanitized", async ({
   } finally {
     await db.end();
   }
+  expect(bodies).toHaveLength(1);
   for (const body of bodies) {
     expect((JSON.parse(body) as { message: string }).message).toBe("unknown");
     expect(body).not.toContain("98765");

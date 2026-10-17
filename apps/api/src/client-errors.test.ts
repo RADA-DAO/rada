@@ -200,7 +200,8 @@ Deno.test("store drops invalid messages before issuing SQL", async () => {
       typeof store.record
     >[0]);
   }
-  assert(calls.length === 0);
+  const rejectedCallCount = calls.length;
+  assert(rejectedCallCount === 0);
   await store.record({ ...report, message: "type_error" } as Parameters<
     typeof store.record
   >[0]);

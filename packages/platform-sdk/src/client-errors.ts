@@ -114,7 +114,7 @@ export function transmit(endpoint: string, body: string): void {
   try {
     if (
       typeof navigator !== "undefined" &&
-      navigator.sendBeacon(endpoint, new Blob([body], { type: "text/plain" }))
+      navigator.sendBeacon(endpoint, body)
     )
       return;
   } catch {
