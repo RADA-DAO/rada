@@ -1,4 +1,9 @@
 import {
+  registerArtworkRoutes,
+  type ArtworkStore,
+} from "../../../modules/jpegpe/index.ts";
+import { registerArtworkProjections } from "./artwork-projections.ts";
+import {
   registerGovernanceRoutes,
   type GovernanceStore,
 } from "../../../modules/governance/index.ts";
@@ -56,6 +61,7 @@ export function createApp(
   claims?: ClaimService,
   rankings?: RankingStore,
   governance?: GovernanceStore,
+  artwork?: ArtworkStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -82,10 +88,10 @@ export function createApp(
     cors({
       origin: (origin) =>
         allowedOrigins.includes(origin) ? origin : undefined,
-      allowMethods: ["GET", "PUT", "POST"],
-      allowHeaders: ["Authorization", "Content-Type"],
+      allowMethods: ["GET", "HEAD", "PUT", "POST"],
+      allowHeaders: ["Authorization", "Content-Type", "If-None-Match"],
       // Rate-limited clients show how long to wait (SPLASH submissions).
-      exposeHeaders: ["Retry-After"],
+      exposeHeaders: ["Retry-After", "ETag", "Content-Location"],
       credentials: false,
     }),
   );
@@ -94,6 +100,15 @@ export function createApp(
   if (ops.clientErrors)
     registerClientErrorRoutes(app, ops.clientErrors, ops.clientErrorLimiter);
   registerStagingGuard(app, authenticated, policy);
+  if (artwork) {
+    registerArtworkProjections(app, artwork, authenticated);
+    registerArtworkRoutes(
+      app,
+      artwork,
+      authenticated,
+      policy.mode !== "production",
+    );
+  }
   if (rankings) registerRankingRoutes(app, rankings);
   if (governance) registerGovernanceRoutes(app, governance, authenticated);
   app.get("/health", (c) => c.json({ status: "ok" }));

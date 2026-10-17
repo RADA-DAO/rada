@@ -15,3 +15,10 @@ export {
   type ImageStorage,
   type ArtworkImage,
 } from "./storage.ts";
+
+export {
+  PostgresArtworkStore,
+  artworkPath,
+  type ArtworkStore,
+} from "./api/artwork-store.ts";
+export { registerArtworkRoutes } from "./api/artwork-router.ts";

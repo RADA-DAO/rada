@@ -6,8 +6,8 @@ The caller must supply its existing transaction connection with verified
 `rada.subject_id` context; the helper invokes `jpegpe.own_public_frog` and
 returns only the public projection or null. Ownership is rechecked by SQL.
 
-There is currently no standalone JPEGPE HTTP route. Identity's `/me` route
-composes this projection through the public entry point. Selection remains an
+Identity's `/me` route composes this projection through the public entry point.
+JPEGPE also exposes guarded artwork reads through its runtime router. Selection remains an
 identity-owned function; the immutable migration preserves the existing
 cross-schema foreign key and ownership-transfer coordination.
 
@@ -74,8 +74,37 @@ proofs; `proof` marks colours with linked evidence. Import never fabricates a pr
 Migration 0048 adds immutable `jpegpe.artwork` bytea storage. The public
 `PostgresImageStorage` / `ImageStorage` interface saves and loads artwork inside
 the caller's transaction through import-only functions granted to `legacy_import`.
-It can later be replaced with an object-store adapter. Runtime roles cannot read
-these private originals. PNG artwork is normalized; JPEG originals explicitly
-carry `needsNormalization` and await a decoder. This import does not mutate
-`artwork_path` or publish a media route. See the offline importer's rehearsal
+It can later be replaced with an object-store adapter. Runtime roles cannot call
+these import functions; migration 0049 adds visibility-checked runtime reads.
+PNG artwork is normalized; JPEG originals explicitly carry `needsNormalization`
+and await a decoder. This import does not mutate `artwork_path`. See the offline importer's rehearsal
 instructions for file validation, mappings and checksums.
+
+## Runtime artwork reads
+
+Migration 0049 exposes `visible_artwork(uuid[])` (metadata only) and
+`read_artwork(uuid)` to `identity_service` and `jpegpe_service`. Both recheck
+visibility: the selected, still-owned public profile frog (also the projection
+used by rankings and SPLASH authors), or a frog with a public SPLASH submission
+image. Issued SPLASH frogs without imported artwork use the existing public submission
+image through SPLASH's reader. Other collection frogs remain owner-only. No runtime table or import
+function access is granted. The API uses the identity service connection and
+sets transaction-local subject context only from verified authentication.
+
+`GET` and `HEAD /v1/frogs/:frogId/artwork/:sha256` serve stored PNG or validated
+legacy JPEG bytes, with SHA-256 ETags, `nosniff`, a restrictive CSP and
+`Cross-Origin-Resource-Policy: cross-origin` for separately hosted shells.
+The alias without a hash returns the same bytes and a hashed `Content-Location`.
+Only public hashed URLs in production receive one-year immutable caching;
+private, unhashed and staging responses use `no-store`. Public immutable copies
+may remain cached after a later profile change; access to the origin is always
+rechecked. Legacy JPEG validation checks type, dimensions and the complete
+marker/scan envelope; it does not decode or normalize pixels.
+
+Reads are capped at 4 MiB, four concurrent requests and 200 attempts per minute
+per API process (including misses). Conditional requests check access before
+returning 304. Missing, inaccessible, malformed or mismatched artwork returns 404.
+Existing profile, collection, SPLASH and ranking HTTP projections gain nullable
+`artwork_url` (`artworkUrl` for camel-case ranking projections), relative to the
+API origin. Enrichment batches metadata reads and preserves the existing frog
+selection and private fields; the legacy `artwork_path` field is unchanged.

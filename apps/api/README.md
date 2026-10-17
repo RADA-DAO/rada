@@ -166,3 +166,11 @@ advisory vote, decision, evidence, privacy and settings contracts.
 
 background chain reads run in production, or in staging allowlist mode with
 `RANKINGS_WORKER_ENABLED=true` (default off). Synthetic mode never runs them.
+
+Frog artwork routes are registered with the identity service connection, after
+staging authentication. Apply migration 0049 before deploying. Both GET and HEAD
+are supported at `/v1/frogs/:frogId/artwork/:sha256`; the unhashed alias is uncached.
+See [JPEGPE runtime artwork](../../modules/jpegpe/README.md#runtime-artwork-reads)
+for visibility, response fields, cache lifetime and legacy JPEG validation.
+CORS allows `If-None-Match` and exposes `ETag` and `Content-Location` to configured
+app origins. Private images require the existing signed Authorization header.
