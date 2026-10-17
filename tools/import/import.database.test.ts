@@ -55,6 +55,50 @@ await test("synthetic legacy import, read-only planning, resume and exact verifi
       (r) => r.entity === "frogs" && r.id === frog(2),
     )?.value as Frog;
     assert.ok(synthetic.events[1]?.key.endsWith(":imported"));
+    assert.equal(synthetic.colour_source, "legacy_unverified");
+    assert.equal(synthetic.background_color, "#123AbC");
+    assert.equal(synthetic.accent_color, "#FEDCBA");
+    assert.equal(synthetic.background_proof, null);
+    assert.equal(synthetic.accent_proof, null);
+    assert.equal(twice.colour_source, "proof");
+    assert.equal(snapshot.conflicts.length, 0);
+    for (const category of [
+      "transfer_notification_without_endpoints",
+      "legacy_colour_without_proof",
+    ])
+      assert.equal(
+        snapshot.skipped.find((s) => s.category === category)?.count,
+        1,
+      );
+    // New payloads carrying endpoints remain blocked until an adapter is reviewed.
+    await source.query(`INSERT INTO public.jpegpe_notification_events VALUES
+      (2, 'frog.transferred', '{"frogId":"${frog(1)}","from":"81001","to":"81003"}')`);
+    await source.query("BEGIN READ ONLY");
+    const endpoints = await readSource(source);
+    await source.query("COMMIT");
+    assert.deepEqual(
+      endpoints.conflicts.map((c) => c.reason),
+      ["unrecognized_transfer_payload_requires_adapter"],
+    );
+    await source.query(
+      "DELETE FROM public.jpegpe_notification_events WHERE id=2",
+    );
+    // A Supabase-style restore must fail closed without BYPASSRLS.
+    await source.query(`CREATE ROLE fixture_reader NOLOGIN;
+      GRANT USAGE ON SCHEMA public TO fixture_reader;
+      GRANT SELECT ON ALL TABLES IN SCHEMA public TO fixture_reader;
+      ALTER TABLE public.ecosystem_users ENABLE ROW LEVEL SECURITY;`);
+    await source.query("BEGIN READ ONLY; SET LOCAL ROLE fixture_reader");
+    await assert.rejects(readSource(source), /row-level security/);
+    await source.query("ROLLBACK");
+    await source.query("ALTER ROLE fixture_reader BYPASSRLS");
+    await source.query("BEGIN READ ONLY; SET LOCAL ROLE fixture_reader");
+    assert.equal((await readSource(source)).counts.people, 8);
+    await source.query("COMMIT");
+    await source.query(
+      "DROP OWNED BY fixture_reader; DROP ROLE fixture_reader",
+    );
+
     assert.ok(
       snapshot.skipped.some(
         (s) => s.category === "people_without_telegram_link" && s.count === 1,
@@ -92,6 +136,11 @@ await test("synthetic legacy import, read-only planning, resume and exact verifi
     ).rows;
     const dry = await runImport(target, snapshot, "dry-run", 3);
     assert.equal(dry.ok, false);
+    for (const category of [
+      "transfer_notification_without_endpoints",
+      "legacy_colour_without_proof",
+    ])
+      assert.equal(dry.skipped.find((s) => s.category === category)?.count, 1);
     assert.equal(
       dry.conflicts.filter((c) => c.reason === "source_name_collision").length,
       2,
@@ -138,6 +187,20 @@ await test("synthetic legacy import, read-only planning, resume and exact verifi
     assert.equal(imported.entities.frogs?.imported, 5);
     assert.equal(imported.entities.selections?.imported, 1);
     assert.equal(imported.ok, false);
+    const colourState = (
+      await target.query<{ value: Frog }>(
+        "SELECT jpegpe.import_frog_state($1) AS value",
+        [frog(2)],
+      )
+    ).rows[0]?.value;
+    assert.deepEqual(colourState, synthetic);
+    await assert.rejects(
+      target.query("SELECT jpegpe.import_frog($1::jsonb)", [
+        JSON.stringify({ ...synthetic, colour_source: "proof" }),
+      ]),
+      { code: "22023" },
+    );
+
     const dump = async () =>
       (
         await admin.query<{ value: unknown }>(`SELECT jsonb_build_object(

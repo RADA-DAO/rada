@@ -23,8 +23,12 @@ SELECT ('20000000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid,
 CREATE TABLE public.jpegpe_color_drop_requests(request_id uuid PRIMARY KEY, proof jsonb);
 INSERT INTO public.jpegpe_color_drop_requests VALUES
   ('30000000-0000-4000-8000-000000000001', '{"synthetic":true,"protocolVersion":1}');
-UPDATE public.jpegpe_frog_submissions SET background_drop_request_id = '30000000-0000-4000-8000-000000000001'
-WHERE id = '20000000-0000-4000-8000-000000000001';
+UPDATE public.jpegpe_frog_submissions SET background_drop_request_id = '30000000-0000-4000-8000-000000000001',
+  accent_drop_request_id = '30000000-0000-4000-8000-000000000001';
+-- Authored colour with a dangling proof link and an absent proof link.
+UPDATE public.jpegpe_frog_submissions
+SET background_drop_request_id = '30000000-0000-4000-8000-000000000002', accent_drop_request_id = NULL
+WHERE id = '20000000-0000-4000-8000-000000000002';
 CREATE TABLE public.jpegpe_frog_market_listings (
   id uuid PRIMARY KEY, frog_id uuid, seller_telegram_user_id bigint,
   buyer_telegram_user_id bigint, sold_at timestamptz, status text, price bigint
@@ -48,3 +52,7 @@ CREATE TABLE public.challenges(id integer);
 INSERT INTO public.challenges VALUES (1);
 CREATE TABLE public.global_balance_history(id integer, amount numeric);
 INSERT INTO public.global_balance_history VALUES (1,123);
+
+CREATE TABLE public.jpegpe_notification_events(id integer PRIMARY KEY, event_type text, payload jsonb);
+INSERT INTO public.jpegpe_notification_events VALUES
+  (1, 'frog.transferred', '{"frogId":"20000000-0000-4000-8000-000000000001","frogName":"Synthetic frog","frogUsername":"Fixture_1","level":1}');

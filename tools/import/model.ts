@@ -17,6 +17,7 @@ export interface Frog {
   username: string;
   creator: string;
   owner: string;
+  colour_source: "proof" | "legacy_unverified";
   background_color: string | null;
   accent_color: string | null;
   background_proof: unknown;

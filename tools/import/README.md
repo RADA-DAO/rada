@@ -4,7 +4,7 @@ This is an offline orchestration tool, not an application module. It belongs in
 `tools/import` because it composes identity, JPEGPE and ops public contracts.
 Identity and JPEGPE migrations own their import functions; only ops owns the
 private mappings and checkpoints. No module writes another module's tables.
-All files and fixtures here are synthetic. No database was accessed during development.
+All files and fixtures here are synthetic. Only disposable synthetic databases are used during development.
 
 ## Preparation by the orchestrator
 
@@ -24,8 +24,13 @@ API login. Revoke the membership and remove that login after rehearsal.
 
 Provision a separate source LOGIN with SELECT on the allowlisted columns used in
 `source.ts` and `inventory.ts`, and sufficient SELECT privileges for `count(*)`
-on all user tables and `count(column)` on excluded columns. Set its default
-transaction mode to read only. It needs no writes or function execution.
+on all user tables and `count(column)` on excluded columns. On a Supabase-style
+restore this source reader **must have BYPASSRLS**: RLS can otherwise silently
+return zero rows. The importer sets `row_security = off` to fail on policy-filtered
+reads, and fails if the people projection is empty while its exact inventory count
+is non-zero. The restored PostgreSQL server must listen on **TCP** on the isolated
+interface (`listen_addresses`); a Unix socket alone cannot serve the source URL.
+Set its default transaction mode to read only. It needs no writes or function execution.
 Inventory counts cover all user schemas, not just public. Missing permissions
 fail the run; a missing table never becomes a fabricated zero count.
 Use the same restricted source login for dry run, import and verification.
@@ -37,7 +42,7 @@ psql "$IMPORT_SOURCE_URL" -X -v ON_ERROR_STOP=1 -f tools/import/fixture.sql
 ```
 
 Load the fixture as its provisioning administrator before granting the source
-reader access. It contains 29 synthetic rows, including eight distinct people,
+reader access. It contains 30 synthetic rows, including eight distinct people,
 a person without Telegram, identical display names, a frog transferred twice,
 an obsolete profile selection, case-insensitive name collisions, colour proof,
 balance rows, wallet evidence, sessions, challenges and admin roles.
@@ -88,7 +93,10 @@ mappings, source changes, missing rows and changed target contents prevent `ok`.
   People without Telegram still receive a subject. Display names and wallets are
   never identity keys.
 - Owned frogs retain their UUID, separate creator and owner, display name,
-  authored colour strings and linked proof JSON. Permanent usernames remove the
+  authored colour strings and linked proof JSON. Authored colours lacking either
+  linked proof are imported with `colour_source = legacy_unverified`, counted per
+  frog under `legacy_colour_without_proof`. No proof is fabricated; other colours
+  retain `colour_source = proof`. Permanent usernames remove the
   legacy leading `@` because the target stores the bare handle. Case, remaining
   spelling and authored colour bytes are unchanged. JPEGPE's public import
   function uses its public username-hold protocol, including case-insensitive
@@ -99,6 +107,11 @@ mappings, source changes, missing rows and changed target contents prevent `ok`.
   read as values or copied. Old filled orders overlapping fill request IDs are
   excluded to avoid recording one transfer twice. Chains must start at the
   creator and end at the current owner, in timestamp/source-key order.
+- `frog.transferred` notifications with exactly `frogId`, `frogName`,
+  `frogUsername` and `level` have no ownership endpoints. They are skipped under
+  `transfer_notification_without_endpoints`; the frogs table remains authoritative
+  for the current owner. Payloads with sender/recipient fields or other unknown
+  shapes remain `unrecognized_transfer_payload_requires_adapter` conflicts.
 - Every frog gets an imported genesis event (`NULL -> creator`). Without any
   transfer evidence, a different current owner gets one synthetic imported
   `creator -> owner` event at creation time; that time is a fallback, not a
@@ -147,9 +160,9 @@ original DDL. This adapter requires its documented `id`, `telegram_id` and
 `created_at` columns. Confirm that contract on the isolated restore before use.
 No single complete ownership ledger exists in those migrations. A reserved
 `frog.transferred` notification type has no defined transfer producer/payload;
-if such events exist, the report blocks `ok` until a reviewed adapter is added.
-Incomplete or contradictory market/SPLASH chains also block import rather than
-inventing missing historical transfers. Confirm same-time event ordering,
-pre-market transfers, and missing proof links on that copy. Archived frogs need
+apart from the reviewed notification-only shape above, these events block `ok`
+until a reviewed adapter is added. Incomplete or contradictory market/SPLASH chains also block import rather than
+inventing missing historical transfers. Confirm same-time event ordering
+and pre-market transfers on that copy. Archived frogs need
 a separate archive contract. These questions require isolated evidence, not
 access to a live database.

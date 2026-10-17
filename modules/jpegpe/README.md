@@ -62,3 +62,7 @@ The offline [legacy importer](../../tools/import/README.md) uses restricted publ
 stored separately from permanent usernames. Imported ownership events carry an
 immutable `imported` flag and unique source key; import never replays settlement
 or payments. Only `legacy_import` can call these import functions.
+
+Migration 0046 records imported colour provenance through those public functions.
+`colour_source = legacy_unverified` preserves authored colours without linked
+proofs; `proof` marks colours with linked evidence. Import never fabricates a proof.
