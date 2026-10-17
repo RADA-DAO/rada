@@ -8,7 +8,7 @@ All files and fixtures here are synthetic. Only disposable synthetic databases a
 
 ## Preparation by the orchestrator
 
-Use Node 22 with `--experimental-strip-types` (or the repository's Node 24),
+Use Node 22 with `--experimental-transform-types` (or the repository's Node 24),
 `npm ci`, PostgreSQL 17 and two **separate disposable databases**. Restore the
 legacy copy in an isolated network with legacy writers, cron, queues, Telegram,
 payment workers and outbound network access disabled. Keep it frozen throughout
@@ -57,11 +57,11 @@ export IMPORT_TARGET_URL='postgresql://target_importer:REPLACE@isolated-target/r
 export IMPORT_ISOLATED_RESTORE=yes
 export IMPORT_BATCH_SIZE=100
 export IMPORT_REPORT=/private/rehearsal/report-dry.json
-node --experimental-strip-types --no-warnings tools/import/main.ts dry-run
+node --experimental-transform-types --no-warnings tools/import/main.ts dry-run
 export IMPORT_REPORT=/private/rehearsal/report-import.json
-node --experimental-strip-types --no-warnings tools/import/main.ts import
+node --experimental-transform-types --no-warnings tools/import/main.ts import
 export IMPORT_REPORT=/private/rehearsal/report-verify.json
-node --experimental-strip-types --no-warnings tools/import/main.ts verify
+node --experimental-transform-types --no-warnings tools/import/main.ts verify
 ```
 
 The acknowledgement is an operator guard, not proof of isolation. The operator
@@ -125,8 +125,8 @@ mappings, source changes, missing rows and changed target contents prevent `ok`.
 No balances, financial amounts, active wallet links, wallet evidence, roles,
 admin rights, consents, sessions, nonces, challenges or delivery queues are
 imported. Unowned `splash` and `archived` frogs are counted and skipped: the target
-requires an owner, so the importer does not invent one. Media bytes, presentation
-skins, inventory and legacy workflows are outside this importer.
+requires an owner, so the importer does not invent one. Presentation skins, inventory and legacy workflows are outside this importer.
+Artwork is an opt-in extension described below.
 
 Reports list full-source counts, eligible planned counts, actual/projected
 counts, conflicts with hashed source keys, skipped whole tables with row counts,
@@ -150,9 +150,9 @@ ownership, immutable history and restricted target privileges. No local database
 or real data is required to develop the tool.
 
 ```sh
-node --experimental-strip-types --no-warnings --test tools/import/model.test.ts
+node --experimental-transform-types --no-warnings --test tools/import/model.test.ts
 # CI only, with the explicit disposable PostgreSQL service URL:
-node --experimental-strip-types --no-warnings --test tools/import/import.database.test.ts
+node --experimental-transform-types --no-warnings --test tools/import/import.database.test.ts
 ```
 
 The supplied domain migrations reference `ecosystem_users` but do not define its
@@ -166,3 +166,53 @@ inventing missing historical transfers. Confirm same-time event ordering
 and pre-market transfers on that copy. Archived frogs need
 a separate archive contract. These questions require isolated evidence, not
 access to a live database.
+
+## Frog artwork rehearsal
+
+Set both `IMPORT_ARTWORK_ROOT` and `IMPORT_ARTWORK_MANIFEST` to the orchestrator's
+frozen isolated storage tree and JSON manifest. `IMPORT_ISOLATED_RESTORE=yes`
+remains mandatory. With neither setting, the existing people/frogs flow is
+unchanged; supplying only one fails. No network media retrieval occurs.
+The source reader additionally needs SELECT on `jpegpe_frog_submissions.storage_path`.
+The tree is `<root>/jpegpe-frog-images/<storage_path>`; manifest objects must have
+`bucket`, `key`, and `metadata: { size, mimetype, eTag }`, where eTag is MD5
+(optionally quoted). Duplicate object keys and invalid manifests fail closed.
+
+Use the same dry-run/import/verify commands above with both settings. Artwork
+requires an existing successful frog mapping; a first dry-run before importing
+frogs reports `frog_not_imported`. Rehearse people/frogs first without artwork,
+then enable artwork and repeat all three modes. Each artwork batch atomically
+commits JPEGPE bytes, an ops mapping, and a checkpoint. The separate
+`FAIRGROUND_ARTWORK` namespace preserves existing domain mappings/checksums.
+Checkpoints never suppress retries. Reruns compare source path, source SHA-256,
+normalized SHA-256, type, normalization status, mapping and actual stored bytes.
+Verification reads every planned image and rejects unexpected mappings.
+The JSON `artwork` result has its own counts, checksums and hashed conflicts;
+any artwork conflict makes the combined report fail with exit 2.
+
+PNG uses SPLASH's bounded codec from this offline tool: maximum input
+2 MiB, sides 64–1024 pixels, bounded inflation, verified chunk checksums, 8-bit
+RGB/RGBA non-interlaced images. Re-encoding strips metadata without cutting the
+background; output is capped at 4 MiB. Oversized dimensions are rejected, not
+downscaled. No JPEG or WebP decoder is installed. JPEG originals pass size,
+extension/MIME, SOI/EOI, marker bounds and frame-dimension checks and are stored
+with `needs_normalization=true`. This is envelope validation, not decoded pixel
+validation; JPEG metadata is retained until a future normalization pass. These
+bytes are private import storage and must not be served as normalized artwork.
+WebP and other unsupported types produce explicit conflicts. Missing paths,
+missing manifest entries/files, checksum or size mismatches, unsafe paths and
+invalid images also produce conflicts; none silently disappear. Symlink paths
+are rejected. The orchestrator must keep the tree immutable during a run.
+
+Migration 0048 owns immutable JPEGPE bytea storage behind an `ImageStorage`
+interface and import-only SQL functions. It does not change existing immutable
+`artwork_path` values or add a media HTTP route. Hosting is a separate concern.
+Reports contain no original paths. Protect the manifest, restore and reports.
+The planner holds prepared bytes in memory, so this targets a small legacy set.
+
+Synthetic file tests run in `npm run test:unit`; the existing CI import database
+test also rehearses artwork dry-run, rollback, rerun, exact verification,
+changed-source/target detection and least-privilege access using temporary files.
+
+Node 22 needs `--experimental-transform-types` because the public module entry
+points transitively load existing API classes with TypeScript parameter properties.

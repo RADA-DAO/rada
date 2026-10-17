@@ -5,6 +5,7 @@ import pg from "pg";
 import { readSource } from "./source.ts";
 import { runImport } from "./runner.ts";
 import { hash, type Frog } from "./model.ts";
+import { rehearseArtwork } from "./artwork-rehearsal.ts";
 const person = (n: number) =>
   `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const frog = (n: number) =>
@@ -247,6 +248,7 @@ await test("synthetic legacy import, read-only planning, resume and exact verifi
       assert.equal(entity.mismatches, 0);
       assert.equal(entity.source_checksum, entity.target_checksum);
     }
+    await rehearseArtwork(admin, source, target, clean);
     await admin.query(
       "UPDATE jpegpe.frogs SET background_color='#000000' WHERE frog_id=$1",
       [frog(1)],
