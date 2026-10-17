@@ -8,7 +8,7 @@ const text = (v: unknown, max: number) =>
   typeof v === "string" &&
   v.trim().length > 0 &&
   v.length <= max &&
-  !/[\x00-\x1f\x7f]/.test(v);
+  !/\p{Cc}/u.test(v);
 const object = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 export function validRules(v: unknown): boolean {

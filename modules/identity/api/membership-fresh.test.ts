@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TelegramMembershipProvider } from "./membership.ts";
