@@ -47,7 +47,7 @@ await test("reader issues GET only; capped history and missing watermark remain 
     const url = String(input);
     paths.push(url);
     assert.ok(init?.method === undefined || init.method === "GET");
-    if (url.includes("tonapi.io"))
+    if (["tonapi.io", "testnet.tonapi.io"].includes(new URL(url).hostname))
       return Response.json(
         url.endsWith("/jettons") ? { balances: [] } : { balance: "1" },
       );
