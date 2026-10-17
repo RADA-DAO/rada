@@ -4,7 +4,7 @@
 .rada-list-item-text,
 .rada-loading-message,
 .rada-sheet p {
-  line-height: var(--rada-shell-prose-leading);
+  line-height: var(--rada-line-height-body);
   max-width: var(--rada-shell-prose-width);
   color: var(--text-muted);
 }
@@ -17,7 +17,10 @@
 .rada-sheet-title,
 .rada-list-item h2 {
   font-size: var(--rada-shell-section-size);
-  font-weight: var(--rada-font-weight-body);
+  font-family: var(--rada-font-heading);
+  font-weight: var(--rada-font-weight-section);
+  line-height: var(--rada-line-height-section);
+  letter-spacing: var(--rada-tracking-section);
 }
 .rada-actions {
   display: flex;
@@ -64,7 +67,9 @@
   gap: var(--rada-space-4);
   align-items: flex-start;
   border-top: var(--rada-border-width) solid var(--glass-edge);
-  padding-block: var(--rada-space-6);
+  padding-block: var(--rada-space-4);
+  min-height: var(--rada-row-height);
+  flex-wrap: wrap;
 }
 .rada-list--marked .rada-list-item {
   display: list-item;
@@ -85,20 +90,23 @@
 }
 .rada-field-label {
   display: grid;
-  gap: var(--rada-space-4);
+  gap: var(--rada-space-2);
+  font-weight: var(--rada-font-weight-control);
 }
 .rada-field-control {
   box-sizing: border-box;
   width: 100%;
   font: inherit;
   font-size: var(--rada-font-size-field);
-  padding: var(--rada-space-3);
+  padding: var(--rada-field-padding);
+  min-height: var(--rada-field-height);
   color: var(--text-primary);
-  background: var(--surface-raised);
+  background: var(--surface-soft);
   border: var(--rada-border-width) solid var(--glass-edge);
-  border-radius: var(--rada-radius-small);
+  border-radius: var(--rada-radius-control);
 }
 textarea.rada-field-control {
+  min-height: var(--rada-field-textarea-height);
   resize: vertical;
 }
 .rada-field-control[aria-invalid="true"] {
@@ -113,19 +121,28 @@ textarea.rada-field-control {
 
 .rada-tabs {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--rada-space-4);
-  border-top: var(--rada-border-width) solid var(--glass-edge);
-  padding-top: var(--rada-shell-nav-space);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--rada-space-1);
+  padding: var(--rada-space-1);
+  border: var(--rada-rule);
+  border-radius: var(--rada-radius-tabs);
+  background: var(--surface-soft);
 }
 .rada-tabs .rada-button {
-  flex: 1;
+  min-width: 0;
+  padding: var(--rada-tab-padding);
+  border-radius: var(--rada-radius-small);
+  font-size: var(--rada-font-size-tab);
+  font-weight: var(--rada-font-weight-tab);
+  color: var(--text-muted);
 }
 .rada-tabs [aria-current="page"] {
-  background: var(--control-primary-bg);
-  color: var(--control-primary-ink);
+  border: var(--rada-rule);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  box-shadow: var(--rada-shadow-tile);
 }
 
 .rada-sheet {
@@ -137,8 +154,8 @@ textarea.rada-field-control {
   border: var(--rada-border-width) solid var(--glass-edge);
   border-radius: var(--rada-radius-panel);
   color: var(--text-primary);
-  background: var(--surface-raised);
-  box-shadow: var(--rada-shadow-panel);
+  background: var(--rada-glass-fill);
+  box-shadow: var(--rada-shadow-sheet);
   max-width: min(var(--rada-sheet-width), 100vw);
   max-height: calc(
     var(--app-visible-height, var(--rada-viewport-height)) - var(--rada-space-8)
@@ -146,11 +163,11 @@ textarea.rada-field-control {
   z-index: var(--rada-z-sheet);
 }
 .rada-sheet[open] {
-  animation: rada-sheet-in var(--rada-duration-transition)
+  animation: rada-sheet-in var(--rada-duration-sheet)
     var(--rada-ease-emphasized);
 }
 .rada-sheet::backdrop {
-  background: rgb(var(--shadow-rgb) / 0.55);
+  background: var(--rada-sheet-backdrop);
 }
 @keyframes rada-sheet-in {
   from {
@@ -185,18 +202,22 @@ textarea.rada-field-control {
   gap: var(--rada-space-2);
 }
 .rada-screen-brand {
+  font-family: var(--rada-font-brand);
   font-size: var(--rada-shell-wordmark-size);
   letter-spacing: var(--rada-shell-wordmark-tracking);
 }
 .rada-screen-body {
   flex: 1 0 auto;
   min-height: var(--rada-shell-workspace-min);
-  padding: var(--rada-space-12) 0;
+  padding: var(--rada-space-6) 0;
 }
 .rada-screen-title {
   font-size: var(--rada-shell-title-size);
   letter-spacing: var(--rada-shell-title-tracking);
-  margin: 0 0 var(--rada-space-10);
+  font-family: var(--rada-font-heading);
+  font-weight: var(--rada-font-weight-heading);
+  line-height: var(--rada-line-height-heading);
+  margin: 0 0 var(--rada-space-6);
 }
 @media (prefers-reduced-motion: reduce) {
   .rada-sheet[open] {
@@ -310,4 +331,66 @@ textarea.rada-field-control {
 }
 .rada-countdown {
   font-variant-numeric: tabular-nums;
+}
+
+.rada-section + .rada-section,
+.rada-screen-body > * + *,
+.rada-section > * + * {
+  margin-top: var(--rada-space-5);
+}
+.rada-text,
+.rada-state-message,
+.rada-list-item-text {
+  margin-block: var(--rada-space-2);
+}
+.rada-section-title {
+  margin-bottom: var(--rada-space-4);
+}
+.rada-error-state {
+  padding: var(--rada-space-5);
+  border: var(--rada-rule);
+  border-radius: var(--rada-radius-panel);
+  box-shadow: var(--rada-shadow-glass);
+}
+.rada-screen-header:has(.rada-screen-brand) {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+.rada-screen-header:has(.rada-screen-brand)::before {
+  content: "";
+}
+.rada-screen-header > .rada-button {
+  justify-self: end;
+}
+.rada-screen-lead {
+  min-height: var(--rada-control-height);
+}
+.rada-list-item-main {
+  flex-basis: 50%;
+}
+.rada-screen-view > .rada-tabs {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--rada-z-header);
+  box-shadow: var(--rada-shadow-glass);
+}
+.rada-sheet-header > .rada-button {
+  flex-shrink: 0;
+}
+
+.rada-screen-header:not(:has(.rada-screen-brand)) .rada-screen-lead:empty {
+  display: none;
+}
+.rada-screen-header:not(:has(.rada-screen-brand)) {
+  justify-content: center;
+}
+.rada-visually-hidden {
+  position: absolute;
+  width: var(--rada-border-width);
+  height: var(--rada-border-width);
+  padding: 0;
+  margin: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }

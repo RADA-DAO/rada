@@ -130,6 +130,9 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
       ).status(),
     ).toBe(401);
     await launch(page);
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty("--app-safe-bottom", "24px");
+    });
     const row = page.getByRole("listitem").filter({ hasText: appId });
     await expect(row).toBeVisible();
     await expect(row.getByText("Design: Free style")).toBeVisible();
@@ -150,16 +153,28 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
         .locator(".screen")
         .evaluate((element) => element.scrollHeight > element.clientHeight),
     ).toBe(true);
+    const navigation = page.getByRole("navigation");
+    const footerIsPinned = () =>
+      navigation.evaluate((footer) => {
+        const bounds = footer.getBoundingClientRect();
+        return (
+          bounds.bottom <= innerHeight && bounds.bottom > innerHeight - 100
+        );
+      });
+    expect(await footerIsPinned()).toBe(true);
     const actionsClearFooter = () =>
       row.locator(".rada-actions").evaluate((actions) => {
         const footer = document.querySelector(".screen nav");
-        if (!footer) throw new Error("Footer missing");
+        const screen = actions.closest(".screen");
+        if (!footer || !screen) throw new Error("Screen footer missing");
+        screen.scrollTop = screen.scrollHeight;
         return (
           footer.getBoundingClientRect().top >=
           actions.getBoundingClientRect().bottom
         );
       });
     expect(await actionsClearFooter()).toBe(true);
+    expect(await footerIsPinned()).toBe(true);
     await row
       .getByLabel("Decision reason")
       .fill("Reviewed in isolated sandbox");
@@ -178,6 +193,7 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
       .getByLabel("Decision reason")
       .fill("Requested capabilities need revision");
     expect(await actionsClearFooter()).toBe(true);
+    expect(await footerIsPinned()).toBe(true);
     await row.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(row).toHaveCount(0);
     const records = await db.query(

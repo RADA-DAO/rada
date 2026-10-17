@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { catalogContrast } from "./test/contrast.ts";
+
 const themes = ["guest", "light", "dark"] as const;
 const artworkPath = `/media/jpegpe/${"a".repeat(64)}.png`;
 // A fixed 16x16 PNG so the frog card artwork never depends on a network.
@@ -42,9 +44,77 @@ for (const theme of themes) {
 }
 
 for (const theme of themes) {
+  test(`painted text contrast, ${theme} theme`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await open(page, `theme=${theme}`);
+    if (theme === "light") {
+      // This fixture authors #2B6CB0; all solid accent controls must preserve it.
+      for (const control of [
+        page.getByRole("button", { name: "Primary", exact: true }),
+        page.getByText("Claimed", { exact: true }),
+        page.locator(".rada-avatar").nth(1),
+      ])
+        await expect(control).toHaveCSS(
+          "background-color",
+          "rgb(43, 108, 176)",
+        );
+    }
+    const background = await page.context().newPage();
+    await open(background, `theme=${theme}`);
+    for (const expanded of [false, true]) {
+      if (expanded)
+        for (const surface of [page, background])
+          await surface.addStyleTag({
+            content:
+              "html,body{overflow:visible!important}.screen-wrap,.screen{height:auto!important;overflow:visible!important}",
+          });
+      const result = await catalogContrast(page, background);
+      expect(result.sampled).toBeGreaterThan(60);
+      expect(
+        result.failures,
+        expanded ? "full page" : "shell scroller",
+      ).toEqual([]);
+    }
+  });
+}
+
+for (const theme of themes) {
   test(`open sheet, ${theme} theme`, async ({ page }) => {
     await open(page, `theme=${theme}&sheet=open`);
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page).toHaveScreenshot(`sheet-${theme}.png`);
   });
 }
+
+// The standard's phone widths catch overflow and shrunken controls independently
+// of the fixed screenshot sizes. Neutral and close hues exercise fallback roles.
+test("workspace geometry and bundled fonts", async ({ page }) => {
+  for (const theme of [...themes, "neutral", "close"]) {
+    for (const width of [320, 375, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await open(page, `theme=${theme}`);
+      const layout = await page.evaluate(() => {
+        const screen = document.querySelector<HTMLElement>(".screen");
+        if (!screen) throw new Error("Missing screen");
+        const buttons = [...document.querySelectorAll<HTMLElement>("button")];
+        return {
+          overflow: screen.scrollWidth > screen.clientWidth,
+          controlsFit: buttons.every((button) => {
+            const rect = button.getBoundingClientRect();
+            return (
+              rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44
+            );
+          }),
+          fonts: ["Onest", "Outfit", "Sora", "Unbounded"].every((font) =>
+            document.fonts.check(`700 16px ${font}`),
+          ),
+        };
+      });
+      expect(layout, `${theme} at ${String(width)}px`).toEqual({
+        overflow: false,
+        controlsFit: true,
+        fonts: true,
+      });
+    }
+  }
+});

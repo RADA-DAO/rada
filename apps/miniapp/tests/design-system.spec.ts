@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("one shared spacing token updates the screen and navigation", async ({
+test("shared spacing tokens update the screen, header and navigation", async ({
   page,
 }) => {
   await page.goto("/");
@@ -14,14 +14,20 @@ test("one shared spacing token updates the screen and navigation", async ({
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
   const screen = page.locator(".screen");
+  const header = page.locator(".rada-screen-header");
   const navigation = page.getByRole("navigation");
   await expect(screen).toHaveCSS("padding-top", "16px");
-  await expect(navigation).toHaveCSS("gap", "16px");
+  await expect(header).toHaveCSS("gap", "16px");
+  await expect(navigation).toHaveCSS("gap", "4px");
+  await expect(navigation).toHaveCSS("padding-top", "4px");
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--rada-space-4", "24px");
+    document.documentElement.style.setProperty("--rada-space-1", "8px");
   });
   await expect(screen).toHaveCSS("padding-top", "24px");
-  await expect(navigation).toHaveCSS("gap", "24px");
+  await expect(header).toHaveCSS("gap", "24px");
+  await expect(navigation).toHaveCSS("gap", "8px");
+  await expect(navigation).toHaveCSS("padding-top", "8px");
   expect(
     await page.evaluate(() =>
       getComputedStyle(document.documentElement)

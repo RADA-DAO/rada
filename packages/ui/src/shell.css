@@ -4,10 +4,19 @@ body {
   margin: 0;
   overflow: hidden;
 }
+html {
+  /* The canvas stays themed beyond the body and during overscroll. */
+  background: var(--water-bottom);
+}
 body {
+  min-height: var(--rada-viewport-height);
   font-family: var(--rada-shell-font);
+  font-size: var(--rada-font-size-body);
+  font-weight: var(--rada-font-weight-body);
+  line-height: var(--rada-line-height-body);
+  font-synthesis: none;
   color: var(--text-primary);
-  background: var(--theme-base);
+  background: var(--rada-environment-fill);
 }
 .screen-wrap {
   height: var(--app-visible-height, var(--rada-viewport-height));
@@ -23,7 +32,47 @@ body {
   padding: calc(
       var(--rada-space-4) + var(--app-safe-top, var(--rada-zero-length))
     )
-    calc(var(--rada-space-6) + var(--app-safe-right, var(--rada-zero-length)))
+    calc(
+      var(--rada-page-gutter) + var(--app-safe-right, var(--rada-zero-length))
+    )
     calc(var(--rada-space-4) + var(--app-safe-bottom, var(--rada-zero-length)))
-    calc(var(--rada-space-6) + var(--app-safe-left, var(--rada-zero-length)));
+    calc(
+      var(--rada-page-gutter) + var(--app-safe-left, var(--rada-zero-length))
+    );
+}
+
+.screen *,
+.screen *::before,
+.screen *::after {
+  box-sizing: border-box;
+}
+.screen {
+  overflow-x: clip;
+  scrollbar-gutter: stable;
+}
+/* The OS badge occupies the center lane; native edge controls stay with Telegram. */
+.rada-screen-header:not(:has(.rada-screen-brand)) > .rada-button {
+  justify-self: center;
+  font-family: var(--rada-font-brand);
+  font-size: var(--rada-shell-wordmark-size);
+  letter-spacing: var(--rada-shell-wordmark-tracking);
+  border: var(--rada-rule);
+  background: var(--rada-glass-fill);
+  box-shadow: var(--rada-shadow-tile);
+}
+
+/* Leave room to scroll the last action clear of pinned navigation. */
+.rada-screen-body:has(~ .rada-tabs) {
+  padding-bottom: calc(
+    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
+}
+
+.rada-screen-view > .rada-tabs {
+  height: calc(
+    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
+  padding-bottom: calc(
+    var(--rada-space-1) + var(--app-safe-bottom, var(--rada-zero-length))
+  );
 }

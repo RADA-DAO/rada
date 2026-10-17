@@ -1,0 +1,136 @@
+/* OFL fonts. Subset production notes and licenses: README.md and fonts/. */
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/onest-500.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B4, U+00B6-017F,
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491, U+2009,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+202F-2030,
+    U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 680;
+  font-display: swap;
+  src: url("./fonts/onest-680.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B4, U+00B6-017F,
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491, U+2009,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+202F-2030,
+    U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 720;
+  font-display: swap;
+  src: url("./fonts/onest-720.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00A3, U+00A5, U+00A7-00AB, U+00AE-00B4, U+00B6-017F,
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491, U+2009,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+202F-2030,
+    U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 730;
+  font-display: swap;
+  src: url("./fonts/onest-730.woff2") format("woff2");
+  unicode-range:
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491;
+}
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 750;
+  font-display: swap;
+  src: url("./fonts/onest-750.woff2") format("woff2");
+  unicode-range:
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491;
+}
+@font-face {
+  font-family: Onest;
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("./fonts/onest-800.woff2") format("woff2");
+  unicode-range:
+    U+0401-040C, U+040E-044F, U+0451-045C, U+045E-045F, U+0490-0491;
+}
+@font-face {
+  font-family: Outfit;
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/outfit-500.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00AC, U+00AE-0107, U+010A-0113, U+0116-011B,
+    U+011E-0123, U+0126-0127, U+012A-012B, U+012E-0133, U+0136-0137,
+    U+0139-013E, U+0141-0148, U+014A-014D, U+0150-015B, U+015E-0161,
+    U+0164-0165, U+016A-017E, U+2013-2014, U+2018-201A, U+201C-201E, U+2022,
+    U+2026, U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Outfit;
+  font-style: normal;
+  font-weight: 730;
+  font-display: swap;
+  src: url("./fonts/outfit-730.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00AC, U+00AE-0107, U+010A-0113, U+0116-011B,
+    U+011E-0123, U+0126-0127, U+012A-012B, U+012E-0133, U+0136-0137,
+    U+0139-013E, U+0141-0148, U+014A-014D, U+0150-015B, U+015E-0161,
+    U+0164-0165, U+016A-017E, U+2013-2014, U+2018-201A, U+201C-201E, U+2022,
+    U+2026, U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Outfit;
+  font-style: normal;
+  font-weight: 750;
+  font-display: swap;
+  src: url("./fonts/outfit-750.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00AC, U+00AE-0107, U+010A-0113, U+0116-011B,
+    U+011E-0123, U+0126-0127, U+012A-012B, U+012E-0133, U+0136-0137,
+    U+0139-013E, U+0141-0148, U+014A-014D, U+0150-015B, U+015E-0161,
+    U+0164-0165, U+016A-017E, U+2013-2014, U+2018-201A, U+201C-201E, U+2022,
+    U+2026, U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Sora;
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("./fonts/sora-800.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-0123, U+0126-0131, U+0134-0137, U+0139-013E,
+    U+0141-0148, U+014A-017E, U+2013-2014, U+2018-201A, U+201C-201E,
+    U+2020-2022, U+2026, U+2030, U+2032-2033, U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Unbounded;
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/unbounded-500.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00B4, U+00B6-017F, U+0400-045F, U+0490-0491,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030,
+    U+2039-203A, U+2044;
+}
+@font-face {
+  font-family: Unbounded;
+  font-style: normal;
+  font-weight: 720;
+  font-display: swap;
+  src: url("./fonts/unbounded-720.woff2") format("woff2");
+  unicode-range:
+    U+0020-007E, U+00A0-00B4, U+00B6-017F, U+0400-045F, U+0490-0491,
+    U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030,
+    U+2039-203A, U+2044;
+}

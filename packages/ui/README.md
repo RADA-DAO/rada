@@ -50,14 +50,21 @@ Vite and TypeScript aliases. Applications must not import internal CSS files.
 compiler-owned semantic color roles; `RadaTokenName` covers both groups.
 Foundations include Onest body and Outfit heading stacks, the spacing and type
 scales, offset panel/control/small radii, semantic shadows, motion durations and
-curves, and ordered layers. Fonts use local/system fallbacks; this package does
-not fetch font files. Reduced motion is honored by the shared recipes.
+curves, and ordered layers. OFL-licensed Onest, Outfit, Sora and Unbounded ship as separate WOFF2 assets
+with licenses in `src/fonts/`. `fonts.css` declares local URLs, `font-display: swap`
+and per-file `unicode-range`; Vite emits hashed assets without inlining. System
+font fallbacks remain available while fonts load. Onest is the body/control face, Outfit the
+workspace heading face, Unbounded the OS badge, and Sora the collectible name. Reduced motion is honored by the shared recipes.
+
+The committed subsets were produced from the previously embedded variable WOFF2 fonts using temporary FontTools 4.67.0 (`fonttools[woff]`, not a project dependency): `instantiateVariableFont(font, {"wght": weight})`, then `subset.Subsetter` with U+0020–017F, U+0300–036F, U+0400–045F, U+0490–0491, U+2000–206F, U+20AC, U+20B4 and U+2212, saved with `font.flavor = "woff2"`. Static weights are Onest 500/680/720/730/750/800, Outfit 500/730/750, Sora 800 and Unbounded 500/720. Onest 730/750/800 retain only combining marks and Cyrillic for the Outfit/Sora fallback; those two source faces have no Cyrillic. Other files retain supported glyphs from the full selection, including digits and basic punctuation. Original glyph outlines, layout features and metrics are preserved.
 
 The guest palette matches `compileTheme(DEFAULT_THEME_BACKGROUND)` at first paint.
 Colors remain compiler-owned. Collectible geometry and material tokens resolve
 on each card so its own authored colors remain independent of the viewer's theme.
-Existing shell typography and dimensions are named migration tokens, preserving
-the current composition until the shared component migration. Add future styles
+The shell uses the compiled top/mid/bottom water environment. Panels and tiles
+use raised-to-base glass, glints, quiet edges and shadows; fields use soft glass.
+The segmented tabs, offset controls and wallet-style sheets share this material.
+Screens use compact spacing and reserve safe insets for the platform. Add future styles
 to this library and consume its tokens instead of adding screen stylesheets.
 
 Run `node --test packages/ui/scripts/test-design-tokens.ts` to verify the typed
@@ -72,13 +79,17 @@ exact authored colors and AA contrast across sampled themes, and
 loading and disabled, fields with an error, selected tab, loading, empty and error
 states, avatars with a picture and with initials, launcher tiles of every tier with an identity, list, card, section, frog cards
 with and without artwork, and an open sheet) from fixed data and i18n keys. Open it
-at `/catalog.html?theme=guest|light|dark` (add `&sheet=open` for the sheet) from
+at `/catalog.html?theme=guest|light|dark|neutral|close` (add `&sheet=open` for the sheet) from
 `npm run dev:miniapp`. The page is a separate Vite entry that only exists when
 `CATALOG=true`; the production build never contains it (`tools/catalog.test.mjs`
 checks this).
 
 `npm run test:visual` screenshots the catalog in the guest, a light and a dark
 profile theme at 390px and 1280px in Chromium and WebKit, with reduced motion.
+The contrast gate scrolls both the shell surface and expanded full page, samples
+painted background pixels with glyphs hidden, and checks computed text (including
+alpha and native form values) at 4.5:1. Water, glass, images and layered materials
+are included. The light fixture explicitly authors blue `#2B6CB0` as its accent.
 Baselines live in `apps/miniapp/visual/__screenshots__` and must be rendered in
 the Linux Playwright image CI uses, never on macOS. Any pixel difference fails CI.
 

@@ -26,6 +26,7 @@
 .rada-button--secondary {
   color: var(--control-secondary-ink);
   background: var(--control-secondary-bg);
+  box-shadow: var(--rada-shadow-tile);
   border: var(--rada-border-width) solid var(--control-secondary-border);
 }
 .rada-button--ghost {
@@ -69,11 +70,13 @@
 .rada-empty-state,
 .rada-error-state {
   color: var(--text-primary);
-  background: var(--surface-base);
+  background: var(--rada-glass-fill);
 }
 .rada-card {
-  border-radius: var(--rada-radius-legacy);
-  padding: var(--rada-space-4);
+  border: var(--rada-rule);
+  border-radius: var(--rada-radius-panel);
+  padding: var(--rada-space-5);
+  box-shadow: var(--rada-shadow-glass);
 }
 .rada-avatar {
   box-sizing: border-box;
@@ -115,4 +118,44 @@
   .rada-button[data-loading="true"]::before {
     animation: none !important;
   }
+}
+
+@media (hover: hover) {
+  .rada-button:not(:disabled):hover {
+    border-color: var(--accent-indicator);
+  }
+}
+.rada-button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.rada-button[data-icon] {
+  width: var(--rada-control-height);
+  flex-shrink: 0;
+  padding: 0;
+}
+.rada-button[data-icon]::after {
+  content: "";
+  width: var(--rada-icon-size);
+  height: var(--rada-icon-size);
+  background: currentColor;
+  mask: var(--rada-icon-settings) center / contain no-repeat;
+}
+
+/* Native WebKit selects paint an opaque light face even over dark materials. */
+select.rada-field-control {
+  appearance: none;
+  padding-right: var(--rada-space-10);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-primary) 50%),
+    linear-gradient(135deg, var(--text-primary) 50%, transparent 50%);
+  background-position:
+    right var(--rada-space-4) center,
+    right calc(var(--rada-space-4) - var(--rada-space-1)) center;
+  background-size: var(--rada-space-1) var(--rada-space-1);
+  background-repeat: no-repeat;
 }

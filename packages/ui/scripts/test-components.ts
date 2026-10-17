@@ -40,6 +40,11 @@ await test("Button variants, click and loading state", () => {
     "Name",
   );
 
+  const settings = Button("Settings", { icon: "settings" });
+  assert.equal(settings.getAttribute("aria-label"), "Settings");
+  assert.equal(settings.dataset.icon, "settings");
+  assert.equal(settings.textContent, "");
+
   const busy = Button("Save", { disabled: true });
   setButtonLoading(busy, true);
   assert.equal(busy.disabled, true);

@@ -8,6 +8,8 @@ export type ButtonOptions = {
   type?: "button" | "submit" | "reset";
   variant?: ButtonVariant;
   loading?: boolean;
+  /** Icon-only control; label remains its accessible name. */
+  icon?: "settings";
   /** Accessible name when it must differ from the visible label. */
   ariaLabel?: string;
 };
@@ -21,6 +23,11 @@ export function Button(
     `rada-button rada-button--${options.variant ?? "secondary"}`,
     label,
   );
+  if (options.icon) {
+    button.textContent = "";
+    button.dataset.icon = options.icon;
+    button.setAttribute("aria-label", options.ariaLabel ?? label);
+  }
   button.type = options.type ?? "button";
   button.disabled = options.disabled ?? false;
   if (options.ariaLabel) button.setAttribute("aria-label", options.ariaLabel);

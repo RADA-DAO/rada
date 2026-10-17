@@ -12,7 +12,7 @@ docker run --rm --ipc=host -v "$PWD":/src:ro -v "$out":/out "$IMAGE" bash -c '
   mkdir /work && cd /src
   tar --exclude=node_modules --exclude=.git -cf - . | tar -xf - -C /work
   cd /work && npm ci --ignore-scripts >/dev/null
-  CI=true npx playwright test --config apps/miniapp/playwright.visual.config.ts --update-snapshots || true
+  CI=true npx playwright test --config apps/miniapp/playwright.visual.config.ts --update-snapshots
   rm -rf /out/* && cp -r apps/miniapp/visual/__screenshots__ /out/'
 rm -rf apps/miniapp/visual/__screenshots__
 cp -r "$out/__screenshots__" apps/miniapp/visual/__screenshots__

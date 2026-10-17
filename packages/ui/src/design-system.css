@@ -22,9 +22,9 @@
   --accent-rgb: 244 244 240;
   --ink: #f5fcf9;
   --ink-rgb: 245 252 249;
-  --muted: rgb(245 252 249 / 0.68);
+  --muted: rgb(245 252 249 / 0.77);
   --text-primary: #f5fcf9;
-  --text-muted: rgb(245 252 249 / 0.68);
+  --text-muted: rgb(245 252 249 / 0.77);
   --shadow-rgb: 22 39 34;
   --surface-pigment: #3d4d48;
   --surface-highlight: #4a5853;
@@ -52,5 +52,5 @@
   --control-selected-bg: rgb(244 244 240 / 0.24);
   --control-selected-ink: #f5fcf9;
   --control-disabled-bg: #384540;
-  --control-disabled-ink: rgb(245 252 249 / 0.68);
+  --control-disabled-ink: rgb(245 252 249 / 0.77);
 }

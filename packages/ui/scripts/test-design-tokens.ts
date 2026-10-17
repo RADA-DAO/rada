@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { test } from "node:test";
 import { RADA_DESIGN_TOKEN_NAMES, type DesignTokenName } from "../src/index.ts";
 
@@ -16,6 +16,23 @@ const declarations = new Map(
     normalize(match[2] ?? ""),
   ]),
 );
+
+await test("UI CSS never embeds fonts and bundled WOFF2 stays below 250 KB", async () => {
+  const root = new URL("../", import.meta.url);
+  const paths = await readdir(root, { recursive: true });
+  for (const path of paths.filter((path) => path.endsWith(".css"))) {
+    const css = await readFile(new URL(path, root), "utf8");
+    assert.doesNotMatch(css, /data:\s*font|data:[^)]*;base64/i, path);
+  }
+  const fonts = await Promise.all(
+    paths
+      .filter((path) => path.endsWith(".woff2"))
+      .map((path) => readFile(new URL(path, root))),
+  );
+  assert.ok(fonts.length > 0, "bundled WOFF2 fonts must exist");
+  const bytes = fonts.reduce((total, font) => total + font.byteLength, 0);
+  assert.ok(bytes < 250_000, `font budget exceeded: ${String(bytes)} bytes`);
+});
 
 await test("CSS foundations match the complete typed token contract", () => {
   assert.deepEqual(
