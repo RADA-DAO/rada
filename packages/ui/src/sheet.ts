@@ -1,3 +1,4 @@
+import { observeScreenFocus, restoreSheetFocus } from "./focus.ts";
 import { Button } from "./button.ts";
 import { element, uniqueId } from "./dom.ts";
 
@@ -60,17 +61,19 @@ export function openSheet(
   },
 ): HTMLDialogElement {
   const dialog = Sheet(options);
+  const stopFocus = observeScreenFocus(dialog, "h2");
   active = dialog;
   dialog.addEventListener(
     "close",
     () => {
+      stopFocus();
       dialog.remove();
       if (active === dialog) {
         active = undefined;
         options.navigation?.drop(entry.key);
       }
       options.onClose?.();
-      if (!active?.open) options.opener?.focus();
+      if (!active?.open) restoreSheetFocus(options.opener);
     },
     { once: true },
   );

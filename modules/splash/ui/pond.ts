@@ -70,7 +70,7 @@ export function mountPond(
         {
           variant: own ? "secondary" : "primary",
           ariaLabel: text(own ? "splash.raiseBidFor" : "splash.bidFor", {
-            author,
+            author: `${author} · ${lot.submissionId}`,
           }),
           onClick: () => {
             openBidSheet(context, lot, own, {
@@ -91,6 +91,7 @@ export function mountPond(
           },
         },
       );
+      bid.dataset.focusKey = `bid:${lot.submissionId}`;
       actions.push(bid);
     }
     return ListItem({

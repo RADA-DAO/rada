@@ -50,6 +50,15 @@ Its internal stylesheets provide the shared foundations, controls, collectible
 card and existing shell recipes. The mini app resolves this public entry through
 Vite and TypeScript aliases. Applications must not import internal CSS files.
 
+`ScreenHost` focuses each replacement screen's heading. When a refresh replaces
+an active control, `data-focus-key` identifies its replacement; otherwise focus
+falls back to the screen heading. Sheets use the same stable key when their
+opener is removed or disabled. Native heading focus announces the destination.
+
+Focus uses adjacent black (`--theme-ring`) and white (`--accent-ring`) bands,
+with foundation width and offset tokens. At least one band contrasts with every
+surface, including authored colours; neither band is an artwork accent.
+
 `tokens.css` is the single source of foundation values.
 `RADA_DESIGN_TOKEN_NAMES` exports their names, with `DesignTokenName` and
 `DesignTokens` types. `ThemeTokenName` describes the 47

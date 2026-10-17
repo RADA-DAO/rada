@@ -10,7 +10,7 @@
 :root {
   --theme-base: #243b34;
   --accent-solid: #f4f4f0;
-  --theme-ring: #f4f4f0;
+  --theme-ring: #000000;
   --water-top: #354942;
   --water-mid: #243b34;
   --water-bottom: #1a312a;
@@ -44,7 +44,7 @@
   --accent-strong: #ebebe9;
   --accent-indicator: #f4f4f0;
   --accent-ink: #000000;
-  --accent-ring: #f4f4f0;
+  --accent-ring: #ffffff;
   --control-primary-bg: #f4f4f0;
   --control-primary-ink: #000000;
   --control-primary-border: rgb(244 244 240 / 0.76);

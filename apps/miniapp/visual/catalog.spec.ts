@@ -72,8 +72,26 @@ for (const theme of themes) {
             content:
               "html,body{overflow:visible!important}.screen-wrap,.screen{height:auto!important;overflow:visible!important}",
           });
+      if (expanded) {
+        for (const surface of [page, background]) {
+          await surface
+            .getByRole("button", { name: "Primary", exact: true })
+            .hover();
+          await surface
+            .getByRole("button", { name: "Secondary", exact: true })
+            .focus();
+        }
+      }
+      await expect(page.locator("button:disabled").first()).toBeAttached();
+      await expect(page.locator(".rada-badge").first()).toBeAttached();
       const result = await catalogContrast(page, background);
       expect(result.sampled).toBeGreaterThan(60);
+      expect(result.states).toContain("disabled");
+      expect(result.states).toContain("chip");
+      if (expanded) {
+        expect(result.states).toContain("focus");
+        expect(result.states).toContain("hover");
+      }
       expect(
         result.failures,
         expanded ? "full page" : "shell scroller",

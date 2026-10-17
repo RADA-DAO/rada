@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { t } from "../src/index.ts";
 
-import en from "../locales/en.json" with { type: "json" };
-import uk from "../locales/uk.json" with { type: "json" };
+import { en, uk } from "../src/dictionaries.ts";
 
 /** @param {Record<string, unknown>} value @param {string} prefix @param {Record<string, unknown>} result */
 function flatten(value, prefix = "", result = {}) {

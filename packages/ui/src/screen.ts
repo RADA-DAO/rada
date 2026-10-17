@@ -1,3 +1,4 @@
+import { observeScreenFocus } from "./focus.ts";
 import { element } from "./dom.ts";
 
 /** Scrolling surface that holds the current screen. Created once per application. */
@@ -5,6 +6,7 @@ export function ScreenHost(root: HTMLElement): HTMLElement {
   root.className = "screen-wrap";
   const host = element("main", "screen");
   root.append(host);
+  observeScreenFocus(host);
   return host;
 }
 
@@ -37,16 +39,15 @@ export function Screen(options: ScreenOptions): HTMLElement {
   header.append(lead, ...(options.actions ?? []));
   const body = element("section", "rada-screen-body");
   if (options.top) body.append(options.top);
-  body.append(
-    element(
-      "h1",
-      options.titleHidden
-        ? "rada-screen-title rada-visually-hidden"
-        : "rada-screen-title",
-      options.title,
-    ),
-    ...(options.children ?? []),
+  const heading = element(
+    "h1",
+    options.titleHidden
+      ? "rada-screen-title rada-visually-hidden"
+      : "rada-screen-title",
+    options.title,
   );
+  heading.tabIndex = -1;
+  body.append(heading, ...(options.children ?? []));
   view.append(header, body);
   if (options.footer) view.append(options.footer);
   return view;

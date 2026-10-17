@@ -54,7 +54,7 @@ export async function openAppPermissions({
   navigation,
   opener,
 }: {
-  text: (key: MessageKey) => string;
+  text: (key: MessageKey, values?: Record<string, string>) => string;
   platform: ReturnType<typeof initializePlatform>;
   navigation: SheetNavigation;
   opener: HTMLElement | null;
@@ -80,6 +80,10 @@ export async function openAppPermissions({
         const label = permissionLabel(item.capability, text);
         if (!label) return [];
         const revoke = Button(text("shell.revokePermission"), {
+          ariaLabel: text("shell.revokePermissionFor", {
+            app: item.app_id,
+            permission: label,
+          }),
           onClick: () => {
             setButtonLoading(revoke, true);
             void platform

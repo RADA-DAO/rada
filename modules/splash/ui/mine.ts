@@ -102,6 +102,9 @@ export function mountMine(
         { label: text("splash.claimLeft"), value: left.element },
       );
       const start: HTMLButtonElement = Button(text("splash.claim"), {
+        ariaLabel: text("splash.claimFor", {
+          name: claim.name ?? claim.submissionId,
+        }),
         variant: "primary",
         onClick: () => {
           openClaimSheet(context, claim, {
@@ -113,6 +116,7 @@ export function mountMine(
           });
         },
       });
+      start.dataset.focusKey = `claim:${claim.submissionId}`;
       actions.push(start);
     }
     if (badge === "splash.state.confirming")

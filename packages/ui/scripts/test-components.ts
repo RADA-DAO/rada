@@ -125,6 +125,7 @@ await test("openSheet registers in the navigation stack and restores focus", () 
     },
   };
   const opener = Button("Settings");
+  fakeDocument.body.append(fake(opener));
   const first = fake(
     openSheet({ title: "A", closeLabel: "Close", navigation, opener }),
   );

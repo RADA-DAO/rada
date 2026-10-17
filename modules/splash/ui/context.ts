@@ -87,12 +87,27 @@ export async function loadInto(
   container: HTMLElement,
   load: () => Promise<Node[]>,
 ): Promise<void> {
-  container.replaceChildren(
-    Loading({ message: context.text("splash.loading") }),
-  );
+  if (!container.childNodes.length)
+    container.replaceChildren(
+      Loading({ message: context.text("splash.loading") }),
+    );
   try {
     const nodes = await load();
-    if (!context.signal.aborted) container.replaceChildren(...nodes);
+    if (!context.signal.aborted) {
+      const previous = document.activeElement;
+      const returnToHeading =
+        previous instanceof HTMLElement &&
+        container.contains(previous) &&
+        !previous.dataset.focusKey;
+      container.replaceChildren(...nodes);
+      if (returnToHeading) {
+        const heading = container.querySelector<HTMLElement>("h2");
+        if (heading) {
+          heading.tabIndex = -1;
+          heading.focus();
+        }
+      }
+    }
   } catch (error) {
     if (aborted(context.signal, error)) return;
     container.replaceChildren(

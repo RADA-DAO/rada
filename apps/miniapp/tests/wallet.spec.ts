@@ -115,14 +115,37 @@ test("wallet balances display, unlink, TON Connect relink and restored session",
         exact: true,
       }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Copy full address" }).click();
+    const details = page.getByRole("button", {
+      name: t("en", "wallet.showAddress", { address: shortAddress }),
+    });
+    await details.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByText(body.wallet.address, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: t("en", "wallet.hideAddress", { address: shortAddress }),
+      }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await page
+      .getByRole("button", {
+        name: t("en", "wallet.copyAddressFor", {
+          address: body.wallet.address,
+        }),
+        exact: true,
+      })
+      .click();
     expect(
       await page.evaluate(() =>
         sessionStorage.getItem("fixture-copied-address"),
       ),
     ).toBe(body.wallet.address);
     await page
-      .getByRole("button", { name: "Remove wallet link", exact: true })
+      .getByRole("button", {
+        name: t("en", "wallet.revokeFor", { address: body.wallet.address }),
+        exact: true,
+      })
       .click();
     await expect(page.getByText(shortAddress, { exact: true })).toHaveCount(0);
     const own = await request.get(`${api}/me/wallet`, { headers });

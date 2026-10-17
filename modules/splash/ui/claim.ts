@@ -63,10 +63,9 @@ export function openClaimSheet(
   }
   async function start() {
     status.replaceChildren();
-    if (name && (!name.value() || name.blocked())) {
-      name.setError(
-        text(name.value() ? "splash.error.name_taken" : "splash.nameRequired"),
-      );
+    const nameError = name?.error();
+    if (name && nameError) {
+      name.setError(text(nameError));
       name.control.focus();
       return;
     }
