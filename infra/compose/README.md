@@ -4,3 +4,5 @@
 published ports. Credentials come from the root `.env` (see `.env.example`).
 
 See the [staging runbook](STAGING.md) for the separate, default-off deployment.
+
+See [verified backups](BACKUPS.md) for daily encrypted database recovery.

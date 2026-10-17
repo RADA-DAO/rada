@@ -1,0 +1,15 @@
+[Unit]
+Description=RADA encrypted database backup and isolated restore verification
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/rada-backup/job.env
+WorkingDirectory=/opt/rada-backup
+ExecStart=/usr/bin/node tools/backup-run.mjs
+TimeoutStartSec=2h
+UMask=0077
+StandardOutput=journal
+StandardError=journal

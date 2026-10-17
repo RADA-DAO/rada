@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily RADA database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+RandomizedDelaySec=15m
+Unit=rada-backup.service
+
+[Install]
+WantedBy=timers.target
