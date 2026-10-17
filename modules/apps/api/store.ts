@@ -52,10 +52,12 @@ export interface RegistryStore {
 }
 
 export class PostgresRegistryStore implements RegistryStore {
-  constructor(
-    private auth: pg.Pool,
-    private service: pg.Pool,
-  ) {}
+  private readonly auth: pg.Pool;
+  private readonly service: pg.Pool;
+  constructor(auth: pg.Pool, service: pg.Pool) {
+    this.auth = auth;
+    this.service = service;
+  }
 
   private subject(telegramId: string): Promise<string> {
     return resolveTelegramSubject(this.auth, telegramId);

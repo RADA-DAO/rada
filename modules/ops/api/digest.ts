@@ -86,7 +86,10 @@ export interface DigestDeps {
 export class FailureDigest {
   #baseline = new Map<string, number>();
   #running = false;
-  constructor(private readonly deps: DigestDeps) {}
+  private readonly deps: DigestDeps;
+  constructor(deps: DigestDeps) {
+    this.deps = deps;
+  }
 
   /** Runs one digest; resolves to true when a message was sent. Never throws. */
   async run(): Promise<boolean> {
@@ -168,8 +171,10 @@ export class FailureDigest {
 }
 
 class DigestHttpError extends Error {
-  constructor(readonly status: number) {
+  readonly status: number;
+  constructor(status: number) {
     super("telegram_http_error");
+    this.status = status;
   }
 }
 

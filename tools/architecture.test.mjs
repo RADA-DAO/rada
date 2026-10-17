@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  architectureViolations,
+  parameterPropertyViolations,
   codeSizeViolations,
   designSystemViolations,
   moduleImportViolations,
@@ -429,4 +431,91 @@ await test("strip-safe public contracts do not expose arbitrary module internals
         `import "../../modules/${entry}";`,
       ).length,
     );
+});
+
+await test("parameter property gate rejects every modifier and reports source locations", () => {
+  for (const modifier of [
+    "private",
+    "public",
+    "protected",
+    "readonly",
+    "override",
+    "private readonly",
+    "public override readonly",
+  ]) {
+    const source = `class Store {
+  constructor(
+    ${modifier} value: string = "default",
+  ) {}
+}`;
+    const errors = parameterPropertyViolations(
+      "modules/apps/api/store.ts",
+      source,
+    );
+    assert.equal(errors.length, 1, modifier);
+    assert.match(
+      errors[0] ?? "",
+      /^modules\/apps\/api\/store\.ts:3:5:.*parameter properties.*strip-types/,
+    );
+    assert.deepEqual(
+      architectureViolations("modules/apps/api/store.ts", source),
+      errors,
+    );
+  }
+});
+
+await test("parameter property gate covers all TypeScript paths including tests and nested classes", () => {
+  for (const path of [
+    "source.ts",
+    "source.tsx",
+    "source.mts",
+    "source.cts",
+    "source.d.ts",
+    "apps/api/src/example.test.ts",
+    "modules/apps/fixtures/store.ts",
+    "modules/apps/generated/store.ts",
+    "packages/ui/src/store.ts",
+    "apps/miniapp/src/store.ts",
+    "modules/apps/ui/store.ts",
+  ]) {
+    const errors = parameterPropertyViolations(
+      path,
+      `
+      function factory() {
+        return class extends Base {
+          constructor(public value: string, protected readonly count = 1) { super(); }
+        };
+      }
+    `,
+    );
+    assert.equal(errors.length, 2, path);
+  }
+  assert.deepEqual(
+    parameterPropertyViolations(
+      "README.md",
+      "class X { constructor(private x: string) {} }",
+    ),
+    [],
+  );
+});
+
+await test("parameter property gate permits explicit fields and ignores textual lookalikes", () => {
+  assert.deepEqual(
+    parameterPropertyViolations(
+      "store.ts",
+      `
+    // constructor(private value: string) {}
+    /* constructor(protected value: string) {} */
+    const example = "constructor(public value: string) {}";
+    const template = \`constructor(readonly value: string) {}\`;
+    class Store {
+      private readonly value: string;
+      constructor(value: string, options: { readonly count: number }, override = false) {
+        this.value = value;
+      }
+    }
+  `,
+    ),
+    [],
+  );
 });

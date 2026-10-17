@@ -3,7 +3,10 @@ import type { AlertStore, ClientErrorSummary } from "./digest.ts";
 
 /** Uses only ops-owned SQL functions; the login has no table privileges. */
 export class PostgresAlertStore implements AlertStore {
-  constructor(private readonly pool: Pick<pg.Pool, "query">) {}
+  private readonly pool: Pick<pg.Pool, "query">;
+  constructor(pool: Pick<pg.Pool, "query">) {
+    this.pool = pool;
+  }
 
   async summary(): Promise<ClientErrorSummary> {
     const mark = await this.pool.query("SELECT ops.alert_watermark() AS after");
