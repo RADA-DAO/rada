@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { catalogContrast } from "./test/contrast.ts";
+
 const themes = ["guest", "light", "dark"] as const;
 const artworkPath = `/media/jpegpe/${"a".repeat(64)}.png`;
 // A fixed 16x16 PNG so the frog card artwork never depends on a network.
@@ -38,6 +40,41 @@ for (const theme of themes) {
     await expect(page).toHaveScreenshot(`catalog-${theme}.png`, {
       fullPage: true,
     });
+  });
+}
+
+for (const theme of themes) {
+  test(`painted text contrast, ${theme} theme`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await open(page, `theme=${theme}`);
+    if (theme === "light") {
+      // This fixture authors #2B6CB0; all solid accent controls must preserve it.
+      for (const control of [
+        page.getByRole("button", { name: "Primary", exact: true }),
+        page.getByText("Claimed", { exact: true }),
+        page.locator(".rada-avatar").nth(1),
+      ])
+        await expect(control).toHaveCSS(
+          "background-color",
+          "rgb(43, 108, 176)",
+        );
+    }
+    const background = await page.context().newPage();
+    await open(background, `theme=${theme}`);
+    for (const expanded of [false, true]) {
+      if (expanded)
+        for (const surface of [page, background])
+          await surface.addStyleTag({
+            content:
+              "html,body{overflow:visible!important}.screen-wrap,.screen{height:auto!important;overflow:visible!important}",
+          });
+      const result = await catalogContrast(page, background);
+      expect(result.sampled).toBeGreaterThan(60);
+      expect(
+        result.failures,
+        expanded ? "full page" : "shell scroller",
+      ).toEqual([]);
+    }
   });
 }
 

@@ -4,7 +4,12 @@ body {
   margin: 0;
   overflow: hidden;
 }
+html {
+  /* The canvas stays themed beyond the body and during overscroll. */
+  background: var(--water-bottom);
+}
 body {
+  min-height: var(--rada-viewport-height);
   font-family: var(--rada-shell-font);
   font-size: var(--rada-font-size-body);
   font-weight: var(--rada-font-weight-body);
@@ -12,7 +17,6 @@ body {
   font-synthesis: none;
   color: var(--text-primary);
   background: var(--rada-environment-fill);
-  background-attachment: fixed;
 }
 .screen-wrap {
   height: var(--app-visible-height, var(--rada-viewport-height));

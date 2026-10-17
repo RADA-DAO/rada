@@ -86,6 +86,10 @@ checks this).
 
 `npm run test:visual` screenshots the catalog in the guest, a light and a dark
 profile theme at 390px and 1280px in Chromium and WebKit, with reduced motion.
+The contrast gate scrolls both the shell surface and expanded full page, samples
+painted background pixels with glyphs hidden, and checks computed text (including
+alpha and native form values) at 4.5:1. Water, glass, images and layered materials
+are included. The light fixture explicitly authors blue `#2B6CB0` as its accent.
 Baselines live in `apps/miniapp/visual/__screenshots__` and must be rendered in
 the Linux Playwright image CI uses, never on macOS. Any pixel difference fails CI.
 

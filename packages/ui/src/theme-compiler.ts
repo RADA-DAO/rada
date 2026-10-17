@@ -1,3 +1,5 @@
+import { contrastAlpha } from "./contrast-alpha.ts";
+
 /**
  * The application has at most two authored JPEGPE colours: background and,
  * once Level 2 is open, accent. This compiler preserves those exact HEX values
@@ -268,7 +270,18 @@ export function compileTheme(
   if (contrastRatio(surfacePigment, ink) < 4.5)
     ink = readableInk(surfacePigment);
   const inkRgb = hexToRgb(ink);
-  const muted = `rgb(${rgbChannels(inkRgb)} / ${tone === "dark" ? ".68" : ".62"})`;
+  // Muted ink must read on water as well as the full glass gradient.
+  const muted = colorWithAlpha(
+    ink,
+    contrastAlpha(
+      Object.values(inkRgb),
+      [waterTop, waterMid, waterBottom]
+        .concat(surfacePigment, surfaceHighlight, surfaceSoft)
+        .map((hex) => Object.values(hexToRgb(hex))),
+      tone === "dark" ? 0.68 : 0.62,
+      contrastRatio,
+    ),
+  );
 
   const accentOklch = rgbToOklch(hexToRgb(authoredAccent));
   const accentRgb = hexToRgb(authoredAccent);

@@ -145,3 +145,17 @@
   background: currentColor;
   mask: var(--rada-icon-settings) center / contain no-repeat;
 }
+
+/* Native WebKit selects paint an opaque light face even over dark materials. */
+select.rada-field-control {
+  appearance: none;
+  padding-right: var(--rada-space-10);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-primary) 50%),
+    linear-gradient(135deg, var(--text-primary) 50%, transparent 50%);
+  background-position:
+    right var(--rada-space-4) center,
+    right calc(var(--rada-space-4) - var(--rada-space-1)) center;
+  background-size: var(--rada-space-1) var(--rada-space-1);
+  background-repeat: no-repeat;
+}
