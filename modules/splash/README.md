@@ -166,7 +166,9 @@ launch credentials stay in the SDK. Screens never import `api/` code.
   for late chain confirmation), never while a payment confirmed before the
   deadline exists. The frog's state becomes `burned`, the held name is released,
   history stays. Before burning, the service re-checks every signed attempt on
-  chain; if the chain cannot be read, the burn waits.
+  chain under the per-frog lock; each unresolved attempt needs a complete
+  negative scan. Missing index coverage or an incomplete read defers the burn.
+  Timer batches select frog ids first and include every attempt of those frogs.
 - The round timer (`startRoundScheduler`) runs claim settlement right after the
   round job every minute; double or concurrent runs settle each frog once.
 - Claimed and burned frogs keep a public image, so round results stay complete.

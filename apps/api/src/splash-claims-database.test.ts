@@ -33,8 +33,12 @@ class FixtureChain extends PaymentChain {
     const hex = intent.intentId.replaceAll("-", "");
     return Promise.resolve(
       this.confirmed
-        ? { hash: hex + hex, onChainAt: Math.floor(Date.now() / 1000) }
-        : null,
+        ? {
+            status: "confirmed" as const,
+            hash: hex + hex,
+            onChainAt: Math.floor(Date.now() / 1000),
+          }
+        : { status: "incomplete" as const },
     );
   }
 }

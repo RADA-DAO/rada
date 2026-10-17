@@ -27,6 +27,7 @@ export type PaymentView = PaymentRecord & {
   feeEstimate: FeeEstimate | null;
   /** Recipient transaction time on chain, once paid. */
   paidOnChainAt: string | null;
+  scanStatus?: "confirmed" | "confirmed-absent" | "incomplete";
 };
 type Row = {
   intent_id: string;
@@ -146,11 +147,17 @@ export class PostgresPaymentStore {
       ),
     );
   }
-  async reconcileAs(subjectId: string, appId: string, intentId: string) {
+  async reconcileAs(
+    subjectId: string,
+    appId: string,
+    intentId: string,
+    scanUntil?: number,
+  ) {
     return await this.reconcileFor(
       (run) => this.asSubject(subjectId, run),
       appId,
       intentId,
+      scanUntil,
     );
   }
   async cancelAs(subjectId: string, appId: string, intentId: string) {
@@ -290,6 +297,7 @@ export class PostgresPaymentStore {
     within: <T>(run: (db: pg.PoolClient) => Promise<T>) => Promise<T>,
     appId: string,
     intentId: string,
+    scanUntil?: number,
   ): Promise<PaymentView> {
     const record = await within(async (db) => {
       const result = await db.query<Row>(
@@ -301,8 +309,9 @@ export class PostgresPaymentStore {
       return result.rows[0];
     });
     if (record.status !== "unknown") return view(record);
-    const receipt = await this.chain.confirmation(view(record));
-    if (!receipt) return view(record);
+    const receipt = await this.chain.confirmation(view(record), scanUntil);
+    if (receipt.status !== "confirmed")
+      return { ...view(record), scanStatus: receipt.status };
     return await within(async (db) => {
       const result = await db.query<Row>(
         `UPDATE wallet.payment_intents

@@ -179,6 +179,7 @@ SELECT pg_temp.check(splash.complete_claim(:'f3', :'bg3', :'ac3') = 'already_cla
 SELECT pg_temp.check(NOT splash.burn_claim(:'f3'), 'claimed never burns');
 -- Deadline boundary: paid one second before the deadline wins although processed after it.
 SELECT pg_temp.check(NOT splash.burn_claim(:'f1'), 'paid in time blocks burn');
+SELECT pg_temp.check(NOT splash.burn_claim(:'f1', ARRAY[:'good1']::uuid[]), 'paid in time blocks negative evidence');
 SELECT pg_temp.check(splash.complete_claim(:'f1', :'bg1', :'ac1') = 'claimed', 'late processing');
 -- Paid exactly at the deadline is late: no claim, the frog burns once.
 SELECT pg_temp.check(splash.complete_claim(:'f2', '{}', '{}') = 'unpaid', 'paid at deadline');
@@ -241,5 +242,42 @@ DO $$ BEGIN
   UPDATE splash.recipient_settings SET recipient = '0:' || repeat('5', 64);
   RAISE EXCEPTION 'Recipient history rewritten';
 EXCEPTION WHEN check_violation THEN NULL; END $$;
+RESET ROLE;
+-- A full batch includes every attempt of its last frog.
+CREATE TEMP TABLE claim_batch AS
+  SELECT n, ('33333333-3333-4333-8333-' || lpad(n::text, 12, '0'))::uuid AS id
+  FROM generate_series(1, 1000) AS n;
+INSERT INTO splash.submissions(submission_id, author_subject_id, submitted_at)
+  SELECT id, :'author', now() - interval '4 days' FROM claim_batch;
+INSERT INTO splash.submission_events(submission_id, state)
+  SELECT id, 'won' FROM claim_batch;
+INSERT INTO splash.lots SELECT :r0, id FROM claim_batch;
+INSERT INTO splash.bids(round_id, submission_id, bidder_subject_id, amount, username,
+  placed_at, amount_since, name_chosen_at)
+  SELECT :r0, id, :'winner', 500, 'BatchFrog', now(), now(), now() FROM claim_batch;
+INSERT INTO splash.lot_results(round_id, submission_id, bidder_count, winning_bid_id,
+  winner_subject_id, amount, requested_username, name_outcome, claim_deadline)
+  SELECT b.round_id, b.submission_id, 1, b.bid_id, :'winner', 500, 'BatchFrog',
+    'unavailable', now() - interval '3 hours'
+  FROM splash.bids AS b JOIN claim_batch AS c ON c.id = b.submission_id;
+SELECT id AS batch_last FROM claim_batch WHERE n = 1000 \gset
+SELECT pg_temp.intent(:'winner', 'batch-cancelled', 500, 'splash:' || :'batch_last') AS batch_cancelled,
+  pg_temp.intent(:'winner', 'batch-signed', 500, 'splash:' || :'batch_last') AS batch_signed \gset
+UPDATE wallet.payment_intents SET status = 'cancelled' WHERE intent_id = :'batch_cancelled';
+UPDATE wallet.payment_intents SET status = 'unknown' WHERE intent_id = :'batch_signed';
+INSERT INTO splash.claim_attempts(submission_id, attempt_no, intent_id, winner_subject_id,
+  amount, recipient, sender) VALUES
+  (:'batch_last', 1, :'batch_cancelled', :'winner', 500, :'pay_to', :'wallet'),
+  (:'batch_last', 2, :'batch_signed', :'winner', 500, :'pay_to', :'wallet');
+SET LOCAL ROLE splash_service;
+SELECT pg_temp.check((SELECT count(*) = 1001 AND count(DISTINCT submission_id) = 1000
+  FROM splash.open_claims()), 'whole frog batch boundary');
+SELECT pg_temp.check((SELECT count(*) = 2 FROM splash.lock_claim(:'batch_last')), 'all locked attempts');
+SELECT pg_temp.check(NOT splash.burn_claim(:'batch_last'), 'unresolved payment defers');
+SELECT pg_temp.check(NOT splash.burn_claim(:'batch_last', ARRAY[:'batch_cancelled']::uuid[]),
+  'earlier cancelled attempt cannot authorize burn');
+SELECT pg_temp.check(NOT splash.burn_claim(:'batch_last', NULL), 'missing scan defers');
+SELECT pg_temp.check(splash.burn_claim(:'batch_last', ARRAY[:'batch_signed']::uuid[]), 'complete absence burns');
+SELECT pg_temp.check(NOT splash.burn_claim(:'batch_last', ARRAY[:'batch_signed']::uuid[]), 'complete absence burns once');
 RESET ROLE;
 ROLLBACK;

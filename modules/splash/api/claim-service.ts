@@ -3,7 +3,6 @@ import type { PaymentView, PostgresPaymentStore } from "../../wallet/index.ts";
 import type {
   ClaimDb,
   CompleteResult,
-  OpenClaimRow,
   OwnClaim,
   PrepareRefusal,
 } from "./claims.ts";
@@ -66,7 +65,7 @@ export class ClaimService {
         terms.open.intentId,
       );
       if (current.status === "paid") {
-        await this.settleFrog(submissionId, null);
+        await this.settleFrog(submissionId);
         return { status: "paid", payment: current };
       }
       if (current.status === "unknown")
@@ -139,7 +138,7 @@ export class ClaimService {
         SPLASH_APP_ID,
         claim.intentId,
       );
-      if (payment.status === "paid") await this.settleFrog(submissionId, null);
+      if (payment.status === "paid") await this.settleFrog(submissionId);
       return (await this.db.mine(subject, submissionId))[0] ?? null;
     }
     return claim;
@@ -163,15 +162,12 @@ export class ClaimService {
    * period. A chain read failure skips that frog (never burns on doubt).
    */
   async settle(now: () => number = Date.now): Promise<void> {
-    const byFrog = new Map<string, OpenClaimRow[]>();
-    for (const row of await this.db.openClaims())
-      byFrog.set(row.submissionId, [
-        ...(byFrog.get(row.submissionId) ?? []),
-        row,
-      ]);
-    for (const [submissionId, rows] of byFrog) {
+    const ids = new Set(
+      (await this.db.openClaims()).map((row) => row.submissionId),
+    );
+    for (const submissionId of ids) {
       try {
-        await this.settleFrog(submissionId, rows, now);
+        await this.settleFrog(submissionId, now);
       } catch (error) {
         this.log(
           JSON.stringify({
@@ -185,28 +181,44 @@ export class ClaimService {
 
   private async settleFrog(
     submissionId: string,
-    rows: OpenClaimRow[] | null,
     now: () => number = Date.now,
   ): Promise<CompleteResult | "burned_now" | "waiting"> {
-    for (const row of rows ?? [])
-      if (row.intentId && row.paymentStatus === "unknown")
-        await this.payments.reconcileAs(
-          row.winnerSubjectId,
-          SPLASH_APP_ID,
-          row.intentId,
-        );
-    const paid = await this.db.claimPayment(submissionId);
-    if (paid) {
-      const drop = await this.colors({
-        frogId: submissionId,
-        requestId: paid.intentId,
-        round: paid.colorRound,
-      });
-      return await this.db.complete(submissionId, drop);
-    }
-    const burnAfter = rows?.[0]?.burnAfter;
-    if (burnAfter && now() >= burnAfter.getTime())
-      return (await this.db.burn(submissionId)) ? "burned_now" : "waiting";
-    return "waiting";
+    return await this.db.withLockedClaim(submissionId, async (db, rows) => {
+      const absent: string[] = [];
+      let complete = true;
+      for (const row of rows) {
+        if (!row.intentId) continue;
+        if (row.paymentStatus === "unknown") {
+          const result = await this.payments.reconcileAs(
+            row.winnerSubjectId,
+            SPLASH_APP_ID,
+            row.intentId,
+            Math.floor(row.burnAfter.getTime() / 1000),
+          );
+          if (result.scanStatus === "confirmed-absent")
+            absent.push(row.intentId);
+          else complete = false;
+        } else if (
+          row.paymentStatus !== "cancelled" &&
+          row.paymentStatus !== "prepared" &&
+          row.paymentStatus !== "paid"
+        ) {
+          complete = false;
+        }
+      }
+      const paid = await db.claimPayment(submissionId);
+      if (paid) {
+        const drop = await this.colors({
+          frogId: submissionId,
+          requestId: paid.intentId,
+          round: paid.colorRound,
+        });
+        return await db.complete(submissionId, drop);
+      }
+      const burnAfter = rows[0]?.burnAfter;
+      if (complete && burnAfter && now() >= burnAfter.getTime())
+        return (await db.burn(submissionId, absent)) ? "burned_now" : "waiting";
+      return "waiting";
+    });
   }
 }

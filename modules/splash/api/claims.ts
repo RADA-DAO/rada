@@ -1,5 +1,4 @@
 import type pg from "pg";
-import { resolveTelegramSubject } from "../../identity/index.ts";
 import type { ColorDrop } from "../../jpegpe/index.ts";
 import type { NameOutcome } from "./rounds.ts";
 
@@ -59,6 +58,8 @@ export type OpenClaimRow = {
 export type CompleteResult =
   "claimed" | "already_claimed" | "burned" | "unpaid" | "not_found";
 
+export type LockedClaim = Pick<ClaimDb, "claimPayment" | "complete" | "burn">;
+
 /** The SPLASH claim tables, reached only through splash.* functions. */
 export interface ClaimDb {
   subjectOf(telegramId: string): Promise<string>;
@@ -80,13 +81,17 @@ export interface ClaimDb {
     recipient: string,
   ): Promise<{ recipient: string; setAt: string } | null>;
   openClaims(): Promise<OpenClaimRow[]>;
+  withLockedClaim<T>(
+    submissionId: string,
+    run: (db: LockedClaim, rows: OpenClaimRow[]) => Promise<T>,
+  ): Promise<T>;
   claimPayment(submissionId: string): Promise<{
     intentId: string;
     paidOnChainAt: Date;
     colorRound: number;
   } | null>;
   complete(submissionId: string, drop: ColorDrop): Promise<CompleteResult>;
-  burn(submissionId: string): Promise<boolean>;
+  burn(submissionId: string, absentIntents: string[]): Promise<boolean>;
 }
 
 type Row = Record<string, unknown>;
@@ -117,6 +122,7 @@ export class PostgresClaimDb implements ClaimDb {
     this.service = service;
   }
   async subjectOf(telegramId: string) {
+    const { resolveTelegramSubject } = await import("../../identity/index.ts");
     return await resolveTelegramSubject(this.auth, telegramId);
   }
   private async asSubject<T>(
@@ -212,16 +218,41 @@ export class PostgresClaimDb implements ClaimDb {
     const { rows } = await this.service.query<Row>(
       "SELECT * FROM splash.open_claims()",
     );
-    return rows.map((row) => ({
-      submissionId: row.submission_id as string,
-      winnerSubjectId: row.winner_subject_id as string,
-      burnAfter: row.burn_after as Date,
-      intentId: text(row.intent_id),
-      paymentStatus: text(row.payment_status) as ClaimPaymentStatus | null,
-    }));
+    return rows.map(openClaim);
   }
-  async claimPayment(submissionId: string) {
-    const { rows } = await this.service.query<Row>(
+  async withLockedClaim<T>(
+    submissionId: string,
+    run: (db: LockedClaim, rows: OpenClaimRow[]) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query<Row>(
+        "SELECT * FROM splash.lock_claim($1::uuid)",
+        [submissionId],
+      );
+      const value = await run(
+        {
+          claimPayment: (id) => this.claimPayment(id, client),
+          complete: (id, drop) => this.complete(id, drop, client),
+          burn: (id, absent) => this.burn(id, absent, client),
+        },
+        result.rows.map(openClaim),
+      );
+      await client.query("COMMIT");
+      return value;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async claimPayment(
+    submissionId: string,
+    db: Pick<pg.Pool, "query"> = this.service,
+  ) {
+    const { rows } = await db.query<Row>(
       "SELECT * FROM splash.claim_payment($1::uuid)",
       [submissionId],
     );
@@ -233,8 +264,12 @@ export class PostgresClaimDb implements ClaimDb {
       colorRound: Number(row.color_round),
     };
   }
-  async complete(submissionId: string, drop: ColorDrop) {
-    const { rows } = await this.service.query<{ result: CompleteResult }>(
+  async complete(
+    submissionId: string,
+    drop: ColorDrop,
+    db: Pick<pg.Pool, "query"> = this.service,
+  ) {
+    const { rows } = await db.query<{ result: CompleteResult }>(
       "SELECT splash.complete_claim($1::uuid, $2::jsonb, $3::jsonb) AS result",
       [
         submissionId,
@@ -244,11 +279,24 @@ export class PostgresClaimDb implements ClaimDb {
     );
     return rows[0]?.result ?? "not_found";
   }
-  async burn(submissionId: string) {
-    const { rows } = await this.service.query<{ burned: boolean }>(
-      "SELECT splash.burn_claim($1::uuid) AS burned",
-      [submissionId],
+  async burn(
+    submissionId: string,
+    absentIntents: string[],
+    db: Pick<pg.Pool, "query"> = this.service,
+  ) {
+    const { rows } = await db.query<{ burned: boolean }>(
+      "SELECT splash.burn_claim($1::uuid, $2::uuid[]) AS burned",
+      [submissionId, absentIntents],
     );
     return rows[0]?.burned === true;
   }
+}
+function openClaim(row: Row): OpenClaimRow {
+  return {
+    submissionId: row.submission_id as string,
+    winnerSubjectId: row.winner_subject_id as string,
+    burnAfter: row.burn_after as Date,
+    intentId: text(row.intent_id),
+    paymentStatus: text(row.payment_status) as ClaimPaymentStatus | null,
+  };
 }
