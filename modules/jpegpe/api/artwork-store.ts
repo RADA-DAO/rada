@@ -15,10 +15,16 @@ export const artworkPath = (id: string, hash: string) =>
 
 /** The resolver accepts only an already verified Telegram identity. */
 export class PostgresArtworkStore implements ArtworkStore {
+  // Explicit fields keep this module loadable under Node's type stripping.
+  private readonly service: pg.Pool;
+  private readonly resolve: (viewer: string) => Promise<string>;
   constructor(
-    private service: pg.Pool,
-    private resolve: (viewer: string) => Promise<string>,
-  ) {}
+    service: pg.Pool,
+    resolve: (viewer: string) => Promise<string>,
+  ) {
+    this.service = service;
+    this.resolve = resolve;
+  }
   private async scoped<T>(
     viewer: string | null,
     read: (c: pg.PoolClient) => Promise<T>,
