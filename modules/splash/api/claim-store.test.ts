@@ -7,7 +7,7 @@ function store() {
   const calls: { sql: string; values?: unknown[] }[] = [];
   const client = {
     query: (sql: string, values?: unknown[]) => {
-      calls.push({ sql, values });
+      calls.push({ sql, ...(values ? { values } : {}) });
       const rows = sql.includes("lock_claim")
         ? [
             {
@@ -71,4 +71,16 @@ test("an incomplete worker failure rolls back and releases the frog lock", async
     ["ROLLBACK", "release"],
   );
   assert.ok(!calls.some(({ sql }) => sql.includes("burn_claim")));
+});
+
+test("manual review is recorded on the locked transaction", async () => {
+  const { db, calls } = store();
+  await db.withLockedClaim("frog", async (locked) => {
+    await locked.review("frog");
+  });
+  assert.deepEqual(calls.at(-3), {
+    sql: "SELECT splash.review_claim($1::uuid)",
+    values: ["frog"],
+  });
+  assert.equal(calls.at(-2)?.sql, "COMMIT");
 });

@@ -62,6 +62,12 @@ function build(
   const keys: string[] = [];
   const burned = new Set<string>();
   const db: ClaimDb = {
+    reviews: () => Promise.resolve([]),
+    review: (id) => {
+      burned.add(id);
+      calls.push(`review:${id}`);
+      return Promise.resolve();
+    },
     subjectOf: (id) => Promise.resolve(`subject-${id}`),
     prepare: () => Promise.resolve(options.prepared ?? terms()),
     record: (_s, _f, attempt, intent) => {
@@ -127,7 +133,7 @@ function build(
       if (options.reconcileError) return Promise.reject(options.reconcileError);
       return Promise.resolve({
         ...payment(intentId, options.current ?? "prepared"),
-        scanStatus: options.scanStatus,
+        ...(options.scanStatus ? { scanStatus: options.scanStatus } : {}),
       });
     },
     cancelAs: (_s, _a, intentId) => {
@@ -260,8 +266,7 @@ test("the timer burns only after the grace period and never on a chain error", a
   });
   await unreadable.service.settle(() => DEADLINE.getTime() + 31 * 60_000);
   assert.deepEqual(unreadable.calls, ["reconcile:signed"]);
-  assert.equal(unreadable.logs.length, 1);
-  assert.ok(unreadable.logs[0]?.includes("splash_claim_settle_failed"));
+  assert.equal(unreadable.logs.length, 0);
 });
 
 test("the timer completes a payment confirmed before the deadline, even after it", async () => {
@@ -359,4 +364,24 @@ test("only a complete negative scan after grace authorizes a burn", async () => 
       scanStatus === "confirmed-absent",
     );
   }
+});
+
+test("max deferral holds a frog for review even if absence later becomes available", async () => {
+  for (const scanStatus of ["incomplete", "confirmed-absent"] as const) {
+    const { service, calls } = build({
+      open: [row({ intentId: "signed", paymentStatus: "unknown" })],
+      scanStatus,
+    });
+    const now = () => DEADLINE.getTime() + (24 * 60 + 30) * 60_000;
+    await service.settle(now);
+    await service.settle(now);
+    assert.equal(calls.filter((call) => call === `review:${FROG}`).length, 1);
+    assert.ok(!calls.includes(`burn:${FROG}`));
+  }
+  const failing = build({
+    open: [row({ intentId: "signed", paymentStatus: "unknown" })],
+    reconcileError: new Error("offline"),
+  });
+  await failing.service.settle(() => DEADLINE.getTime() + 25 * 60 * 60_000);
+  assert.ok(failing.calls.includes(`review:${FROG}`));
 });

@@ -96,6 +96,18 @@ export function registerClaimRoutes(
   claims: ClaimService,
   authenticated: Authenticated,
 ) {
+  app.get("/v1/splash/claims/reviews", async (c) => {
+    const id = await authenticated(c, false);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const reviews = await claims.reviews(id);
+    if (!reviews) return c.json({ error: "forbidden" }, 403);
+    return c.json({
+      claims: reviews.map((row) => ({
+        submission_id: row.submissionId,
+        state: row.state,
+      })),
+    });
+  });
   app.get("/v1/splash/claims/mine", async (c) => {
     const id = await authenticated(c, false);
     if (!id) return c.json({ error: "unauthorized" }, 401);

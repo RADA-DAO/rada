@@ -47,25 +47,29 @@ test("TON receipt needs finalized successful inbound with exact sender, amount a
   for (const token of ["TON"] as const) {
     let requests = 0;
     const windowEnd = 1792022500;
-    const paginated = new PaymentChain((url) => {
-      const query = new URL(String(url)).searchParams;
-      assert.equal(query.get("start_utime"), "1792022400");
-      assert.equal(query.get("end_utime"), String(windowEnd));
-      assert.equal(query.get("sort"), "asc");
-      requests++;
-      const offset = Number(query.get("offset"));
-      return Promise.resolve(
-        Response.json({
-          transactions:
-            offset < 200
-              ? Array.from({ length: 100 }, () => ({
-                  ...tx,
-                  in_msg: { ...tx.in_msg, value: "1" },
-                }))
-              : [tx],
-        }),
-      );
-    });
+    const paginated = new PaymentChain(
+      (url) => {
+        const query = new URL(String(url)).searchParams;
+        assert.equal(query.get("start_utime"), "1792022400");
+        assert.equal(query.get("end_utime"), String(windowEnd));
+        assert.equal(query.get("sort"), "asc");
+        requests++;
+        const offset = Number(query.get("offset"));
+        return Promise.resolve(
+          Response.json({
+            transactions:
+              offset < 200
+                ? Array.from({ length: 100 }, () => ({
+                    ...tx,
+                    in_msg: { ...tx.in_msg, value: "1" },
+                  }))
+                : [tx],
+          }),
+        );
+      },
+      undefined,
+      { indexedThrough: () => Promise.resolve(null) },
+    );
     assert.equal(
       (await paginated.confirmation({ ...intent, token }, windowEnd)).status,
       "confirmed",
@@ -165,6 +169,7 @@ test("jetton receipt needs canonical wallets and successful recipient notificati
         Promise.resolve(
           owner === intent.sender ? sourceWallet : recipientWallet,
         ),
+      { indexedThrough: () => Promise.resolve(null) },
     );
   assert.equal(await chain(body()).receipt(payment), "b".repeat(64));
   assert.equal(
@@ -187,6 +192,7 @@ test("jetton receipt needs canonical wallets and successful recipient notificati
     },
     (owner) =>
       Promise.resolve(owner === intent.sender ? sourceWallet : recipientWallet),
+    { indexedThrough: () => Promise.resolve(null) },
   );
   assert.equal(
     (await paginated.confirmation(payment, 1792022500)).status,
@@ -259,6 +265,7 @@ test("absence requires exhaustion and stable index coverage of the full window",
     for (const indexed of [null, end - 1, end]) {
       const chain = new PaymentChain(send({ [key]: [] }), undefined, {
         indexedThrough: () => Promise.resolve(indexed),
+        safetyMarginSeconds: 0,
       });
       assert.equal(
         (await chain.confirmation({ ...intent, token }, end)).status,
@@ -274,7 +281,7 @@ test("absence requires exhaustion and stable index coverage of the full window",
         })("unused");
       },
       undefined,
-      { pageBudget: 2, indexedThrough: () => Promise.resolve(end) },
+      { pageBudget: 2, indexedThrough: () => Promise.resolve(end + 600) },
     );
     assert.equal(
       (await chain.confirmation({ ...intent, token }, end)).status,

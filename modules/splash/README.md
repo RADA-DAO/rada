@@ -73,7 +73,9 @@ Claims (signed launch; starting needs one within the last hour):
   `payment`, `conflict`), `413`, `503` (`recipient_unset`).
 - `GET /v1/splash/claims/:frogId`: the caller's claim after checking its latest
   payment on chain; completes it when paid. `state` is `open`, `expired`,
-  `claimed` (with `frog`) or `burned`.
+  `claimed` (with `frog`), `burned` or `needs_manual_review`.
+- `GET /v1/splash/claims/reviews` (`splash.steward` only): unsettled review holds
+  as `{ claims: [{ submission_id, state: "needs_manual_review" }] }`.
 - `GET /v1/splash/claims/mine`: the caller's wins with their claim state.
 - `PUT /v1/splash/settings/recipient` (`splash.steward` only): JSON
   `{ "address" }`, a mainnet basechain address that receives claim payments.
@@ -169,6 +171,18 @@ launch credentials stay in the SDK. Screens never import `api/` code.
   chain under the per-frog lock; each unresolved attempt needs a complete
   negative scan. Missing index coverage or an incomplete read defers the burn.
   Timer batches select frog ids first and include every attempt of those frogs.
+- Wallet negative evidence additionally requires the configurable index safety
+  margin (ten minutes by default beyond the grace). A missing or disagreeing
+  watermark never authorizes a burn.
+- After 24 hours beyond the grace, settlement puts an unresolved frog into
+  `needs_manual_review` instead of burning, even if negative evidence becomes
+  available then. Configure `SPLASH_CLAIM_MAX_DEFERRAL_SECONDS` in API deployments
+  or the `ClaimService` constructor's `maxDeferralMs`. Migration 0045 adds an
+  append-only review hold and a steward-only queue; a hold prevents all automatic
+  burns in SQL, retains the held name, and is excluded from timer batches so it
+  cannot starve newer claims. Winner claim reads expose the review state.
+  A subsequently verified payment before the deadline can still complete through
+  the winner's status read. Review holds grant no manual burn or payment override.
 - The round timer (`startRoundScheduler`) runs claim settlement right after the
   round job every minute; double or concurrent runs settle each frog once.
 - Claimed and burned frogs keep a public image, so round results stay complete.

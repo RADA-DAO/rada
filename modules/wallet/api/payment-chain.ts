@@ -1,4 +1,5 @@
 import { Address, beginCell, JettonMaster, TonClient } from "@ton/ton";
+import { indexedCoverage } from "./payment-coverage.ts";
 import { estimatePaymentFee } from "./payment-fee.ts";
 import { JPEGPE_JETTON_MASTER } from "./balances.ts";
 
@@ -18,6 +19,8 @@ export type PaymentScan =
   | { status: "confirmed-absent" | "incomplete" };
 export type ScanOptions = {
   pageBudget?: number;
+  /** Seconds beyond the scan window required for negative evidence (default 600). */
+  safetyMarginSeconds?: number;
   /** Trusted index coverage watermark; unavailable coverage always defers absence. */
   indexedThrough?: () => Promise<number | null>;
 };
@@ -240,7 +243,13 @@ export class PaymentChain {
       sort: "asc",
       limit: "100",
     });
-    const indexed = await this.scanOptions.indexedThrough?.();
+    // Coverage failures must never hide a positive receipt.
+    const indexed = await (
+      this.scanOptions.indexedThrough
+        ? this.scanOptions.indexedThrough()
+        : indexedCoverage((path) => this.json(path))
+    ).catch(() => null);
+    const margin = this.scanOptions.safetyMarginSeconds ?? 600;
     let ambiguous = false;
     const budget = Math.min(this.scanOptions.pageBudget ?? 10, 100);
     for (let page = 0; page < budget; page++) {
@@ -267,7 +276,10 @@ export class PaymentChain {
             !ambiguous &&
             indexed != null &&
             Number.isSafeInteger(indexed) &&
-            indexed >= end &&
+            Number.isSafeInteger(margin) &&
+            margin >= 0 &&
+            indexed >= end + margin &&
+            indexed <= Math.floor(Date.now() / 1000) &&
             end <= Math.floor(Date.now() / 1000)
               ? "confirmed-absent"
               : "incomplete",

@@ -59,7 +59,20 @@ choose subjects or addresses through this interface.
 Receipt scans paginate up to ten pages of 100 entries in ascending order within
 fixed creation-to-settlement bounds, checking the intent reference on every
 candidate. Results distinguish confirmation, exhaustive absence and incomplete
-coverage. Exhaustive absence requires a trusted stable indexing watermark
-covering the window before pagination begins. The default provider adapter has
-no such watermark, so its negative reads remain incomplete; they cannot
-authorize a signed claim's burn. Injected providers can supply that coverage.
+coverage. Before pagination, the default adapter independently reads TONCenter
+v3 `masterchainInfo.last` and the latest indexed masterchain `blocks` entry.
+Both must identify valid masterchain blocks, have non-future integer timestamps,
+and agree within 30 seconds. The earlier timestamp is the trusted watermark;
+missing, malformed, failed or disagreeing reads leave coverage unavailable.
+These are indexed database reads, never the v2 node head. See the provider's
+[masterchain info contract](https://docs.ton.org/api/v3/blockchain-data/get-masterchain-info)
+and [blocks contract](https://docs.ton.org/api/v3/blockchain-data/get-blocks).
+
+Exhaustive absence requires that pre-scan watermark to cover the entire scan
+window plus a safety margin, and pagination to end without ambiguous candidates.
+`ScanOptions.safetyMarginSeconds` defaults to 600; API deployments can configure
+`WALLET_INDEX_SAFETY_MARGIN_SECONDS` (nonnegative integer seconds). SPLASH scans
+through deadline plus its 30-minute grace, so default negative evidence requires
+index coverage through deadline plus 40 minutes. Indexing outages never hide a
+positive receipt. Injected adapters can supply an explicitly trusted
+`indexedThrough` callback; the same margin and exhaustion checks still apply.

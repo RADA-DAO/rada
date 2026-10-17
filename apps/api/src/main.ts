@@ -30,6 +30,7 @@ import {
   startRoundScheduler,
 } from "../../../modules/splash/index.ts";
 import {
+  PaymentChain,
   PostgresWalletStore,
   PostgresPaymentStore,
 } from "../../../modules/wallet/index.ts";
@@ -37,6 +38,18 @@ import {
 function required(name: string): string {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing ${name}`);
+  return value;
+}
+function secondsSetting(name: string, fallback: number): number {
+  const raw = Deno.env.get(name);
+  const value = raw === undefined ? fallback : Number(raw);
+  if (
+    (raw !== undefined && !/^\d+$/.test(raw)) ||
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    value > 31_536_000
+  )
+    throw new Error(`Invalid ${name}`);
   return value;
 }
 if (import.meta.main) {
@@ -114,12 +127,24 @@ if (import.meta.main) {
     ? new PostgresPaymentStore(
         auth,
         new pg.Pool({ connectionString: walletUrl }),
+        new PaymentChain(fetch, undefined, {
+          safetyMarginSeconds: secondsSetting(
+            "WALLET_INDEX_SAFETY_MARGIN_SECONDS",
+            600,
+          ),
+        }),
       )
     : undefined;
   // SPLASH claims pay through wallet platform intents, so they need both logins.
   const claims =
     splashPool && payments
-      ? new ClaimService(new PostgresClaimDb(auth, splashPool), payments)
+      ? new ClaimService(
+          new PostgresClaimDb(auth, splashPool),
+          payments,
+          undefined,
+          undefined,
+          secondsSetting("SPLASH_CLAIM_MAX_DEFERRAL_SECONDS", 86_400) * 1000,
+        )
       : undefined;
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const failureCounts = new Map<string, number>();
