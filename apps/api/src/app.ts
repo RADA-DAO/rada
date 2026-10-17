@@ -1,3 +1,7 @@
+import {
+  registerRankingRoutes,
+  type RankingStore,
+} from "../../../modules/rankings/index.ts";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
@@ -46,6 +50,7 @@ export function createApp(
   ops: OpsOptions = {},
   splash?: SplashStore,
   claims?: ClaimService,
+  rankings?: RankingStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -84,6 +89,7 @@ export function createApp(
   if (ops.clientErrors)
     registerClientErrorRoutes(app, ops.clientErrors, ops.clientErrorLimiter);
   registerStagingGuard(app, authenticated, policy);
+  if (rankings) registerRankingRoutes(app, rankings);
   app.get("/health", (c) => c.json({ status: "ok" }));
   if (registry && artifactOrigin)
     registerRegistryRoutes(app, registry, artifactOrigin, authenticated);
