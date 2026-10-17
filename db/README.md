@@ -62,3 +62,9 @@ Telegram data must not appear in public profile responses. Other private data
 requires an active app-scoped consent checked by the platform on every read.
 
 Use [migrations](migrations/README.md) for schema setup and verification.
+
+Holders rankings use two additional login roles: `rankings_service` may execute
+only the public page function; `rankings_worker` may enumerate current public
+profiles' verified wallets and execute ranking prune/record functions. Neither
+has base-table privileges. Provision separate credentials; never grant the
+`rankings_owner` role to an application login.

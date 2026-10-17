@@ -1,3 +1,8 @@
+import {
+  PostgresRankingStore,
+  startHolderScheduler,
+} from "../../../modules/rankings/index.ts";
+import { PostgresHolderSource } from "../../../modules/wallet/index.ts";
 import pg from "pg";
 import { createApp } from "./app.ts";
 import {
@@ -114,6 +119,15 @@ if (import.meta.main) {
       : undefined;
   const clientErrorsUrl = Deno.env.get("CLIENT_ERRORS_DATABASE_URL");
   const failureCounts = new Map<string, number>();
+  const rankingsUrl = Deno.env.get("RANKINGS_SERVICE_DATABASE_URL");
+  const rankingsWorkerUrl = Deno.env.get("RANKINGS_WORKER_DATABASE_URL");
+  if (Boolean(rankingsUrl) !== Boolean(rankingsWorkerUrl))
+    throw new Error(
+      "Ranking service and worker credentials must be configured together",
+    );
+  const rankings = rankingsUrl
+    ? new PostgresRankingStore(new pg.Pool({ connectionString: rankingsUrl }))
+    : undefined;
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -135,7 +149,12 @@ if (import.meta.main) {
     },
     splash,
     claims,
+    rankings,
   );
+  if (rankingsWorkerUrl && policy.mode === "production") {
+    const worker = new pg.Pool({ connectionString: rankingsWorkerUrl });
+    startHolderScheduler(worker, new PostgresHolderSource(worker), console.log);
+  }
   // SPLASH: close due rounds, open the next one and settle claims, every minute.
   if (splash) startRoundScheduler(splash, 60_000, console.log, claims);
   const alerts = alertConfig(Deno.env.toObject());

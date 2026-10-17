@@ -19,3 +19,8 @@ Cross-module TypeScript imports use only the other module's `index.ts`.
 The public authentication policy parses server-only staging modes before startup,
 verifies signed launches, and registers a guard over all staging API routes.
 Allowlist and synthetic staging modes suppress external membership calls.
+
+`identity.holder_profiles()` publishes selected, still-owned frogs with active
+wallet link versions to `rankings_owner`. `identity.holder_wallets()` is a private
+worker-only wallet source used through wallet's public TypeScript interface.
+Neither function is available to the public ranking reader login.

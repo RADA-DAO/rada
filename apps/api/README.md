@@ -147,3 +147,9 @@ CI instead sets `STAGING_AUTH_MODE=synthetic` and `STAGING_SYNTHETIC_ONLY=true`:
 only signed fixtures 101/102 are accepted. Both staging modes return membership
 `unavailable` without Telegram calls. Production keeps normal verified identity
 and configured membership behavior. See the [staging runbook](../../infra/compose/STAGING.md).
+
+Public holders rankings are optional; configure `RANKINGS_SERVICE_DATABASE_URL`
+and `RANKINGS_WORKER_DATABASE_URL` together with the separate `rankings_service`
+and `rankings_worker` roles. See [rankings](../../modules/rankings/README.md) for
+refresh, staleness and cursor semantics. The staging guard covers this route;
+background chain reads run only in production mode.

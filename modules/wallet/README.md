@@ -47,3 +47,8 @@ Receipt checks use TONCenter v3 finalized non-emulated transactions and complete
 traces, canonical JPEGPE master-derived wallets and the recipient notification.
 A signed BOC or indexer outage never establishes payment. Intent status remains
 unknown after any ambiguous signing result; retries reconcile and cannot sign again.
+
+`PostgresHolderSource` is the worker-only holders projection interface. It lists
+verified wallets of current public profiles through identity's published SQL
+function and uses the same cached chain balance reader. HTTP callers cannot
+choose subjects or addresses through this interface.
