@@ -1,7 +1,8 @@
 # Ops
 
-Owns operational telemetry that must stay free of personal data. Today that is
-sanitized client-side failure reports in `ops.client_errors`.
+Owns sanitized operational telemetry in `ops.client_errors` and private import
+mappings/checkpoints. Import linkage is restricted to `legacy_import` and is never
+exposed by telemetry. See [legacy importer](../../tools/import/README.md).
 
 `POST /v1/client-errors` is unauthenticated because a beacon cannot carry a
 signed launch. It accepts at most 4 KB of JSON (`application/json` or
