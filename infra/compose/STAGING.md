@@ -13,7 +13,7 @@ release directories with mode 0600. Docker access is administrator-equivalent.
 
 Server environment:
 
-- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`, `SPLASH_PASSWORD`: distinct high-entropy
+- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`, `SPLASH_PASSWORD`, `GOVERNANCE_PASSWORD`: distinct high-entropy
   hexadecimal passwords; runtime logins receive only their respective module role.
 - `TELEGRAM_BOT_TOKEN`: the test bot token, server only; no bot update changes.
 - `STAGING_AUTH_MODE=allowlist`, `STAGING_SYNTHETIC_ONLY=false`.
@@ -103,3 +103,10 @@ matching previous Worker version in Cloudflare. Keep all persistent volumes;
 never use `down --volumes` for rollback. Record API and Worker SHAs together and
 repair partial publication before testing resumes. Forward-only schema changes
 may require a compatible forward fix.
+
+Governance requires the orchestrator to add a distinct `GOVERNANCE_PASSWORD` to
+`staging.env` before merging. Bootstrap provisions `staging_governance` with only
+`governance_service`; the API uses `GOVERNANCE_SERVICE_DATABASE_URL`. A trusted
+identity operator must separately grant `governance.steward`; no grants are seeded.
+Staging membership remains unavailable by platform policy, so creating proposals
+and voting fail closed. No Telegram membership calls run in staging.

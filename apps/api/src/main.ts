@@ -1,4 +1,8 @@
 import {
+  PostgresGovernanceStore,
+  startGovernanceScheduler,
+} from "../../../modules/governance/index.ts";
+import {
   PostgresRankingStore,
   startHolderScheduler,
 } from "../../../modules/rankings/index.ts";
@@ -128,6 +132,14 @@ if (import.meta.main) {
   const rankings = rankingsUrl
     ? new PostgresRankingStore(new pg.Pool({ connectionString: rankingsUrl }))
     : undefined;
+  const governanceUrl = Deno.env.get("GOVERNANCE_SERVICE_DATABASE_URL");
+  const governance = governanceUrl
+    ? new PostgresGovernanceStore(
+        auth,
+        new pg.Pool({ connectionString: governanceUrl }),
+        membership,
+      )
+    : undefined;
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -150,6 +162,7 @@ if (import.meta.main) {
     splash,
     claims,
     rankings,
+    governance,
   );
   if (rankingsWorkerUrl && policy.mode === "production") {
     const worker = new pg.Pool({ connectionString: rankingsWorkerUrl });
@@ -157,6 +170,7 @@ if (import.meta.main) {
   }
   // SPLASH: close due rounds, open the next one and settle claims, every minute.
   if (splash) startRoundScheduler(splash, 60_000, console.log, claims);
+  if (governance) startGovernanceScheduler(governance, console.log);
   const alerts = alertConfig(Deno.env.toObject());
   if (Deno.env.get("ALERTS_ENABLED")?.trim() === "true" && !alerts)
     console.log("alert digest disabled: incomplete or invalid configuration");

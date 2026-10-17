@@ -29,3 +29,12 @@ The offline legacy importer uses restricted `import_person`, state/availability
 checks and ownership-checked `import_selection` SQL functions. Only the
 `legacy_import` role can execute these functions; it receives no base-table
 access or role-grant authority. See [runbook](../../tools/import/README.md).
+
+Governance uses `identity.can_steward_governance()` for the independent
+`governance.steward` role. The private `governanceMembershipSnapshot` worker
+interface checks known verified accounts through the membership provider and
+returns subject UUIDs only; unavailable membership fails closed. Its SQL input
+is granted only to the trusted governance service, never to public readers.
+
+`MembershipProvider.status(id, true)` bypasses the display cache for governance
+eligibility checks; normal profile reads retain the existing 30-second cache.

@@ -1,6 +1,9 @@
 export type MembershipStatus = "member" | "not_member" | "unavailable";
 export interface MembershipProvider {
-  status(verifiedTelegramId: string): Promise<MembershipStatus>;
+  status(
+    verifiedTelegramId: string,
+    fresh?: boolean,
+  ): Promise<MembershipStatus>;
 }
 export const unavailableMembership: MembershipProvider = {
   status: () => Promise.resolve("unavailable"),
@@ -24,11 +27,11 @@ export class TelegramMembershipProvider implements MembershipProvider {
   private readonly request: typeof fetch;
   private readonly now: () => number;
   private readonly timeoutMs: number;
-  constructor(
-    private readonly token: string,
-    private readonly chatId: string,
-    dependencies: Dependencies = {},
-  ) {
+  private readonly token: string;
+  private readonly chatId: string;
+  constructor(token: string, chatId: string, dependencies: Dependencies = {}) {
+    this.token = token;
+    this.chatId = chatId;
     this.request = dependencies.fetch ?? fetch;
     this.now = dependencies.now ?? Date.now;
     this.timeoutMs = dependencies.timeoutMs ?? REQUEST_TIMEOUT_MS;
@@ -36,14 +39,17 @@ export class TelegramMembershipProvider implements MembershipProvider {
       throw new Error("Invalid membership configuration");
   }
 
-  async status(verifiedTelegramId: string): Promise<MembershipStatus> {
+  async status(
+    verifiedTelegramId: string,
+    fresh = false,
+  ): Promise<MembershipStatus> {
     if (
       !/^[1-9][0-9]*$/.test(verifiedTelegramId) ||
       !Number.isSafeInteger(Number(verifiedTelegramId))
     )
       return "unavailable";
     const cached = this.cache.get(verifiedTelegramId);
-    if (cached && cached.expires > this.now()) return cached.status;
+    if (!fresh && cached && cached.expires > this.now()) return cached.status;
     this.cache.delete(verifiedTelegramId);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;

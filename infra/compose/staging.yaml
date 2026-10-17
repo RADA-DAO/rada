@@ -29,6 +29,7 @@ services:
       SERVICE_PASSWORD: ${SERVICE_PASSWORD:?Set separate service login password}
       WALLET_PASSWORD: ${WALLET_PASSWORD:?Set separate wallet login password}
       OPS_PASSWORD: ${OPS_PASSWORD:?Set separate ops login password}
+      GOVERNANCE_PASSWORD: ${GOVERNANCE_PASSWORD:?Set separate governance login password}
       SPLASH_PASSWORD: ${SPLASH_PASSWORD:?Set separate splash login password}
       STAGING_AUTH_MODE: ${STAGING_AUTH_MODE:-allowlist}
       STAGING_SYNTHETIC_ONLY: ${STAGING_SYNTHETIC_ONLY:-false}
@@ -48,6 +49,7 @@ services:
       IDENTITY_SERVICE_DATABASE_URL: postgresql://staging_service:${SERVICE_PASSWORD:?Set service password}@postgres:5432/rada_staging
       WALLET_SERVICE_DATABASE_URL: postgresql://staging_wallet:${WALLET_PASSWORD:?Set wallet password}@postgres:5432/rada_staging
       CLIENT_ERRORS_DATABASE_URL: postgresql://staging_ops:${OPS_PASSWORD:?Set ops password}@postgres:5432/rada_staging
+      GOVERNANCE_SERVICE_DATABASE_URL: postgresql://staging_governance:${GOVERNANCE_PASSWORD:?Set governance password}@postgres:5432/rada_staging
       SPLASH_SERVICE_DATABASE_URL: postgresql://staging_splash:${SPLASH_PASSWORD:?Set splash password}@postgres:5432/rada_staging
       WALLET_APP_ORIGIN: ${WALLET_APP_ORIGIN:?Set exact Worker HTTPS origin for proofs}
       STAGING_RUNTIME: "true"

@@ -153,3 +153,8 @@ and `RANKINGS_WORKER_DATABASE_URL` together with the separate `rankings_service`
 and `rankings_worker` roles. See [rankings](../../modules/rankings/README.md) for
 refresh, staleness and cursor semantics. The staging guard covers this route;
 background chain reads run only in production mode.
+
+Governance backend routes and the minute close job are enabled by
+`GOVERNANCE_SERVICE_DATABASE_URL`, a separate login inheriting only
+`governance_service`. See [governance](../../modules/governance/README.md) for the
+advisory vote, decision, evidence, privacy and settings contracts.

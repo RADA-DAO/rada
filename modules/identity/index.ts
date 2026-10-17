@@ -20,3 +20,4 @@ export {
   registerStagingGuard,
   type IdentityAuthPolicy,
 } from "./api/policy.ts";
+export { governanceMembershipSnapshot } from "./api/governance-membership.ts";
