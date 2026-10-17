@@ -2,7 +2,8 @@ import type pg from "pg";
 import type { ColorDrop } from "../../jpegpe/index.ts";
 import type { NameOutcome } from "./rounds.ts";
 
-export type ClaimState = "open" | "expired" | "claimed" | "burned";
+export type ClaimState =
+  "open" | "expired" | "claimed" | "burned" | "needs_manual_review";
 export type ClaimPaymentStatus = "prepared" | "unknown" | "paid" | "cancelled";
 /** A win of the caller with its claim state. */
 export type OwnClaim = {
@@ -58,7 +59,10 @@ export type OpenClaimRow = {
 export type CompleteResult =
   "claimed" | "already_claimed" | "burned" | "unpaid" | "not_found";
 
-export type LockedClaim = Pick<ClaimDb, "claimPayment" | "complete" | "burn">;
+export type LockedClaim = Pick<
+  ClaimDb,
+  "claimPayment" | "complete" | "burn" | "review"
+>;
 
 /** The SPLASH claim tables, reached only through splash.* functions. */
 export interface ClaimDb {
@@ -80,6 +84,10 @@ export interface ClaimDb {
     subjectId: string,
     recipient: string,
   ): Promise<{ recipient: string; setAt: string } | null>;
+  reviews(
+    subjectId: string,
+  ): Promise<{ submissionId: string; state: "needs_manual_review" }[] | null>;
+  review(submissionId: string): Promise<void>;
   openClaims(): Promise<OpenClaimRow[]>;
   withLockedClaim<T>(
     submissionId: string,
@@ -214,6 +222,26 @@ export class PostgresClaimDb implements ClaimDb {
       throw error;
     }
   }
+  async reviews(subjectId: string) {
+    try {
+      const { rows } = await this.asSubject(subjectId, (client) =>
+        client.query<Row>("SELECT * FROM splash.claim_reviews()"),
+      );
+      return rows.map((row) => ({
+        submissionId: row.submission_id as string,
+        state: "needs_manual_review" as const,
+      }));
+    } catch (error) {
+      if ((error as { code?: string }).code === "42501") return null;
+      throw error;
+    }
+  }
+  async review(
+    submissionId: string,
+    db: Pick<pg.Pool, "query"> = this.service,
+  ) {
+    await db.query("SELECT splash.review_claim($1::uuid)", [submissionId]);
+  }
   async openClaims() {
     const { rows } = await this.service.query<Row>(
       "SELECT * FROM splash.open_claims()",
@@ -235,6 +263,7 @@ export class PostgresClaimDb implements ClaimDb {
         {
           claimPayment: (id) => this.claimPayment(id, client),
           complete: (id, drop) => this.complete(id, drop, client),
+          review: (id) => this.review(id, client),
           burn: (id, absent) => this.burn(id, absent, client),
         },
         result.rows.map(openClaim),

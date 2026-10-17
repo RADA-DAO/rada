@@ -35,6 +35,12 @@ function build(result: StartResult = { status: "not_winner" }) {
     },
     status: (_id: string, frog: string) =>
       Promise.resolve(frog === FROG ? CLAIMED : null),
+    reviews: (id: string) =>
+      Promise.resolve(
+        id === "steward"
+          ? [{ submissionId: FROG, state: "needs_manual_review" }]
+          : null,
+      ),
     mine: () => Promise.resolve([CLAIMED]),
     setRecipient: (id: string, recipient: string) => {
       recipients.push(recipient);
@@ -192,4 +198,16 @@ test("only the steward can change the recipient", async () => {
     set_at: "2026-10-16T00:00:00.000Z",
   });
   assert.deepEqual(recipients, [RAW, RAW]);
+});
+
+test("only the steward sees the manual review queue", async () => {
+  const { call } = build();
+  const path = "/v1/splash/claims/reviews";
+  assert.equal((await call("GET", path, undefined, "")).status, 401);
+  assert.equal((await call("GET", path)).status, 403);
+  const response = await call("GET", path, undefined, "steward");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    claims: [{ submission_id: FROG, state: "needs_manual_review" }],
+  });
 });

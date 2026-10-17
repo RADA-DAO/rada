@@ -34,13 +34,18 @@ export class ClaimService {
   private db: ClaimDb;
   private payments: ClaimPayments;
   private colors: DrawColors;
+  private maxDeferralMs: number;
   private log: (line: string) => void;
   constructor(
     db: ClaimDb,
     payments: ClaimPayments,
     colors: DrawColors = drawFrogColors,
     log: (line: string) => void = console.log,
+    maxDeferralMs = 24 * 60 * 60_000,
   ) {
+    if (!Number.isSafeInteger(maxDeferralMs) || maxDeferralMs < 0)
+      throw new Error("invalid_claim_max_deferral");
+    this.maxDeferralMs = maxDeferralMs;
     this.db = db;
     this.payments = payments;
     this.colors = colors;
@@ -144,6 +149,10 @@ export class ClaimService {
     return claim;
   }
 
+  async reviews(telegramId: string) {
+    return await this.db.reviews(await this.db.subjectOf(telegramId));
+  }
+
   async mine(telegramId: string): Promise<OwnClaim[]> {
     return await this.db.mine(await this.db.subjectOf(telegramId));
   }
@@ -189,13 +198,15 @@ export class ClaimService {
       for (const row of rows) {
         if (!row.intentId) continue;
         if (row.paymentStatus === "unknown") {
-          const result = await this.payments.reconcileAs(
-            row.winnerSubjectId,
-            SPLASH_APP_ID,
-            row.intentId,
-            Math.floor(row.burnAfter.getTime() / 1000),
-          );
-          if (result.scanStatus === "confirmed-absent")
+          const result = await this.payments
+            .reconcileAs(
+              row.winnerSubjectId,
+              SPLASH_APP_ID,
+              row.intentId,
+              Math.floor(row.burnAfter.getTime() / 1000),
+            )
+            .catch(() => null);
+          if (result?.scanStatus === "confirmed-absent")
             absent.push(row.intentId);
           else complete = false;
         } else if (
@@ -216,6 +227,10 @@ export class ClaimService {
         return await db.complete(submissionId, drop);
       }
       const burnAfter = rows[0]?.burnAfter;
+      if (burnAfter && now() >= burnAfter.getTime() + this.maxDeferralMs) {
+        await db.review(submissionId);
+        return "waiting";
+      }
       if (complete && burnAfter && now() >= burnAfter.getTime())
         return (await db.burn(submissionId, absent)) ? "burned_now" : "waiting";
       return "waiting";
