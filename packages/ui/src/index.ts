@@ -114,3 +114,4 @@ export type ThemeTokenName = (typeof RADA_THEME_TOKEN_NAMES)[number];
 export type RadaTokenName =
   ThemeTokenName | import("./design-tokens.ts").DesignTokenName;
 export { RankingRow } from "./ranking-row.ts";
+export { Tally, EvidenceLink } from "./tally.ts";

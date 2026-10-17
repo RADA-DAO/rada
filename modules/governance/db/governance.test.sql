@@ -10,6 +10,8 @@ RESET ROLE;
 SET LOCAL ROLE governance_service;
 SELECT set_config('rada.subject_id','40000000-0000-4000-8000-000000000001',true);
 DO $$ BEGIN
+ IF governance.viewer()->>'steward' <> 'false' THEN
+   RAISE EXCEPTION 'member received steward controls'; END IF;
  BEGIN
    PERFORM governance.create_proposal('Title','Body',false,clock_timestamp());
    RAISE EXCEPTION 'nonmember created proposal';
@@ -38,6 +40,10 @@ DO $$ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 SELECT set_config('rada.subject_id','40000000-0000-4000-8000-000000000002',true);
+DO $$ BEGIN
+ IF governance.viewer()->>'steward' <> 'true' THEN
+   RAISE EXCEPTION 'steward role projection missing'; END IF;
+END $$;
 SELECT governance.open_proposal('41000000-0000-4000-8000-000000000001','{}',clock_timestamp(),
  (governance.current_settings()->>'version')::bigint);
 SELECT set_config('rada.subject_id','40000000-0000-4000-8000-000000000001',true);

@@ -11,6 +11,7 @@ type IdentityGateway = {
 export type Action =
   "create" | "open" | "withdraw" | "vote" | "decide" | "evidence" | "settings";
 export interface GovernanceStore {
+  viewer(actor: string): Promise<unknown>;
   list(before: string | null): Promise<unknown>;
   read(id: string): Promise<unknown>;
   votes(id: string, after: string): Promise<unknown>;
@@ -88,6 +89,9 @@ export class PostgresGovernanceStore implements GovernanceStore {
     } finally {
       client.release();
     }
+  }
+  viewer(actor: string) {
+    return this.own(actor, "SELECT governance.viewer() AS result", []);
   }
   mine(actor: string) {
     return this.own(actor, "SELECT governance.my_votes() AS result", []);

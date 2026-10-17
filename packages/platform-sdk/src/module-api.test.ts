@@ -72,3 +72,18 @@ await test("requests carry the credential only inside the adapter", async () => 
     globalThis.fetch = original;
   }
 });
+
+await test("governance pagination permits only its explicit opaque cursor queries", () => {
+  for (const path of [
+    "/v1/governance/proposals?before=11111111-1111-4111-8111-111111111111",
+    "/v1/governance/proposals/11111111-1111-4111-8111-111111111111/votes?after=100",
+  ])
+    assert.equal(modulePath("governance", path), path);
+  for (const path of [
+    "/v1/governance/settings?before=a",
+    "/v1/governance/proposals?before=x&auth=1",
+    "/v1/governance/proposals?after=1",
+    "/v1/governance/proposals?before=11111111-1111-4111-8111-111111111111#x",
+  ])
+    assert.throws(() => modulePath("governance", path));
+});

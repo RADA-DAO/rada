@@ -126,7 +126,9 @@ export function createHome(options: {
           AppTile({
             name: app.name,
             tier: app.tier ?? "official",
-            tierLabel: text("home.tier.official"),
+            ...(app.tier === "platform"
+              ? {}
+              : { tierLabel: text("home.tier.official") }),
             onOpen: () => {
               app.onOpen();
             },

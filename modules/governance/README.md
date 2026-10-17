@@ -1,6 +1,6 @@
 # Governance
 
-Backend only. Advisory voting never adopts rules, grants a mandate or moves money.
+Advisory voting never adopts rules, grants a mandate or moves money.
 Proposal state (`created`, `opened`, `closed`, `withdrawn`), advisory tally,
 steward decision and execution evidence are independent. Evidence is a steward's
 record, not an independently verified payment confirmation.
@@ -92,3 +92,17 @@ contracts. `db/governance.test.sql` contains rolled-back synthetic database
 invariants. `api/database.test.ts` has an explicitly gated disposable-local DB
 concurrency test; it is never enabled by ordinary unit checks. No database or
 external provider is contacted by default tests.
+
+## Mini app screens
+
+The platform DAO tile opens `ui/index.ts` on the shared navigation stack.
+Member creation and advisory voting use signed module requests; steward controls
+require the authenticated `GET /v1/governance/viewer` response
+`{ viewer: { steward: boolean } }`. This reveals only the caller's role, never a
+role roster. Writes independently recheck authority and membership.
+
+Proposal lists and vote history are cursor-paginated. Open proposal detail polls
+every 15 seconds while visible and no sheet is open, including after loading additional history pages. Each opening's frozen rules
+control changes and withdrawals; settings show current values and public version
+history. Public names come only from the API's live frog projection. No Telegram
+fields or subject identifiers are rendered. Evidence links accept HTTPS only.
