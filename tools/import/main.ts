@@ -7,6 +7,10 @@ const artworkRoot = process.env.IMPORT_ARTWORK_ROOT;
 const artworkManifest = process.env.IMPORT_ARTWORK_MANIFEST;
 if (Boolean(artworkRoot) !== Boolean(artworkManifest))
   throw new Error("Both artwork settings required");
+const artworkJournal = process.env.IMPORT_ARTWORK_JOURNAL;
+const artworkBlobs = process.env.IMPORT_ARTWORK_BLOBS;
+if (Boolean(artworkJournal) !== Boolean(artworkBlobs))
+  throw new Error("Both journal settings required");
 const mode = process.argv[2] as Mode;
 if (!["dry-run", "import", "verify"].includes(mode))
   throw new Error("Usage: main.ts dry-run|import|verify");
@@ -41,8 +45,15 @@ try {
   await source.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const snapshot = await readSource(source);
   const artworkPlan =
-    artworkRoot && artworkManifest
-      ? await planArtwork(source, snapshot, artworkRoot, artworkManifest)
+    (artworkRoot && artworkManifest) || artworkJournal
+      ? await planArtwork(
+          source,
+          snapshot,
+          artworkRoot ?? "",
+          artworkManifest,
+          artworkJournal,
+          artworkBlobs,
+        )
       : null;
   await source.query("COMMIT");
   await target.connect();

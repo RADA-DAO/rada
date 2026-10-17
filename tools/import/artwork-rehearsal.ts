@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { encodePng, pngDimensions } from "../../modules/splash/png.ts";
+import { bucket, digest } from "./artwork-files.ts";
 import type { Client } from "pg";
 import { artworkFixture } from "./artwork-fixture.ts";
 import { planArtwork, runArtwork } from "./artwork.ts";
@@ -23,7 +27,7 @@ export async function rehearseArtwork(
         [fixture.objects[i]?.key, ids[i]],
       );
     await source.query("BEGIN READ ONLY");
-    const plan = await planArtwork(
+    let plan = await planArtwork(
       source,
       snapshot,
       fixture.root,
@@ -38,6 +42,42 @@ export async function rehearseArtwork(
     ])
       assert.ok(plan.conflicts.some((c) => c.reason === reason));
     assert.equal(plan.records.length, 1);
+    // Overlay the manifest through the journal and exercise downscaled bytes in SQL.
+    const journal = join(fixture.root, "journal.jsonl");
+    const blobs = join(fixture.root, "blobs");
+    await mkdir(blobs);
+    const bytes = encodePng({
+      width: 2048,
+      height: 64,
+      rgba: new Uint8Array(2048 * 64 * 4).fill(127),
+    });
+    const sha256 = digest(bytes);
+    await writeFile(join(blobs, sha256), bytes);
+    await writeFile(
+      journal,
+      JSON.stringify({
+        op: "put",
+        key: `${bucket}/123/good.png`,
+        object: {
+          bucket,
+          key: "123/good.png",
+          sha256,
+          metadata: { size: bytes.length, mimetype: "image/png" },
+        },
+      }),
+    );
+    plan = await planArtwork(
+      source,
+      snapshot,
+      fixture.root,
+      fixture.manifest,
+      journal,
+      blobs,
+    );
+    assert.equal(plan.records.length, 1);
+    const image = plan.records[0]?.image;
+    assert.ok(image);
+    assert.deepEqual(pngDimensions(image.bytes), { width: 1024, height: 32 });
     const clean = { ...plan, conflicts: [], total: 1 };
     const count = async () =>
       (

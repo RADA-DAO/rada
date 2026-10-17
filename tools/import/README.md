@@ -8,7 +8,7 @@ All files and fixtures here are synthetic. Only disposable synthetic databases a
 
 ## Preparation by the orchestrator
 
-Use Node 22 with `--experimental-transform-types` (or the repository's Node 24),
+Use Node 22 with `--experimental-strip-types` (or the repository's Node 24),
 `npm ci`, PostgreSQL 17 and two **separate disposable databases**. Restore the
 legacy copy in an isolated network with legacy writers, cron, queues, Telegram,
 payment workers and outbound network access disabled. Keep it frozen throughout
@@ -57,11 +57,11 @@ export IMPORT_TARGET_URL='postgresql://target_importer:REPLACE@isolated-target/r
 export IMPORT_ISOLATED_RESTORE=yes
 export IMPORT_BATCH_SIZE=100
 export IMPORT_REPORT=/private/rehearsal/report-dry.json
-node --experimental-transform-types --no-warnings tools/import/main.ts dry-run
+node --experimental-strip-types --no-warnings tools/import/main.ts dry-run
 export IMPORT_REPORT=/private/rehearsal/report-import.json
-node --experimental-transform-types --no-warnings tools/import/main.ts import
+node --experimental-strip-types --no-warnings tools/import/main.ts import
 export IMPORT_REPORT=/private/rehearsal/report-verify.json
-node --experimental-transform-types --no-warnings tools/import/main.ts verify
+node --experimental-strip-types --no-warnings tools/import/main.ts verify
 ```
 
 The acknowledgement is an operator guard, not proof of isolation. The operator
@@ -150,9 +150,9 @@ ownership, immutable history and restricted target privileges. No local database
 or real data is required to develop the tool.
 
 ```sh
-node --experimental-transform-types --no-warnings --test tools/import/model.test.ts
+node --experimental-strip-types --no-warnings --test tools/import/model.test.ts
 # CI only, with the explicit disposable PostgreSQL service URL:
-node --experimental-transform-types --no-warnings --test tools/import/import.database.test.ts
+node --experimental-strip-types --no-warnings --test tools/import/import.database.test.ts
 ```
 
 The supplied domain migrations reference `ecosystem_users` but do not define its
@@ -178,7 +178,16 @@ The tree is `<root>/jpegpe-frog-images/<storage_path>`; manifest objects must ha
 `bucket`, `key`, and `metadata: { size, mimetype, eTag }`, where eTag is MD5
 (optionally quoted). Duplicate object keys and invalid manifests fail closed.
 
-Use the same dry-run/import/verify commands above with both settings. Artwork
+Optionally set both `IMPORT_ARTWORK_JOURNAL` and `IMPORT_ARTWORK_BLOBS`.
+The journal is JSON lines of
+`{ "op": "put", "key": "<bucket>/<key>", "object": { "bucket": "...", "key": "...", "sha256": "...", "metadata": { "size": 123, "mimetype": "image/png" } } }`.
+The latest put per key overrides the manifest, including entries absent from it.
+Blobs live at `<blobs>/<sha256>`; lowercase SHA-256 and exact size are verified.
+Both journal settings are required together; journal-only imports are supported.
+Malformed entries fail closed, and missing/corrupt latest blobs remain conflicts
+without falling back to older data. Keep the journal and blobs frozen too.
+
+Use the same dry-run/import/verify commands above with the artwork settings. Artwork
 requires an existing successful frog mapping; a first dry-run before importing
 frogs reports `frog_not_imported`. Rehearse people/frogs first without artwork,
 then enable artwork and repeat all three modes. Each artwork batch atomically
@@ -191,17 +200,23 @@ The JSON `artwork` result has its own counts, checksums and hashed conflicts;
 any artwork conflict makes the combined report fail with exit 2.
 
 PNG uses SPLASH's bounded codec from this offline tool: maximum input
-2 MiB, sides 64–1024 pixels, bounded inflation, verified chunk checksums, 8-bit
-RGB/RGBA non-interlaced images. Re-encoding strips metadata without cutting the
-background; output is capped at 4 MiB. Oversized dimensions are rejected, not
-downscaled. No JPEG or WebP decoder is installed. JPEG originals pass size,
+8 MiB, source sides 32–8192 pixels, bounded inflation, verified chunk checksums,
+8-bit RGB/RGBA non-interlaced images. The decoder enforces an explicit
+`width * height * 4 <= 256 MiB` allocation bound before inflation (inflated scanlines
+are separately bounded by the header). Larger images are area-averaged to fit
+1024 pixels, preserving aspect ratio to pixel rounding and averaging premultiplied
+alpha. Re-encoding strips metadata without cutting the background; output is
+capped at 4 MiB. No JPEG or WebP decoder is installed. JPEG originals pass size,
 extension/MIME, SOI/EOI, marker bounds and frame-dimension checks and are stored
-with `needs_normalization=true`. This is envelope validation, not decoded pixel
+with `needs_normalization=true` (32–8192 pixels per side, at most 4 MiB
+for unchanged stored JPEG bytes). This is envelope validation, not decoded pixel
 validation; JPEG metadata is retained until a future normalization pass. These
 bytes are private import storage and must not be served as normalized artwork.
 WebP and other unsupported types produce explicit conflicts. Missing paths,
 missing manifest entries/files, checksum or size mismatches, unsafe paths and
-invalid images also produce conflicts; none silently disappear. Symlink paths
+invalid images also produce conflicts; none silently disappear. Invalid-image
+conflicts include a fixed detected signature label (`png`, `jpeg`, `gif`, `webp`,
+or `unknown`) alongside the hashed key, never arbitrary magic bytes or paths. Symlink paths
 are rejected. The orchestrator must keep the tree immutable during a run.
 
 Migration 0048 owns immutable JPEGPE bytea storage behind an `ImageStorage`
@@ -214,5 +229,5 @@ Synthetic file tests run in `npm run test:unit`; the existing CI import database
 test also rehearses artwork dry-run, rollback, rerun, exact verification,
 changed-source/target detection and least-privilege access using temporary files.
 
-Node 22 needs `--experimental-transform-types` because the public module entry
-points transitively load existing API classes with TypeScript parameter properties.
+Node 22 runs with `--experimental-strip-types`: the importer uses dedicated
+strip-safe public storage and codec entries, also re-exported by module indexes.

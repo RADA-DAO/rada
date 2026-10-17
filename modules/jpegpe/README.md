@@ -13,7 +13,9 @@ cross-schema foreign key and ownership-transfer coordination.
 
 `db/migrations` contains immutable, globally versioned SQL history.
 `db/*.test.sql` verifies the module with synthetic, rolled-back fixtures.
-Cross-module TypeScript imports use only the other module's `index.ts`.
+Cross-module TypeScript imports use public entries only. The strip-safe
+`storage.ts` entry exposes the import storage contract and is re-exported by
+`index.ts`.
 
 `readOwnFrogs(client)` exposes the current person's collection through
 `jpegpe.own_frogs()`. Its five-field projection adds nullable `artwork_path`

@@ -14,4 +14,4 @@ export {
   PostgresImageStorage,
   type ImageStorage,
   type ArtworkImage,
-} from "./api/storage.ts";
+} from "./storage.ts";

@@ -408,3 +408,25 @@ await test("design gate checks rendered markup, inline scripts and named style p
     [],
   );
 });
+
+await test("strip-safe public contracts do not expose arbitrary module internals", () => {
+  for (const entry of ["jpegpe/storage.ts", "splash/png.ts"])
+    assert.deepEqual(
+      moduleImportViolations(
+        "tools/import/artwork.ts",
+        `import "../../modules/${entry}";`,
+      ),
+      [],
+    );
+  for (const entry of [
+    "identity/storage.ts",
+    "splash/api/png.ts",
+    "jpegpe/api/storage.ts",
+  ])
+    assert.ok(
+      moduleImportViolations(
+        "tools/import/artwork.ts",
+        `import "../../modules/${entry}";`,
+      ).length,
+    );
+});

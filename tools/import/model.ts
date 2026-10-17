@@ -36,6 +36,7 @@ export interface RecordPlan {
   value: Person | Frog | Selection;
 }
 export interface Conflict {
+  detected_type?: string;
   entity: string;
   key: string;
   reason: string;
