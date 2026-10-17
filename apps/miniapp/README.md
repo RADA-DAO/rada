@@ -45,3 +45,8 @@ a four-column grid with its official or community mark. Signed-in launches read
 Opening a tile pushes the app onto the platform stack with edge swipe enabled, so
 Telegram Back, browser Back, Escape and the swipe all return home. An app that
 fails integrity checks returns home with a retry.
+
+Holders is a platform launcher entry with JPEGPE/TON tabs, cursor pagination and
+per-row sample times. It highlights the selected viewer frog when present. Public
+IDs seed the shared frog avatar fallback; no artwork lookup or private identity
+is needed. Values older than six hours carry a stale label.

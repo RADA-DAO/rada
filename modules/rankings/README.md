@@ -22,4 +22,5 @@ Configure `RANKINGS_SERVICE_DATABASE_URL` (rankings_service) and
 `RANKINGS_WORKER_DATABASE_URL` (rankings_worker) together. Neither login has
 base-table access. The worker uses wallet's public source and chain reader;
 identity and JPEGPE publish narrowly granted SQL functions. Staging's existing
-signed-launch guard also covers rankings. No ranking provider runs in staging.
+signed-launch guard also covers rankings. Staging background reads are off by default. Set `RANKINGS_WORKER_ENABLED=true`
+in allowlist mode to run the projection worker. Synthetic mode never runs it.

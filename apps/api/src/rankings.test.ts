@@ -1,3 +1,4 @@
+import { rankingsWorkerEnabled } from "./main.ts";
 import { createApp } from "./app.ts";
 import { assert, signed, FIXTURE_TOKEN } from "./fixtures.ts";
 import type { IdentityStore } from "../../../modules/identity/index.ts";
@@ -51,5 +52,16 @@ Deno.test(
     });
     assert(allowed.status === 200);
     assert(Number(calls) === 2);
+  },
+);
+
+Deno.test(
+  "ranking worker is opt-in on staging and disabled for synthetic launches",
+  () => {
+    assert(rankingsWorkerEnabled("production", undefined));
+    assert(rankingsWorkerEnabled("allowlist", "true"));
+    for (const flag of [undefined, "", "false", "1", "TRUE"])
+      assert(!rankingsWorkerEnabled("allowlist", flag));
+    assert(!rankingsWorkerEnabled("synthetic", "true"));
   },
 );

@@ -25,7 +25,9 @@ export async function catalogContrast(page: Page, backgroundPage: Page) {
     : extent.height;
   const viewport = await page.evaluate(() => innerHeight);
   for (let y = 0; y < height; y += Math.floor(viewport / 2)) {
-    for (const surface of [page, backgroundPage])
+    for (const surface of [page, backgroundPage]) {
+      // WebKit throttles painting in background tabs; scroll each visible surface.
+      await surface.bringToFront();
       await surface.evaluate(
         ({ y, fullPage }) => {
           if (fullPage) window.scrollTo(0, y);
@@ -33,6 +35,7 @@ export async function catalogContrast(page: Page, backgroundPage: Page) {
         },
         { y, fullPage },
       );
+    }
     await settle(page);
     await settle(backgroundPage);
     const samples = await page.evaluate((fullPage) => {
@@ -131,10 +134,13 @@ export async function catalogContrast(page: Page, backgroundPage: Page) {
       measured.push(...(await measure(page, backgroundPage, samples, false)));
   }
   if (fullPage) {
-    for (const surface of [page, backgroundPage])
+    for (const surface of [page, backgroundPage]) {
+      // WebKit throttles painting in background tabs; scroll each visible surface.
+      await surface.bringToFront();
       await surface.evaluate(() => {
         window.scrollTo(0, 0);
       });
+    }
     await settle(page);
     measured.push(...(await measure(page, backgroundPage, allSamples, true)));
   }
@@ -197,6 +203,7 @@ async function measure(
 }
 
 async function settle(page: Page) {
+  await page.bringToFront();
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>

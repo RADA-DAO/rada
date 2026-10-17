@@ -17,6 +17,11 @@ predicate. Native, header and swipe Back share that callback. Active editors and
 dialogs retain gesture ownership. A blocked route consumes Back without falling
 through. No navigation action submits or writes data.
 
+`readHolders(token, cursor, signal)` reads the public holders projection with
+exact smallest-unit amounts and cursor pagination. It sends the launch credential
+when available so staging can enforce its allowlist, and exposes only public frog
+fields. A changed projection raises `ranking_changed` so callers can restart.
+
 ## Official app modules
 
 `moduleApi(name)` gives an official module built into the shell (currently

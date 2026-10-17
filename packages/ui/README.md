@@ -22,6 +22,8 @@ tokens, controls show focus rings, and motion honors reduced-motion preferences.
   `Facts` (labelled values as a description list), `Badge` and `Countdown`
   (a `role="timer"` that redraws every second and reports the end once).
   `Field` also takes `inputMode`, a polite `hint` (`setHint`) and `onInput`.
+- `RankingRow`: rank, stable frog-ID avatar fallback, public name, formatted
+  amount and freshness, with optional stale and viewer labels.
 - `AppTile`, `AppGrid` and `Identity`: the home screen launcher. A tile is one
   button named by the app, with its tier mark (official or community; platform
   apps carry none) as its accessible description. A tile shows `iconUrl` when

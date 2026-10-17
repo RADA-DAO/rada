@@ -163,3 +163,6 @@ Governance backend routes and the minute close job are enabled by
 `GOVERNANCE_SERVICE_DATABASE_URL`, a separate login inheriting only
 `governance_service`. See [governance](../../modules/governance/README.md) for the
 advisory vote, decision, evidence, privacy and settings contracts.
+
+background chain reads run in production, or in staging allowlist mode with
+`RANKINGS_WORKER_ENABLED=true` (default off). Synthetic mode never runs them.

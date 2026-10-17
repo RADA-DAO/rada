@@ -414,5 +414,19 @@
       "fee_expired": "The fee estimate expired. Try again.",
       "wallet_changed": "The connected wallet changed. Try again."
     }
+  },
+  "holders": {
+    "title": "Holders",
+    "tokens": "Token",
+    "JPEGPE": "JPEGPE",
+    "TON": "TON",
+    "amount": "{{amount}} {{token}}",
+    "asOf": "As of {{time}}",
+    "stale": "Older than 6 h",
+    "you": "You",
+    "more": "Show more",
+    "empty": "No holders yet.",
+    "error": "Could not load holders.",
+    "changed": "The ranking has changed. Refresh to see the latest holders."
   }
 }

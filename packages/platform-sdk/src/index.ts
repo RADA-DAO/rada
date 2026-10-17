@@ -1,3 +1,5 @@
+import { rankingsAdapter } from "./rankings.ts";
+export type { HolderEntry, HoldersPage, RankingToken } from "./rankings.ts";
 export type AppConsent = { app_id: string; capability: string };
 import { profileAdapter } from "./profile.ts";
 import { walletAdapter } from "./wallet.ts";
@@ -220,6 +222,7 @@ export function initializePlatform(options: {
     },
     ...profileAdapter(profileUrl, authHeaders),
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
+    ...rankingsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...moduleApiAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...walletAdapter(profileUrl, authHeaders),
     ...paymentAdapter(profileUrl, authHeaders, options.navigation),
