@@ -126,3 +126,16 @@ mode never starts chain reads. Recreate the API after changing the flag. The
 signed-launch allowlist still guards holders reads. Production keeps its existing
 worker behavior. The worker reads mainnet balances; only selected, still-owned
 frogs with active verified wallets appear, and incomplete samples stay absent.
+
+## Platform notifications
+
+Apply migrations 0050–0053 before the API update. Set `NOTIFICATIONS_PASSWORD`
+to a separate URL-safe secret; bootstrap grants only `notifications_service` to
+`staging_notifications`. Compose builds `NOTIFICATIONS_SERVICE_DATABASE_URL`.
+Keep `NOTIFICATIONS_ENABLED=false` until testing is intended. To enable sending,
+set it to `true` with `STAGING_AUTH_MODE=allowlist`, a nonempty
+`STAGING_ALLOWED_TELEGRAM_IDS`, and the staging `TELEGRAM_BOT_TOKEN`.
+The worker rechecks the allowlist before every send. Synthetic mode never sends.
+Users must explicitly opt into each category in Settings. No old consents migrate.
+Restart the API after changing environment values; disabling the worker preserves
+preferences and pending events (expired events are discarded on restart).

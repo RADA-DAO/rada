@@ -1,5 +1,9 @@
 /** Official app modules whose screens are built into the shell. */
-export const OFFICIAL_MODULES = ["splash", "governance"] as const;
+export const OFFICIAL_MODULES = [
+  "splash",
+  "governance",
+  "notifications",
+] as const;
 export type OfficialModule = (typeof OFFICIAL_MODULES)[number];
 
 export type ModuleResponse = {

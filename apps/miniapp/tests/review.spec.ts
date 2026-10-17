@@ -263,7 +263,9 @@ test("denied, expired, unavailable and empty queues recover with translated copy
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByText("Queue is clear")).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("combobox").selectOption("uk");
+  await page
+    .getByRole("combobox", { name: "Language", exact: true })
+    .selectOption("uk");
   await page
     .getByRole("button", { name: t("uk", "common.close"), exact: true })
     .click();

@@ -129,7 +129,13 @@ const swipe = installShellSwipe(
   back,
 );
 function showSettings() {
-  showShellSettings(locale, navigation, settingsButton, changeLocale);
+  showShellSettings(
+    locale,
+    navigation,
+    settingsButton,
+    changeLocale,
+    platform.moduleApi("notifications"),
+  );
 }
 function changeLocale(value: Locale) {
   locale = value;

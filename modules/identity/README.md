@@ -38,3 +38,7 @@ is granted only to the trusted governance service, never to public readers.
 
 `MembershipProvider.status(id, true)` bypasses the display cache for governance
 eligibility checks; normal profile reads retain the existing 30-second cache.
+
+`identity.notification_destination(subject)` exposes a verified Telegram
+recipient only to `notifications_owner`, for consent-checked platform delivery.
+It grants no public access to Telegram accounts or other identity tables.

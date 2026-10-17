@@ -482,7 +482,9 @@ test("guest navigation, settings focus, locale and native Back", async ({
     page.getByRole("button", { name: "Settings", exact: true }),
   ).toBeFocused();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("combobox").selectOption("uk");
+  await page
+    .getByRole("combobox", { name: "Language", exact: true })
+    .selectOption("uk");
   await expect(page.locator("html")).toHaveAttribute("lang", "uk");
   await page
     .getByRole("button", { name: t("uk", "common.close"), exact: true })
@@ -663,7 +665,9 @@ test("profile projects each validated membership status and refreshes on click",
   // One read at start for the home identity, then one per Profile open.
   expect(requests).toBe(4);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("combobox").selectOption("uk");
+  await page
+    .getByRole("combobox", { name: "Language", exact: true })
+    .selectOption("uk");
   await page
     .getByRole("button", { name: t("uk", "common.close"), exact: true })
     .click();

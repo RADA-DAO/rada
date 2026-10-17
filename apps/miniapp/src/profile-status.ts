@@ -32,8 +32,15 @@ export function showShellSettings(
   navigation: Parameters<typeof openSettings>[0]["navigation"],
   opener: HTMLElement | null,
   change: (value: Locale) => void,
+  notifications?: Parameters<typeof openSettings>[0]["notifications"],
 ) {
-  openSettings({ locale, navigation, opener, change });
+  openSettings({
+    locale,
+    navigation,
+    opener,
+    change,
+    ...(notifications ? { notifications } : {}),
+  });
 }
 
 export function applyProfileTheme(

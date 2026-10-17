@@ -1,3 +1,9 @@
+import {
+  NotificationStore,
+  NotificationWorker,
+  notificationConfig,
+  startNotificationScheduler,
+} from "../../../modules/notifications/index.ts";
 import { PostgresArtworkStore } from "../../../modules/jpegpe/index.ts";
 import { resolveTelegramSubject } from "../../../modules/identity/index.ts";
 import {
@@ -175,6 +181,11 @@ if (import.meta.main) {
         membership,
       )
     : undefined;
+  const notificationUrl = Deno.env.get("NOTIFICATIONS_SERVICE_DATABASE_URL");
+  const notificationPool = notificationUrl
+    ? new pg.Pool({ connectionString: notificationUrl })
+    : undefined;
+  const notificationSettings = notificationConfig(Deno.env.toObject());
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -201,6 +212,9 @@ if (import.meta.main) {
     new PostgresArtworkStore(service, (viewer) =>
       resolveTelegramSubject(auth, viewer),
     ),
+    notificationPool
+      ? new NotificationStore(auth, notificationPool)
+      : undefined,
   );
   if (
     rankingsWorkerUrl &&
@@ -209,6 +223,10 @@ if (import.meta.main) {
     const worker = new pg.Pool({ connectionString: rankingsWorkerUrl });
     startHolderScheduler(worker, new PostgresHolderSource(worker), console.log);
   }
+  if (notificationPool)
+    startNotificationScheduler(
+      new NotificationWorker(notificationPool, notificationSettings),
+    );
   // SPLASH: close due rounds, open the next one and settle claims, every minute.
   if (splash) startRoundScheduler(splash, 60_000, console.log, claims);
   if (governance) startGovernanceScheduler(governance, console.log);

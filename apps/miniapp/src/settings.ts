@@ -1,3 +1,5 @@
+import { notificationSettings } from "./notifications.ts";
+import type { ModuleApi } from "../../../packages/platform-sdk/src/module-api.ts";
 import {
   Field,
   openSheet,
@@ -7,6 +9,7 @@ import { t, type Locale } from "../../../packages/i18n/src/index.ts";
 
 export function openSettings(options: {
   locale: Locale;
+  notifications?: ModuleApi;
   change: (locale: Locale) => void;
   navigation: SheetNavigation;
   opener: HTMLElement | null;
@@ -28,7 +31,12 @@ export function openSettings(options: {
   const dialog = openSheet({
     title: t(locale, "shell.settings"),
     closeLabel: t(locale, "common.close"),
-    children: [language.element],
+    children: [
+      language.element,
+      ...(options.notifications
+        ? [notificationSettings(options.notifications, locale)]
+        : []),
+    ],
     navigation: options.navigation,
     opener: options.opener,
   });

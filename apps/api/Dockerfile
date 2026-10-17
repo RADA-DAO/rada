@@ -4,6 +4,7 @@ COPY apps/api/deno.json apps/api/deno.lock ./apps/api/
 COPY apps/api/src ./apps/api/src
 COPY modules ./modules
 COPY packages/platform-sdk/src/app-manifest.ts ./packages/platform-sdk/src/app-manifest.ts
+COPY packages/i18n/locales ./packages/i18n/locales
 COPY packages/http ./packages/http
 COPY packages/payment-encoding ./packages/payment-encoding
 RUN deno cache --frozen --config apps/api/deno.json apps/api/src/main.ts
