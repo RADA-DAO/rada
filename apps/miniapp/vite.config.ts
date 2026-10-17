@@ -20,15 +20,16 @@ const catalog = process.env.CATALOG === "true";
 export default defineConfig({
   root: "apps/miniapp",
   define: { __RADA_BUILD__: JSON.stringify(buildVersion()) },
-  ...(catalog
-    ? {
-        build: {
+  build: {
+    assetsInlineLimit: (path) => (path.endsWith(".woff2") ? false : undefined),
+    ...(catalog
+      ? {
           outDir: "dist-catalog",
           emptyOutDir: true,
           rollupOptions: { input: "apps/miniapp/catalog.html" },
-        },
-      }
-    : {}),
+        }
+      : {}),
+  },
   resolve: {
     alias: [
       {

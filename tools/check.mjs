@@ -265,7 +265,7 @@ export function check() {
   for (const absolute of walk(root)) {
     const path = absolute.slice(root.length + 1);
     if (!pathAllowed(path)) errors.push(`Disallowed path: ${path}`);
-    if (/\.(?:png|webp|ico)$/i.test(path)) continue;
+    if (/\.(?:png|webp|ico|woff2)$/i.test(path)) continue;
     const text = readFileSync(absolute, "utf8");
     errors.push(...architectureViolations(path, text, views));
     if (!path.includes("/locales/") && /\p{Script=Cyrillic}/u.test(text))

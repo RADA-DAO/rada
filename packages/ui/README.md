@@ -50,10 +50,13 @@ Vite and TypeScript aliases. Applications must not import internal CSS files.
 compiler-owned semantic color roles; `RadaTokenName` covers both groups.
 Foundations include Onest body and Outfit heading stacks, the spacing and type
 scales, offset panel/control/small radii, semantic shadows, motion durations and
-curves, and ordered layers. OFL-licensed Onest, Outfit, Sora and Unbounded are bundled as WOFF2 data in
-`fonts.css`, with Latin and Cyrillic glyphs and licenses in `src/fonts/`. No
-external font requests are needed. Onest is the body/control face, Outfit the
+curves, and ordered layers. OFL-licensed Onest, Outfit, Sora and Unbounded ship as separate WOFF2 assets
+with licenses in `src/fonts/`. `fonts.css` declares local URLs, `font-display: swap`
+and per-file `unicode-range`; Vite emits hashed assets without inlining. System
+font fallbacks remain available while fonts load. Onest is the body/control face, Outfit the
 workspace heading face, Unbounded the OS badge, and Sora the collectible name. Reduced motion is honored by the shared recipes.
+
+The committed subsets were produced from the previously embedded variable WOFF2 fonts using temporary FontTools 4.67.0 (`fonttools[woff]`, not a project dependency): `instantiateVariableFont(font, {"wght": weight})`, then `subset.Subsetter` with U+0020–017F, U+0300–036F, U+0400–045F, U+0490–0491, U+2000–206F, U+20AC, U+20B4 and U+2212, saved with `font.flavor = "woff2"`. Static weights are Onest 500/680/720/730/750/800, Outfit 500/730/750, Sora 800 and Unbounded 500/720. Onest 730/750/800 retain only combining marks and Cyrillic for the Outfit/Sora fallback; those two source faces have no Cyrillic. Other files retain supported glyphs from the full selection, including digits and basic punctuation. Original glyph outlines, layout features and metrics are preserved.
 
 The guest palette matches `compileTheme(DEFAULT_THEME_BACKGROUND)` at first paint.
 Colors remain compiler-owned. Collectible geometry and material tokens resolve
