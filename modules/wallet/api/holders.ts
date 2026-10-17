@@ -10,7 +10,10 @@ export type HolderWallet = {
 /** Worker-only source. Never accept a wallet or subject selector from HTTP. */
 export class PostgresHolderSource {
   read = createWalletBalanceReader();
-  constructor(private pool: pg.Pool) {}
+  private readonly pool: pg.Pool;
+  constructor(pool: pg.Pool) {
+    this.pool = pool;
+  }
   async wallets(): Promise<HolderWallet[]> {
     return (
       await this.pool.query<HolderWallet>(

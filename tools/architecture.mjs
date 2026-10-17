@@ -41,6 +41,43 @@ export function codeSizeViolations(path, source) {
     : [];
 }
 
+/** Parameter properties require transformation, which Node strip-types cannot do.
+ * @param {string} path @param {string} source
+ */
+export function parameterPropertyViolations(path, source) {
+  if (!/\.[cm]?tsx?$/.test(path)) return [];
+  const tree = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
+  const modifiers = new Set([
+    ts.SyntaxKind.PrivateKeyword,
+    ts.SyntaxKind.PublicKeyword,
+    ts.SyntaxKind.ProtectedKeyword,
+    ts.SyntaxKind.ReadonlyKeyword,
+    ts.SyntaxKind.OverrideKeyword,
+  ]);
+  /** @type {string[]} */
+  const errors = [];
+  /** @param {import('typescript').Node} node */
+  function visit(node) {
+    if (ts.isConstructorDeclaration(node)) {
+      for (const parameter of node.parameters) {
+        if (
+          !parameter.modifiers?.some((modifier) => modifiers.has(modifier.kind))
+        )
+          continue;
+        const { line, character } = tree.getLineAndCharacterOfPosition(
+          parameter.getStart(tree),
+        );
+        errors.push(
+          `${path}:${String(line + 1)}:${String(character + 1)}: constructor parameter properties are incompatible with Node strip-types; declare an explicit field and assign it in the constructor`,
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
+  return errors;
+}
+
 /** @param {string} path @param {string} source */
 export function moduleImportViolations(path, source) {
   if (!/\.[cm]?[jt]sx?$/.test(path)) return [];
@@ -193,6 +230,7 @@ export function moduleSqlViolations(path, source, publicViews = new Set()) {
 export function architectureViolations(path, source, publicViews = new Set()) {
   return [
     ...codeSizeViolations(path, source),
+    ...parameterPropertyViolations(path, source),
     ...designSystemViolations(path, source),
     ...moduleImportViolations(path, source),
     ...moduleSqlViolations(path, source, publicViews),

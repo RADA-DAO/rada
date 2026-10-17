@@ -78,11 +78,18 @@ function view(row: Row): PaymentView {
   };
 }
 export class PostgresPaymentStore {
+  private readonly auth: pg.Pool;
+  private readonly service: pg.Pool;
+  private readonly chain: PaymentChain;
   constructor(
-    private auth: pg.Pool,
-    private service: pg.Pool,
-    private chain: PaymentChain = new PaymentChain(),
-  ) {}
+    auth: pg.Pool,
+    service: pg.Pool,
+    chain: PaymentChain = new PaymentChain(),
+  ) {
+    this.auth = auth;
+    this.service = service;
+    this.chain = chain;
+  }
   private async transaction<T>(
     telegramId: string,
     run: (db: pg.PoolClient) => Promise<T>,

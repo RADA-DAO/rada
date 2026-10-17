@@ -10,10 +10,15 @@ const PURGE_EVERY_MS = 60 * 60 * 1000;
 /** Uses only ops-owned SQL functions; the login has no table privileges. */
 export class PostgresClientErrorStore implements ClientErrorStore {
   #lastPurge = 0;
+  private readonly pool: Pick<pg.Pool, "query">;
+  private readonly now: () => number;
   constructor(
-    private readonly pool: Pick<pg.Pool, "query">,
-    private readonly now: () => number = () => Date.now(),
-  ) {}
+    pool: Pick<pg.Pool, "query">,
+    now: () => number = () => Date.now(),
+  ) {
+    this.pool = pool;
+    this.now = now;
+  }
   async record(report: ClientErrorReport): Promise<void> {
     const clean = parseReport(report);
     if (!clean) return;

@@ -48,11 +48,14 @@ type WalletRow = {
 
 export class PostgresWalletStore implements WalletStore {
   private readBalances = createWalletBalanceReader();
-  constructor(
-    private auth: pg.Pool,
-    private service: pg.Pool,
-    private domain: string,
-  ) {}
+  private readonly auth: pg.Pool;
+  private readonly service: pg.Pool;
+  private readonly domain: string;
+  constructor(auth: pg.Pool, service: pg.Pool, domain: string) {
+    this.auth = auth;
+    this.service = service;
+    this.domain = domain;
+  }
   private async transaction<T>(
     telegramId: string,
     run: (client: pg.PoolClient) => Promise<T>,

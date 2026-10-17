@@ -38,10 +38,12 @@ export interface IdentityStore {
 }
 
 export class PostgresIdentityStore implements IdentityStore {
-  constructor(
-    private auth: pg.Pool,
-    private service: pg.Pool,
-  ) {}
+  private readonly auth: pg.Pool;
+  private readonly service: pg.Pool;
+  constructor(auth: pg.Pool, service: pg.Pool) {
+    this.auth = auth;
+    this.service = service;
+  }
   private subject(verifiedTelegramId: string): Promise<string> {
     return resolveTelegramSubject(this.auth, verifiedTelegramId);
   }

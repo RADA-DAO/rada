@@ -23,7 +23,10 @@ export interface RankingStore {
   ): Promise<Page | null>;
 }
 export class PostgresRankingStore implements RankingStore {
-  constructor(private pool: pg.Pool) {}
+  private readonly pool: pg.Pool;
+  constructor(pool: pg.Pool) {
+    this.pool = pool;
+  }
   async page(
     token: string,
     limit: number,
