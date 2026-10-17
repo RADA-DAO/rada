@@ -278,6 +278,7 @@ textarea.rada-field-control {
 .rada-file-picker:focus-within {
   outline: var(--rada-focus-width) solid var(--theme-ring);
   outline-offset: var(--rada-focus-offset);
+  box-shadow: 0 0 0 var(--rada-focus-offset) var(--accent-ring) !important;
 }
 .rada-file-picker:has(:disabled) {
   color: var(--control-disabled-ink);

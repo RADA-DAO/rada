@@ -13,6 +13,15 @@ test("shared spacing tokens update the screen, header and navigation", async ({
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
+  const settings = page.getByRole("button", { name: "Settings", exact: true });
+  await settings.focus();
+  await expect(settings).toHaveCSS("outline-style", "solid");
+  await expect(settings).toHaveCSS("outline-width", "2px");
+  await expect(settings).toHaveCSS("outline-color", "rgb(0, 0, 0)");
+  await expect(settings).toHaveCSS(
+    "box-shadow",
+    "rgb(255, 255, 255) 0px 0px 0px 2px",
+  );
   const screen = page.locator(".screen");
   const header = page.locator(".rada-screen-header");
   const navigation = page.getByRole("navigation");
@@ -123,4 +132,38 @@ test("collectible material tokens retain each frog's own palette", async ({
     root.style.setProperty("--shadow-rgb", "255 0 255");
   });
   expect(await materials()).toEqual(before);
+});
+
+test("screen changes focus headings and long screens keep navigation in view", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Apps", exact: true }),
+  ).toBeFocused();
+  for (const name of ["Profile", "Apps"]) {
+    await page.getByRole("button", { name, exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name, exact: true }),
+    ).toBeFocused();
+    await page.evaluate(() => {
+      const body = document.querySelector<HTMLElement>(".rada-screen-body");
+      if (!body) throw new Error("Missing body");
+      body.style.minHeight = "3000px";
+    });
+    const navigation = page.getByRole("navigation");
+    for (const scroll of [0, 1500, 5000]) {
+      await page.locator(".screen").evaluate((screen, y) => {
+        screen.scrollTo(0, y);
+      }, scroll);
+      await expect(navigation).toBeInViewport({ ratio: 1 });
+      await expect(
+        navigation.getByRole("button", { name: "Profile", exact: true }),
+      ).toBeVisible();
+    }
+  }
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Apps", exact: true }),
+  ).toBeFocused();
 });

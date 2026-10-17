@@ -184,7 +184,10 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       .getByRole("dialog")
       .getByRole("listitem")
       .filter({ hasText: appId });
-    await row.getByRole("button", { name: "Revoke", exact: true }).click();
+    await expect(row.getByRole("button")).toHaveAccessibleName(
+      `Revoke permission ${appId} — your wallet address`,
+    );
+    await row.getByRole("button").click();
     await expect(row).toHaveCount(0);
     expect(
       (

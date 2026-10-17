@@ -60,10 +60,9 @@ export function openBidSheet(
       amount.control.focus();
       return;
     }
-    if (!name.value() || name.blocked()) {
-      name.setError(
-        text(name.value() ? "splash.error.name_taken" : "splash.nameRequired"),
-      );
+    const nameError = name.error();
+    if (nameError) {
+      name.setError(text(nameError));
       name.control.focus();
       return;
     }

@@ -34,10 +34,11 @@
   background: transparent;
   border: var(--rada-border-width) solid transparent;
 }
-.rada-button:focus-visible,
+:focus-visible,
 .rada-field-control:focus-visible {
   outline: var(--rada-focus-width) solid var(--theme-ring);
   outline-offset: var(--rada-focus-offset);
+  box-shadow: 0 0 0 var(--rada-focus-offset) var(--accent-ring) !important;
 }
 .rada-button:disabled {
   color: var(--control-disabled-ink);

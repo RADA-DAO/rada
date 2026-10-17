@@ -54,7 +54,8 @@ const back = () => void navigation.back();
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) throw new Error("Missing application root");
 const screen = ScreenHost(root);
-const text = (key: MessageKey) => t(locale, key);
+const text = (key: MessageKey, values?: Record<string, string>) =>
+  t(locale, key, values);
 const platform = initializePlatform({
   doneLabel: () => text("shell.done"),
   dismissLabel: () => text("shell.dismissKeyboard"),

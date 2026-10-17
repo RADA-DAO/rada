@@ -195,7 +195,7 @@ export function compileTheme(
   const environmentL =
     sourceTone === "light"
       ? clamp(authored.l, 0.68, 0.82)
-      : clamp(authored.l, 0.25, 0.56);
+      : clamp(authored.l, 0.25, 0.42);
   const environmentC = neutral
     ? Math.min(authored.c, 0.018)
     : Math.min(authored.c, maxOklchChroma(environmentL, themeHue) * 0.94);
@@ -342,7 +342,7 @@ export function compileTheme(
       // unlocked and is otherwise the neutral control fallback described above.
       "--theme-base": authoredBackground,
       "--accent-solid": authoredAccent,
-      "--theme-ring": authoredAccent,
+      "--theme-ring": "#000000",
       "--water-top": waterTop,
       "--water-mid": waterMid,
       "--water-bottom": waterBottom,
@@ -378,7 +378,7 @@ export function compileTheme(
       "--accent-strong": accentStrong,
       "--accent-indicator": accentIndicator,
       "--accent-ink": accentInk,
-      "--accent-ring": authoredAccent,
+      "--accent-ring": "#FFFFFF",
       "--control-primary-bg": authoredAccent,
       "--control-primary-ink": accentInk,
       "--control-primary-border": accentBorder,

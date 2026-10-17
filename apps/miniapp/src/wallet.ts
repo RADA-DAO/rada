@@ -69,16 +69,43 @@ export function mountWallet(
           value?.gram && BigInt(value.gram.raw) >= 1000n * 10n ** 9n ? 2 : 4;
         const ton = displayAmount(value?.gram ?? null, locale, 2, tonDigits);
         const jpegpe = displayAmount(value?.jpegpe ?? null, locale, 2);
+        const short = `${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}`;
+        const address = Text(wallet.address);
+        address.hidden = true;
+        address.id = `wallet-address-${wallet.address}`;
+        const details = Button(
+          t(locale, "wallet.showAddress", { address: short }),
+          {
+            onClick: () => {
+              address.hidden = !address.hidden;
+              details.setAttribute("aria-expanded", String(!address.hidden));
+              details.textContent = t(
+                locale,
+                address.hidden ? "wallet.showAddress" : "wallet.hideAddress",
+                { address: short },
+              );
+            },
+          },
+        );
+        details.setAttribute("aria-expanded", "false");
+        details.setAttribute("aria-controls", address.id);
         list.append(
           ListItem({
             title: `${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}`,
-            titleHint: wallet.address,
+            children: [address],
             description: `${text("wallet.ton")}: ${ton ?? text("wallet.balanceUnknown")} · ${text("wallet.jpegpe")}: ${jpegpe ?? text("wallet.balanceUnknown")}`,
             actions: [
+              details,
               Button(text("wallet.copyAddress"), {
+                ariaLabel: t(locale, "wallet.copyAddressFor", {
+                  address: wallet.address,
+                }),
                 onClick: () => void copyAddress(wallet.address),
               }),
               Button(text("wallet.revoke"), {
+                ariaLabel: t(locale, "wallet.revokeFor", {
+                  address: wallet.address,
+                }),
                 onClick: () => void revoke(wallet.address),
               }),
             ],

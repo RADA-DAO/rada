@@ -99,7 +99,20 @@ export async function catalogContrast(page: Page, backgroundPage: Page) {
           )
             opacity *= Number(getComputedStyle(element).opacity);
           color[3] = (color[3] ?? 1) * opacity;
-          result.push({ text: node.textContent.trim(), color, points });
+          const state = parent.closest(":disabled")
+            ? "disabled"
+            : parent.closest(".rada-badge")
+              ? "chip"
+              : parent.closest(":focus-visible")
+                ? "focus"
+                : parent.closest("button:hover")
+                  ? "hover"
+                  : "default";
+          result.push({
+            text: `${state}: ${node.textContent.trim()}`,
+            color,
+            points,
+          });
         }
       }
       // Native form values are painted text but do not expose text-node ranges.
@@ -149,7 +162,11 @@ export async function catalogContrast(page: Page, backgroundPage: Page) {
     if (ratio < 4.5) failures.push(`${text}: ${ratio.toFixed(2)}:1`);
   }
   await mask.evaluate((element) => element.parentNode?.removeChild(element));
-  return { failures: [...new Set(failures)], sampled: seen.size };
+  return {
+    failures: [...new Set(failures)],
+    sampled: seen.size,
+    states: [...seen].map((text) => text.split(":")[0]),
+  };
 }
 
 async function measure(

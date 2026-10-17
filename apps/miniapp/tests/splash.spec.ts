@@ -1,117 +1,19 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
-import { crc32, deflateSync } from "node:zlib";
+import { test, expect, type Route } from "@playwright/test";
 import { t } from "../../../packages/i18n/src/index.ts";
+import {
+  FROG,
+  WON,
+  INTENT,
+  sender,
+  recipient,
+  en,
+  image,
+  png,
+  launch,
+  openSplash,
+  round,
+} from "./splash-fixture.ts";
 
-const FROG = "11111111-1111-4111-8111-111111111111";
-const WON = "22222222-2222-4222-8222-222222222222";
-const INTENT = "00000000-0000-4000-8000-000000000301";
-const sender = `0:${"2".repeat(64)}`;
-const recipient = `0:${"1".repeat(64)}`;
-const en = (key: Parameters<typeof t>[1], values?: Record<string, string>) =>
-  t("en", key, values);
-const image = (id: string) => `/v1/splash/submissions/${id}/image`;
-
-/** A plain 96x96 RGB PNG, built here so no file or network is needed. */
-function png(size = 96): Buffer {
-  const chunk = (type: string, data: Buffer) => {
-    const body = Buffer.concat([Buffer.from(type), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(size, 0);
-  header.writeUInt32BE(size, 4);
-  header[8] = 8;
-  header[9] = 2;
-  const rows = Buffer.alloc((size * 3 + 1) * size, 200);
-  for (let y = 0; y < size; y++) rows[y * (size * 3 + 1)] = 0;
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", header),
-    chunk("IDAT", deflateSync(rows)),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
-
-async function launch(page: Page, wallet = false) {
-  page.on("pageerror", (error) => {
-    throw error;
-  });
-  await page.route("https://telegram.org/js/telegram-web-app.js", (route) =>
-    route.fulfill({ body: "" }),
-  );
-  await page.addInitScript(
-    ({ wallet, sender }) => {
-      if (wallet) {
-        localStorage.setItem("fixture-ton-session", "restored");
-        localStorage.setItem("fixture-ton-payment", "enabled");
-        localStorage.setItem("fixture-ton-account", sender);
-      }
-      Object.assign(window, {
-        Telegram: {
-          WebApp: {
-            initData: "synthetic-splash-fixture",
-            ready() {},
-            expand() {},
-            onEvent() {},
-            offEvent() {},
-            BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} },
-          },
-        },
-      });
-    },
-    { wallet, sender },
-  );
-  await page.route("**/me", (route) =>
-    route.fulfill({
-      json: {
-        subject_id: "00000000-0000-4000-8000-000000000101",
-        profile: { visibility: "private", public: null },
-        membership: { status: "unavailable" },
-      },
-    }),
-  );
-  await page.route("**/apps/published", (route) =>
-    route.fulfill({ json: { apps: [] } }),
-  );
-  await page.route("**/v1/splash/submissions/*/image", (route) =>
-    route.fulfill({ body: png(), contentType: "image/png" }),
-  );
-  await page.goto("/");
-}
-const openSplash = async (page: Page) => {
-  await page
-    .getByRole("button", { name: en("splash.title"), exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: en("splash.title"), exact: true }),
-  ).toBeVisible();
-};
-const round = (topAmount: string | null, bidders: number) => ({
-  round: {
-    round_id: 7,
-    starts_at: "2026-10-16T00:00:00.000Z",
-    ends_at: new Date(Date.now() + 3_600_000).toISOString(),
-    accepting_bids: true,
-    frogs: [
-      {
-        submission_id: FROG,
-        submitted_at: "2026-10-15T10:00:00.000Z",
-        width: 96,
-        height: 96,
-        background_removed: true,
-        image_path: image(FROG),
-        author: { username: "Painter" },
-        top_amount: topAmount,
-        bidder_count: bidders,
-        leader: null,
-      },
-    ],
-  },
-});
 // Defaults; a test's own routes, registered later, take precedence.
 test.beforeEach(async ({ page }) => {
   await page.route("**/v1/splash/round", (route) =>
@@ -174,15 +76,27 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
   await expect(page.getByText(en("splash.noBids"))).toBeVisible();
 
   await page
-    .getByRole("button", { name: en("splash.bidFor", { author: "Painter" }) })
+    .getByRole("button", {
+      name: en("splash.bidFor", { author: `Painter · ${FROG}` }),
+    })
     .click();
   const sheet = page.getByRole("dialog", { name: en("splash.bidTitle") });
   await expect(sheet.getByText(en("splash.promise"))).toBeVisible();
   await expect(sheet.getByText(en("splash.burnRule"))).toBeVisible();
   await sheet.getByLabel(en("splash.bidAmountLabel")).fill("2");
   const name = sheet.getByLabel(en("splash.nameLabel"));
+  await name.fill("1frog");
+  await sheet.getByRole("button", { name: en("splash.placeBid") }).click();
+  await expect(sheet.getByRole("alert")).toHaveText(
+    en("splash.error.invalid_name"),
+  );
+  await expect(name).toBeFocused();
   await name.fill("Taken");
   await expect(sheet.getByText(en("splash.nameTaken"))).toBeVisible();
+  await sheet.getByRole("button", { name: en("splash.placeBid") }).click();
+  await expect(sheet.getByRole("alert")).toHaveText(
+    en("splash.error.name_taken"),
+  );
   await name.fill("Lily_1");
   await expect(sheet.getByText(en("splash.nameAvailable"))).toBeVisible();
   await sheet.getByRole("button", { name: en("splash.placeBid") }).click();
@@ -195,8 +109,9 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
 
   // Raise: Escape closes the sheet without placing anything, then raise for real.
   const raise = page.getByRole("button", {
-    name: en("splash.raiseBidFor", { author: "Painter" }),
+    name: en("splash.raiseBidFor", { author: `Painter · ${FROG}` }),
   });
+  await expect(raise).toBeFocused();
   await raise.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -375,6 +290,9 @@ test("claim a win through the platform payment window", async ({ page }) => {
   await expect(
     page.getByText(en("splash.state.claimed"), { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: en("splash.mineTitle"), exact: true }),
+  ).toBeFocused();
   expect(started).toEqual({ sender });
   expect(
     await page.evaluate(() => localStorage.getItem("fixture-ton-sends")),

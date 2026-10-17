@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { fake, fakeDocument, mutations } from "./fake-dom.ts";
+import { Button, Screen, ScreenHost } from "../src/index.ts";
+import { restoreSheetFocus } from "../src/focus.ts";
+
+await test("route focus and disconnected sheet openers resolve to live targets", () => {
+  const host = ScreenHost(fakeDocument.body as unknown as HTMLElement);
+  const first = Screen({ title: "Pond" });
+  fake(host).append(fake(first));
+  mutations.at(-1)?.();
+  assert.equal(fakeDocument.activeElement?.textContent, "Pond");
+  const opener = Button("Bid");
+  opener.dataset.focusKey = "bid:1";
+  fake(first).append(fake(opener));
+  opener.focus();
+  const replacement = Button("Raise bid");
+  replacement.dataset.focusKey = "bid:1";
+  fake(opener).remove();
+  fake(first).append(fake(replacement));
+  mutations.at(-1)?.();
+  assert.equal(fakeDocument.activeElement, fake(replacement));
+  restoreSheetFocus(opener);
+  assert.equal(fakeDocument.activeElement, fake(replacement));
+  replacement.disabled = true;
+  restoreSheetFocus(opener);
+  assert.equal(fakeDocument.activeElement.textContent, "Pond");
+  fake(host).replaceChildren(fake(Screen({ title: "Results" })));
+  mutations.at(-1)?.();
+  assert.equal(fakeDocument.activeElement.textContent, "Results");
+});

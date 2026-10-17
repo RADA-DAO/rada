@@ -72,8 +72,14 @@ export function nameField(context: SplashContext, initial = "") {
       field.setError(message);
     },
     value: () => field.control.value.trim(),
-    /** Known to be invalid or taken: no point submitting it. */
-    blocked: () => status === "invalid" || status === "taken",
+    error: () =>
+      !field.control.value.trim()
+        ? ("splash.nameRequired" as const)
+        : !NAME_RULE.test(field.control.value.trim()) || status === "invalid"
+          ? ("splash.error.invalid_name" as const)
+          : status === "taken"
+            ? ("splash.error.name_taken" as const)
+            : undefined,
     dispose: () => {
       latest?.abort();
       clearTimeout(timer);

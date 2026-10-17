@@ -1,5 +1,5 @@
 /** Minimal DOM double so component tests run in plain Node, without a browser or new dependency. */
-type Listener = (event: { type: string }) => void;
+type Listener = (event: { type: string; target?: FakeElement }) => void;
 
 export class FakeElement {
   readonly tagName: string;
@@ -99,8 +99,33 @@ export class FakeElement {
   click(): void {
     if (!this.disabled) this.dispatch("click");
   }
+  get isConnected(): boolean {
+    return this === fakeDocument.body || (this.parent?.isConnected ?? false);
+  }
+  matches(selector: string): boolean {
+    if (selector === ":disabled") return this.disabled;
+    if (selector === "[data-focus-key]") return !!this.dataset.focusKey;
+    if (selector === "dialog[open]")
+      return this.tagName === "dialog" && this.open;
+    return this.tagName === selector.split(" ").at(-1);
+  }
+  querySelectorAll(selector: string): FakeElement[] {
+    return this.children.flatMap((child) => [
+      ...(child.matches(selector) ? [child] : []),
+      ...child.querySelectorAll(selector),
+    ]);
+  }
+  querySelector(selector: string): FakeElement | null {
+    return this.querySelectorAll(selector)[0] ?? null;
+  }
   focus(): void {
     fakeDocument.activeElement = this;
+    this.notifyFocus(this);
+  }
+  private notifyFocus(target: FakeElement): void {
+    for (const listener of this.listeners.get("focusin") ?? [])
+      listener.run({ type: "focusin", target });
+    this.parent?.notifyFocus(target);
   }
   showModal(): void {
     this.open = true;
@@ -132,6 +157,10 @@ export const fakeDocument = {
   body: new FakeElement("body"),
   activeElement: undefined as FakeElement | undefined,
   createElement: (tag: string) => new FakeElement(tag),
+  querySelector: (selector: string): FakeElement | null =>
+    fakeDocument.body.querySelector(selector),
+  querySelectorAll: (selector: string): FakeElement[] =>
+    fakeDocument.body.querySelectorAll(selector),
 };
 
 Object.defineProperty(globalThis, "document", {
@@ -140,3 +169,23 @@ Object.defineProperty(globalThis, "document", {
 });
 
 export const fake = (node: unknown): FakeElement => node as FakeElement;
+
+export const mutations: (() => void)[] = [];
+Object.defineProperty(globalThis, "HTMLElement", {
+  configurable: true,
+  value: FakeElement,
+});
+Object.defineProperty(globalThis, "MutationObserver", {
+  configurable: true,
+  value: class {
+    constructor(callback: () => void) {
+      mutations.push(callback);
+    }
+    disconnect() {
+      /* Tests flush mutations explicitly. */
+    }
+    observe() {
+      /* Tests flush mutations explicitly. */
+    }
+  },
+});
