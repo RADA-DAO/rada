@@ -4,10 +4,24 @@ const square = (width: number, height: number) =>
 function svgDimensions(bytes: Uint8Array): boolean {
   const source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   // Inspect only the root, never a nested SVG or text inside a comment.
-  const root =
-    /^\s*(?:<\?xml\s[^?]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<svg(?=\s|\/?>)((?:[^>"']|"[^"]*"|'[^']*')*)>/u.exec(
-      source,
-    );
+  // The prolog is skipped by plain scanning so no pattern can backtrack.
+  let start = source.length - source.trimStart().length;
+  if (source.startsWith("<?xml", start)) {
+    const end = source.indexOf("?>", start);
+    if (end < 0) return false;
+    start = end + 2;
+  }
+  for (;;) {
+    while (start < source.length && /\s/u.test(source[start] as string))
+      start++;
+    if (!source.startsWith("<!--", start)) break;
+    const end = source.indexOf("-->", start + 4);
+    if (end < 0) return false;
+    start = end + 3;
+  }
+  const root = /^<svg(?=\s|\/?>)((?:[^>"']|"[^"]*"|'[^']*')*)>/u.exec(
+    source.slice(start),
+  );
   if (!root) return false;
   let attributes = (root[1] ?? "").replace(/\/\s*$/u, "");
   const values = new Map<string, string>();
