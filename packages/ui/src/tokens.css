@@ -1,4 +1,40 @@
+@import "./fonts.css";
+
 :root {
+  /* Released OS, wallet sheet and workspace material recipes. */
+  --rada-icon-size: 20px;
+  --rada-icon-settings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.8'%3E%3Cpath d='m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --rada-font-brand: Unbounded, Onest, sans-serif;
+  --rada-line-height-section: 1.24;
+  --rada-tracking-section: -0.025em;
+  --rada-font-weight-section: 730;
+  --rada-font-size-tab: 13px;
+  --rada-font-weight-tab: 680;
+  --rada-radius-tabs: 17px;
+  --rada-field-height: 48px;
+  --rada-field-padding: 12px 13px;
+  --rada-field-textarea-height: 140px;
+  --rada-page-gutter: 18px;
+  --rada-environment-fill: linear-gradient(
+    180deg,
+    var(--water-top),
+    var(--water-mid) 50%,
+    var(--water-bottom)
+  );
+  --rada-glass-fill: linear-gradient(
+    145deg,
+    var(--surface-raised),
+    var(--surface-base)
+  );
+  --rada-shadow-glass:
+    inset 0 1px 0 var(--glass-glint), inset 0 -1px 0 var(--glass-edge-bottom),
+    0 16px 34px rgb(var(--shadow-rgb) / 0.14);
+  --rada-shadow-sheet:
+    inset 0 1px 0 var(--glass-glint), 0 28px 60px rgb(var(--shadow-rgb) / 0.42);
+  --rada-sheet-backdrop: rgb(var(--shadow-rgb) / 0.55);
+  --rada-duration-sheet: 300ms;
+  --rada-tab-padding: 9px 5px;
+  --rada-row-height: 64px;
   --rada-reading-width: 740px;
   --rada-space: 8px;
   --rada-font-body: Onest, ui-sans-serif, system-ui, sans-serif;
@@ -58,21 +94,21 @@
   --rada-sheet-width: 32rem;
   --rada-collection-column: 9rem;
   --rada-viewport-height: 100dvh;
-  --rada-shell-wordmark-size: 26px;
-  --rada-shell-wordmark-tracking: 0.15em;
+  --rada-shell-wordmark-size: 23px;
+  --rada-shell-wordmark-tracking: -0.085em;
   --rada-shell-workspace-min: 220px;
-  --rada-shell-title-size: clamp(32px, 7vw, 44px);
-  --rada-shell-title-tracking: -0.04em;
+  --rada-shell-title-size: var(--rada-font-size-title);
+  --rada-shell-title-tracking: var(--rada-tracking-heading);
   --rada-shell-prose-width: 440px;
   --rada-shell-prose-leading: 1.6;
-  --rada-shell-section-size: 21px;
+  --rada-shell-section-size: var(--rada-font-size-section);
   --rada-shell-nav-space: 18px;
   --rada-shell-list-leading: 1.8;
   --rada-shell-preview-height: 360px;
   --rada-button-padding: 11px 17px;
-  --rada-shell-font: ui-sans-serif, system-ui, sans-serif;
-  --rada-shell-width: 760px;
-  --rada-shell-control-height: 44px;
+  --rada-shell-font: var(--rada-font-body);
+  --rada-shell-width: var(--rada-reading-width);
+  --rada-shell-control-height: var(--rada-control-height);
   --rada-radius-legacy: 1rem;
   --rada-zero-length: 0px;
   --rada-avatar-size: 40px;
@@ -83,7 +119,9 @@
   --rada-app-tile-art-size: 78px;
   --rada-radius-tile: 21px 13px 21px 13px;
   --rada-font-size-monogram: 27px;
-  --rada-shadow-tile: inset 0 1px 0 var(--glass-glint);
+  --rada-shadow-tile:
+    0 11px 22px rgb(var(--shadow-rgb) / 0.18), inset 0 1px 0 var(--glass-glint),
+    inset 0 -1px 0 var(--glass-edge-bottom);
   --rada-picture-size: 20rem;
   --rada-picture-thumb-size: 96px;
   --rada-facts-label-width: 9rem;
@@ -172,7 +210,8 @@
   --rada-frog-name-top: calc(10.099cqw - 0.47em);
   --rada-frog-name-left: 5.556cqw;
   --rada-frog-name-right: 25.556cqw;
-  --rada-frog-name-font: 800 clamp(10px, 7.75cqw, 26px)/0.94 system-ui;
+  --rada-frog-name-font:
+    800 clamp(10px, 7.75cqw, 26px)/0.94 Sora, Onest, system-ui;
   --rada-frog-name-shadow:
     0 0 0.833cqw var(--frog-card-bg), 0 0.278cqw 1.667cqw var(--frog-card-bg);
   --rada-frog-collection-margin: 0 0 0.75rem;

@@ -10,6 +10,8 @@ export function ScreenHost(root: HTMLElement): HTMLElement {
 
 export type ScreenOptions = {
   title: string;
+  /** Launcher keeps its landmark title available without a second introduction. */
+  titleHidden?: boolean;
   /** Content above the title, such as the viewer's identity on the home screen. */
   top?: Node;
   /** Wordmark shown in the header. */
@@ -36,7 +38,13 @@ export function Screen(options: ScreenOptions): HTMLElement {
   const body = element("section", "rada-screen-body");
   if (options.top) body.append(options.top);
   body.append(
-    element("h1", "rada-screen-title", options.title),
+    element(
+      "h1",
+      options.titleHidden
+        ? "rada-screen-title rada-visually-hidden"
+        : "rada-screen-title",
+      options.title,
+    ),
     ...(options.children ?? []),
   );
   view.append(header, body);

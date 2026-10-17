@@ -75,7 +75,7 @@
   border: var(--rada-rule);
   border-radius: var(--rada-radius-tile);
   overflow: hidden;
-  background: var(--surface-raised);
+  background: var(--rada-glass-fill);
   box-shadow: var(--rada-shadow-tile);
   font-family: var(--rada-font-heading);
   font-size: var(--rada-font-size-monogram);
@@ -134,4 +134,18 @@
   .rada-app-tile:active {
     translate: none;
   }
+}
+
+.rada-identity {
+  padding-block: var(--rada-space-3);
+}
+.rada-identity-name {
+  font-family: var(--rada-font-heading);
+  font-size: var(--rada-font-size-section);
+  letter-spacing: var(--rada-tracking-section);
+}
+.rada-identity .rada-avatar {
+  border: var(--rada-rule);
+  border-radius: var(--rada-radius-small);
+  box-shadow: var(--rada-shadow-tile);
 }
