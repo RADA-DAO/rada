@@ -61,6 +61,14 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       "INSERT INTO jpegpe.frogs(frog_id, username, creator_subject_id, current_owner_subject_id, background_color, accent_color, artwork_path) VALUES ($1,$2,$3,$3,'#123456','#ABCDEF',$4)",
       [ownId, name, first, path],
     );
+    await db.query("SELECT jpegpe.import_artwork($1, 'image/png', false, $2)", [
+      ownId,
+      pixel,
+    ]);
+    await db.query(
+      "UPDATE jpegpe.frogs SET colour_source = 'legacy_unverified' WHERE frog_id = $1",
+      [ownId],
+    );
     await db.query("SELECT jpegpe.create_frog($1,$2,$3)", [
       foreignId,
       foreignName,
@@ -78,6 +86,18 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       headers,
       data: { appId, capability: "wallet.address.read", granted: true },
     });
+    const detailResponse = await request.get(`${api}/me/frogs/${ownId}`, {
+      headers,
+    });
+    expect(await detailResponse.json()).toEqual({
+      creator: null,
+      owner: null,
+      colour_source: "legacy_unverified",
+      history: [],
+    });
+    expect(
+      (await request.get(`${api}/me/frogs/${foreignId}`, { headers })).status(),
+    ).toBe(404);
     const collection = await request.get(
       `${api}/me/frogs?subject_id=${second}`,
       { headers },
@@ -136,8 +156,28 @@ test("own frog selection, private clearing, transfer and app consent revocation"
         },
       });
     }, token);
+    const chunks: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/assets/")) chunks.push(request.url());
+    });
     await page.goto("/");
+    await expect(
+      page.getByRole("button", { name: "Profile", exact: true }),
+    ).toBeVisible();
+    expect(chunks.some((url) => /profile-panel|collection-/.test(url))).toBe(
+      false,
+    );
     await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Open collection", exact: true })
+      .click();
+    await expect(page.getByRole("list", { name: "Your frogs" })).toBeVisible();
+    await page
+      .getByRole("button", { name: `Open ${name.toUpperCase()}`, exact: true })
+      .click();
+    await expect(
+      page.getByText("Legacy colours — unverified", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", {
         name: `Use ${name.toUpperCase()}`,
@@ -161,9 +201,32 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     await expect
       .poll(async () => (await readMe()).profile.public?.frog_id)
       .toBe(ownId);
+    await page.route("**/v1/frogs/*/artwork/*", (route) =>
+      route.fulfill({ status: 404 }),
+    );
+    await page
+      .getByRole("navigation")
+      .getByRole("button", { name: "Profile", exact: true })
+      .click();
+    await expect(
+      page
+        .locator("[data-selected-frog]")
+        .getByText("Artwork unavailable", { exact: true }),
+    ).toBeVisible();
+    await page.unroute("**/v1/frogs/*/artwork/*");
     await page
       .getByRole("button", { name: "Make profile private", exact: true })
       .click();
+    await page
+      .getByRole("button", { name: "Open collection", exact: true })
+      .click();
+    await expect(page.getByRole("list", { name: "Your frogs" })).toBeVisible();
+    await page
+      .getByRole("button", { name: `Open ${name.toUpperCase()}`, exact: true })
+      .click();
+    await expect(
+      page.getByText("Legacy colours — unverified", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", {
         name: `Use ${name.toUpperCase()}`,

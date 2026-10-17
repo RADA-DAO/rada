@@ -29,6 +29,19 @@ export function registerIdentityRoutes(
     if (!id) return c.json({ error: "unauthorized" }, 401);
     return c.json({ frogs: await store.ownFrogs(id) });
   });
+  app.get("/me/frogs/:frogId", async (c) => {
+    const id = await authenticated(c, false);
+    if (!id) return c.json({ error: "unauthorized" }, 401);
+    const frogId = c.req.param("frogId");
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        frogId,
+      )
+    )
+      return c.json({ error: "invalid_request" }, 400);
+    const detail = await store.frogDetails?.(id, frogId);
+    return detail ? c.json(detail) : c.json({ error: "not_found" }, 404);
+  });
   app.put("/me/profile-frog", async (c) => {
     const id = await authenticated(c, true);
     if (!id) return c.json({ error: "unauthorized" }, 401);

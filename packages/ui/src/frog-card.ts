@@ -1,9 +1,10 @@
+import { loadFrogArtwork } from "./frog-artwork.ts";
 import {
-  applyTheme,
   compileTheme,
   DEFAULT_THEME_BACKGROUND,
   contrastRatio,
-} from "./index.ts";
+} from "./theme-compiler.ts";
+import { applyTheme } from "./apply-theme.ts";
 import {
   FROG_CARD_ASPECT_RATIO,
   FROG_CARD_CUTOUT_PATH,
@@ -18,7 +19,11 @@ export function FrogCard(
     background_color: string | null;
     accent_color: string | null;
   },
-  options: { missingArtLabel: string; image?: { url: string; alt: string } },
+  options: {
+    missingArtLabel: string;
+    image?: { url: string; alt: string };
+    artwork?: { load(signal: AbortSignal): Promise<Blob>; signal: AbortSignal };
+  },
 ): HTMLElement {
   const card = document.createElement("article");
   card.className = "jpegpe-card jpegpe-card--hero jpegpe-card--cutout";
@@ -54,7 +59,13 @@ export function FrogCard(
   artwork.className = "frog-card-artwork";
   artwork.style.maskImage = mask;
   artwork.style.maskSize = "100% 100%";
-  if (options.image) {
+  if (options.artwork) {
+    loadFrogArtwork(artwork, {
+      ...options.artwork,
+      alt: frogCardName(model.username),
+      missingArtLabel: options.missingArtLabel,
+    });
+  } else if (options.image) {
     const url = new URL(options.image.url, location.origin);
     if (
       url.origin !== location.origin ||

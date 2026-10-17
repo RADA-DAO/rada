@@ -175,7 +175,7 @@
     "selectedName": "{{name}} · Selected",
     "saving": "Saving your profile…",
     "notOwned": "This frog is no longer in your collection. Refresh to choose another.",
-    "publicDescription": "Your selected frog’s name and colors are public.",
+    "publicDescription": "Your selected frog’s name, artwork and colors are public. Your collection stays private.",
     "artUnavailable": "Artwork unavailable"
   },
   "catalog": {

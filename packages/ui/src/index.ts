@@ -57,13 +57,7 @@ export const RADA_THEME_TOKEN_NAMES = [
   "--control-disabled-ink",
 ] as const;
 
-export function applyTheme(
-  root: HTMLElement,
-  palette: { tokens: Record<string, string> },
-): void {
-  for (const [name, value] of Object.entries(palette.tokens))
-    root.style.setProperty(name, value);
-}
+export { applyTheme } from "./apply-theme.ts";
 
 export {
   Button,
@@ -115,3 +109,4 @@ export type RadaTokenName =
   ThemeTokenName | import("./design-tokens.ts").DesignTokenName;
 export { RankingRow } from "./ranking-row.ts";
 export { Tally, EvidenceLink } from "./tally.ts";
+export { FrogGallery } from "./frog-gallery.ts";

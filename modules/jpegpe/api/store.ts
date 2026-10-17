@@ -27,3 +27,20 @@ export async function readOwnFrogs(client: pg.PoolClient): Promise<OwnFrog[]> {
   );
   return result.rows;
 }
+
+export type FrogDetails = {
+  creator: string | null;
+  owner: string | null;
+  colour_source: "proof" | "legacy_unverified";
+  history: { at: string; from: string | null; to: string | null }[];
+};
+export async function readOwnFrogDetails(
+  client: pg.PoolClient,
+  frogId: string,
+): Promise<FrogDetails | null> {
+  const result = await client.query<{ detail: FrogDetails | null }>(
+    "SELECT jpegpe.own_frog_details($1::uuid) AS detail",
+    [frogId],
+  );
+  return result.rows[0]?.detail ?? null;
+}

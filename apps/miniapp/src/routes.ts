@@ -16,11 +16,20 @@ import {
   type SplashRoute,
 } from "../../../modules/splash/ui/index.ts";
 
-type Page = "profile" | "review" | "holders" | SplashRoute | GovernanceRoute;
+type Page =
+  | "collection"
+  | "frog"
+  | "profile"
+  | "review"
+  | "holders"
+  | SplashRoute
+  | GovernanceRoute;
 export type Route = "launcher" | Page;
 export const home: NavEntry = { key: "launcher" };
 const pages: readonly string[] = [
   "profile",
+  "collection",
+  "frog",
   "review",
   "holders",
   ...SPLASH_ROUTES,
@@ -30,13 +39,19 @@ const pages: readonly string[] = [
 /** Screens are stack entries; sheets and running apps sit above them. */
 export function createRoutes() {
   const navigation = createNavigation(home);
+  let frogId: string | null = null;
   return {
     navigation,
+    frogId: () => frogId,
+    openFrog(id: string) {
+      frogId = id;
+      navigation.push({ key: "frog", edgeBack: true });
+    },
     current: (): Route =>
       [...navigation.keys]
         .reverse()
         .find((key): key is Page => pages.includes(key)) ?? "launcher",
-    open(next: "profile" | "review" | "holders") {
+    open(next: "profile" | "review" | "holders" | "collection") {
       navigation.push({ key: next, edgeBack: true });
     },
   };
@@ -60,4 +75,15 @@ export function installShellSwipe(
       setPageBackActive(screen, active);
     },
   });
+}
+
+/** Keep bfcache restores live, and dispose resources on a final page departure. */
+export function onPageHide(dispose: () => void): void {
+  window.addEventListener(
+    "pagehide",
+    (event) => {
+      if (!event.persisted) dispose();
+    },
+    { once: true },
+  );
 }

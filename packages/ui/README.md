@@ -42,8 +42,8 @@ lists and headings) outside this package.
 
 `FrogCard` adapts the canonical JPEGPE card renderer with the shared 4:5 cutout
 geometry and uppercase `frogCardName`. Authored colours use the shared theme
-compiler. Artwork is optional and restricted to content-addressed local PNG/WebP
-paths; callers supply translated missing-art copy. No legacy token HUD is rendered.
+compiler. Artwork is optional: content-addressed local PNG/WebP paths or a caller-owned
+authenticated blob loader with an abort signal; callers supply translated missing-art copy. No legacy token HUD is rendered.
 
 Use `@rada/ui/design-system.css` as the only stylesheet entry in applications.
 Its internal stylesheets provide the shared foundations, controls, collectible
@@ -114,3 +114,10 @@ it uses the pinned `mcr.microsoft.com/playwright` image from
 change. A failed CI run uploads the `visual-diff` artifact with the expected,
 actual and diff images. When changing the image, update it in both the script
 and the workflow.
+
+`FrogGallery` lays out native card buttons in large, medium or compact columns,
+with an accessible collection name and selected-card indication. `FrogCard`'s
+optional artwork loader starts on intersection, preserves card geometry while
+loading, falls back on failure, and revokes its blob URL on screen disposal.
+The catalog includes synthetic artwork and missing-art gallery cards; plain Node
+component tests cover activation, selection and aborted artwork reads.

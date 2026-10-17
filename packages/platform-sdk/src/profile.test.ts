@@ -104,3 +104,66 @@ await test("profile and collection accept optional canonical artwork URLs withou
     globalThis.fetch = original;
   }
 });
+
+await test("frog detail rejects private fields and artwork cannot redirect credentials", async () => {
+  const { frogAdapter, parseFrogDetails } = await import("./frog-details.ts");
+  const detail = {
+    creator: null,
+    owner: "PublicFrog",
+    colour_source: "legacy_unverified",
+    history: [{ at: "2026-01-01T00:00:00Z", from: null, to: "PublicFrog" }],
+  };
+  assert.deepEqual(parseFrogDetails(detail), detail);
+  assert.throws(() => parseFrogDetails({ ...detail, subject_id: "private" }));
+  assert.throws(() =>
+    parseFrogDetails({
+      ...detail,
+      history: [{ ...detail.history[0], wallet: "private" }],
+    }),
+  );
+  const adapter = frogAdapter("https://api.example/me", () => ({
+    Authorization: "tma fixture",
+  }));
+  await assert.rejects(
+    adapter.readFrogArtwork(
+      "https://evil.example/art",
+      new AbortController().signal,
+    ),
+    /invalid_artwork/,
+  );
+});
+
+await test("artwork uses the configured API, keeps auth private and honors HTTP caching", async (context) => {
+  const { frogAdapter } = await import("./frog-details.ts");
+  const path = `/v1/frogs/${frog.frog_id}/artwork/${"a".repeat(64)}`;
+  const requests: { url: string; init: RequestInit | undefined }[] = [];
+  context.mock.method(
+    globalThis,
+    "fetch",
+    (url: string, init?: RequestInit) => {
+      requests.push({ url, init });
+      return Promise.resolve(
+        new Response(new Uint8Array([1]), {
+          headers: { "Content-Type": "image/png" },
+        }),
+      );
+    },
+  );
+  const adapter = frogAdapter("https://api.example/me", () => ({
+    Authorization: "tma fixture",
+  }));
+  const controller = new AbortController();
+  const blob = await adapter.readFrogArtwork(path, controller.signal);
+  assert.equal(blob.type, "image/png");
+  assert.ok(requests[0]?.init);
+  assert.equal(requests[0].url, `https://api.example${path}`);
+  assert.equal(requests[0].init.cache, "default");
+  assert.equal(requests[0].init.credentials, "omit");
+  assert.equal(requests[0].init.redirect, "error");
+  assert.deepEqual(requests[0].init.headers, {
+    Authorization: "tma fixture",
+  });
+  controller.abort();
+  await assert.rejects(adapter.readFrogArtwork(path, controller.signal));
+  assert.equal(requests.length, 1);
+});

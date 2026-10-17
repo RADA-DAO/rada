@@ -5,7 +5,10 @@ import type { initializePlatform } from "../../../packages/platform-sdk/src/inde
 type ProfileOptions = Parameters<typeof mountProfile>[1];
 export function mountProfilePanel(
   content: HTMLElement,
-  options: Pick<ProfileOptions, "locale" | "selected" | "refresh"> & {
+  options: Pick<
+    ProfileOptions,
+    "locale" | "selected" | "refresh" | "openCollection"
+  > & {
     platform: ReturnType<typeof initializePlatform>;
   },
 ): () => void {
@@ -17,7 +20,7 @@ export function mountProfilePanel(
   const stopCollection = collection
     ? mountProfile(collection, {
         ...profile,
-        read: (signal) => platform.readOwnFrogs(signal),
+        artwork: (path, signal) => platform.readFrogArtwork(path, signal),
         select: (frogId, signal) => platform.selectProfileFrog(frogId, signal),
       })
     : undefined;

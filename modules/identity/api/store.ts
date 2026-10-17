@@ -2,6 +2,8 @@ import pg from "pg";
 import {
   readOwnPublicFrog,
   readOwnFrogs,
+  readOwnFrogDetails,
+  type FrogDetails,
   type PublicFrog,
   type OwnFrog,
 } from "../../jpegpe/index.ts";
@@ -20,6 +22,10 @@ export type Me = {
 };
 
 export interface IdentityStore {
+  frogDetails?(
+    verifiedTelegramId: string,
+    frogId: string,
+  ): Promise<FrogDetails | null>;
   ownFrogs(verifiedTelegramId: string): Promise<OwnFrog[]>;
   selectFrog(
     verifiedTelegramId: string,
@@ -146,6 +152,27 @@ export class PostgresIdentityStore implements IdentityStore {
         subjectId,
       ]);
       const frogs = await readOwnFrogs(client);
+      await client.query("COMMIT");
+      return frogs;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async frogDetails(
+    verifiedTelegramId: string,
+    frogId: string,
+  ): Promise<FrogDetails | null> {
+    const subjectId = await this.subject(verifiedTelegramId);
+    const client = await this.service.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('rada.subject_id', $1, true)", [
+        subjectId,
+      ]);
+      const frogs = await readOwnFrogDetails(client, frogId);
       await client.query("COMMIT");
       return frogs;
     } catch (error) {

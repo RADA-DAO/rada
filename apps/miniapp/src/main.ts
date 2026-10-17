@@ -1,16 +1,19 @@
+import { onPageHide } from "./routes.ts";
+import {
+  profileStatus,
+  showShellSettings,
+  applyProfileTheme,
+} from "./profile-status.ts";
 import { createHoldersScreen } from "./holders-screen.ts";
-import { openSettings } from "./settings.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
-import { mountProfilePanel } from "./profile-panel.ts";
+import { mountLazyProfile, createCollectionScreen } from "./profile-loader.ts";
 import { mountReview } from "./review.ts";
 import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
 import { loadAppIcon } from "./app-icon.ts";
 import "@rada/ui/design-system.css";
 import {
-  applyTheme,
-  compileTheme,
   DEFAULT_THEME_BACKGROUND,
   Button,
   ErrorState,
@@ -39,13 +42,14 @@ let route: Route = "launcher";
 let reviewAuthorized = false;
 let reviewProbeFailed = false;
 let profileGeneration = 0;
-let reviewDispose: (() => void) | undefined;
 let profile:
   "guest" | "loading" | "private" | "public" | "expired" | "unavailable" =
   "guest";
 let selectedFrog: OwnProfile["profile"]["public"] = null;
 const holders = createHoldersScreen();
-let profileDispose: (() => void) | undefined;
+const collection = createCollectionScreen();
+let profileDispose: (() => void) | undefined,
+  reviewDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
 let settingsButton: HTMLElement | null = null;
 const routes = createRoutes();
@@ -86,10 +90,7 @@ const builtIns = createBuiltIns({
   },
 });
 const dismissApp = runner.dismiss;
-window.RadaAppHost = Object.freeze({
-  mount: (release, container, origin) =>
-    runner.mount(release, container, origin),
-});
+runner.expose();
 const launcher = createHome({
   locale: () => locale,
   authenticated: platform.authenticatedLaunch,
@@ -120,7 +121,7 @@ const launcher = createHome({
     },
   ],
 });
-applyTheme(document.documentElement, compileTheme(DEFAULT_THEME_BACKGROUND));
+applyProfileTheme(null);
 const swipe = installShellSwipe(
   screen,
   navigation,
@@ -128,19 +129,12 @@ const swipe = installShellSwipe(
   back,
 );
 function showSettings() {
-  openSettings({
-    locale,
-    navigation,
-    opener: settingsButton,
-    change: (value) => {
-      locale = value;
-      render();
-      showSettings();
-    },
-  });
+  showShellSettings(locale, navigation, settingsButton, changeLocale);
 }
-function showAppPermissions(opener: HTMLElement | null) {
-  return openAppPermissions({ text, platform, navigation, opener });
+function changeLocale(value: Locale) {
+  locale = value;
+  render();
+  showSettings();
 }
 async function loadProfile(initial = false) {
   const generation = ++profileGeneration;
@@ -157,13 +151,7 @@ async function loadProfile(initial = false) {
     if (stale()) return;
     profile = ownProfile?.profile.visibility ?? "guest";
     selectedFrog = ownProfile?.profile.public ?? null;
-    applyTheme(
-      document.documentElement,
-      compileTheme(
-        selectedFrog?.background_color ?? DEFAULT_THEME_BACKGROUND,
-        selectedFrog?.accent_color,
-      ),
-    );
+    applyProfileTheme(selectedFrog);
     membership = ownProfile?.membership.status ?? "unavailable";
   } catch (error) {
     if (stale()) return;
@@ -201,6 +189,7 @@ function render() {
   profileDispose = undefined;
   builtIns.dispose();
   holders.dispose();
+  collection.dispose();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -231,6 +220,21 @@ function render() {
     builtIns.render(screen, route, {
       brand: text("shell.brand"),
       actions: [settingsButton],
+    });
+    return;
+  }
+  if (route === "collection" || route === "frog") {
+    collection.render(screen, {
+      locale,
+      platform,
+      navigation,
+      selected: selectedFrog?.frog_id ?? null,
+      frogId: route === "frog" ? routes.frogId() : null,
+      actions: [settingsButton],
+      openFrog: (id) => {
+        routes.openFrog(id);
+      },
+      refresh: () => void loadProfile(),
     });
     return;
   }
@@ -287,7 +291,13 @@ function render() {
       const wallet = Group();
       wallet.dataset.profileWallet = "true";
       const permissions = Button(text("shell.appPermissions"), {
-        onClick: () => void showAppPermissions(permissions),
+        onClick: () =>
+          void openAppPermissions({
+            text,
+            platform,
+            navigation,
+            opener: permissions,
+          }),
       });
       content.push(
         own,
@@ -296,19 +306,7 @@ function render() {
         permissions,
       );
     }
-    if (profile === "guest") content.push(Text(text("shell.guestDescription")));
-    if (profile === "expired" || profile === "unavailable")
-      content.push(
-        ErrorState({
-          message: text(
-            profile === "expired"
-              ? "shell.expiredDescription"
-              : "shell.unavailableDescription",
-          ),
-          retryLabel: text("common.retry"),
-          onRetry: () => void loadProfile(),
-        }),
-      );
+    content.push(...profileStatus(locale, profile, () => void loadProfile()));
   }
   const view = Screen({
     title: text(
@@ -355,9 +353,12 @@ function render() {
     }),
   });
   screen.replaceChildren(view);
-  profileDispose = mountProfilePanel(view, {
+  profileDispose = mountLazyProfile(view, {
     locale,
     selected: selectedFrog,
+    openCollection: () => {
+      routes.open("collection");
+    },
     platform,
     refresh: () => void loadProfile(),
   });
@@ -381,20 +382,16 @@ navigation.subscribe(() => {
 render();
 void launcher.load();
 if (platform.authenticatedLaunch) void loadProfile(true);
-window.addEventListener(
-  "pagehide",
-  (event) => {
-    if (event.persisted) return;
-    profileGeneration++;
-    launcher.dispose();
-    holders.dispose();
-    profileDispose?.();
-    reviewDispose?.();
-    builtIns.dispose();
-    dismissApp();
-    swipe.dispose();
-    platform.dispose();
-    navigation.dispose();
-  },
-  { once: true },
-);
+onPageHide(() => {
+  profileGeneration++;
+  launcher.dispose();
+  holders.dispose();
+  collection.dispose();
+  profileDispose?.();
+  reviewDispose?.();
+  builtIns.dispose();
+  dismissApp();
+  swipe.dispose();
+  platform.dispose();
+  navigation.dispose();
+});

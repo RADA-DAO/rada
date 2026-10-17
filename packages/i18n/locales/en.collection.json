@@ -1,0 +1,21 @@
+{
+  "change": "Change profile frog",
+  "open": "Open collection",
+  "private": "Only you can see your collection.",
+  "size": "Card size",
+  "large": "Large",
+  "medium": "Medium",
+  "compact": "Compact",
+  "view": "Open {{name}}",
+  "permanent": "This frog’s name is permanent.",
+  "anonymous": "Anonymous",
+  "creator": "Creator",
+  "owner": "Current owner",
+  "background": "Background",
+  "accent": "Accent",
+  "unset": "Not set",
+  "legacy": "Legacy colours — unverified",
+  "history": "Ownership history",
+  "noHistory": "No ownership events recorded.",
+  "transfer": "{{from}} → {{to}}"
+}
