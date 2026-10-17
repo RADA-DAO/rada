@@ -1,6 +1,8 @@
+import type pg from "pg";
 import { createApp } from "./app.ts";
 import {
   TokenBucket,
+  PostgresClientErrorStore,
   type ClientErrorStore,
 } from "../../../modules/ops/index.ts";
 import { assert, FIXTURE_TOKEN } from "./fixtures.ts";
@@ -15,7 +17,7 @@ const methods = {
 const report = {
   kind: "error",
   name: "TypeError",
-  message: "x is undefined",
+  message: "type_error",
   frames: ["main.js:1:2"],
   build: "abc1234",
   route: "home",
@@ -91,26 +93,56 @@ Deno.test("enforces the 4 KB size limit by header and by stream", async () => {
   assert(lying.status === 413 && stored.length === 0);
 });
 
-Deno.test("re-sanitizes message, frames, name and route", async () => {
+Deno.test("rejects messages outside the diagnostic allowlist", async () => {
   const { post, stored } = build();
-  const response = await post({
-    kind: "unhandledrejection",
-    name: "bad name!",
-    message:
-      "user 12345 mail a.b@example.com at https://x.example/p?q=1 wallet UQDrjaLahLkMB-hMCmkzOyBuHbJ0hjHSy4Gw9AkX9Hn6sQVL 0xdeadbeefcafe " +
-      "z".repeat(300),
-    frames: ["main.js:1:2", "https://evil.example/x.js?token=1:1:1", "a b:1:1"],
-    build: "abc1234",
-    route: "app:wallet/123456",
-  });
-  assert(response.status === 204);
-  const saved = stored[0] as typeof report;
-  assert(saved.name === "Error" && saved.route === "other");
-  assert(saved.frames.length === 1 && saved.frames[0] === "main.js:1:2");
-  assert(saved.message.length <= 120);
-  for (const leak of ["12345", "example", "UQDr", "deadbeef", "token"])
-    assert(!saved.message.includes(leak), leak);
-  assert(saved.message.startsWith("user # mail <email> at <url> wallet"));
+  for (const message of [
+    "Example Person",
+    "example_person",
+    "",
+    "TypeError",
+    "type_error ",
+    "UNKNOWN",
+    "unknown\n",
+    null,
+    12,
+    '{"first_name":"Example Person","username":"example_person"}',
+  ]) {
+    assert((await post({ ...report, message })).status === 400);
+  }
+  assert(stored.length === 0);
+});
+
+Deno.test("accepts fixed codes and re-sanitizes metadata", async () => {
+  const { post, stored } = build();
+  for (const message of [
+    "unknown",
+    "type_error",
+    "range_error",
+    "reference_error",
+    "syntax_error",
+    "uri_error",
+    "eval_error",
+    "aggregate_error",
+    "abort_error",
+    "timeout_error",
+  ]) {
+    const response = await post({
+      ...report,
+      message,
+      name: "bad name!",
+      route: "app:wallet/123456",
+      frames: [
+        "main.js:1:2",
+        "https://other.example/x.js?token=1:1:1",
+        "a b:1:1",
+      ],
+    });
+    assert(response.status === 204);
+    const saved = stored.at(-1) as typeof report;
+    assert(saved.message === message);
+    assert(saved.name === "Error" && saved.route === "other");
+    assert(saved.frames.length === 1 && saved.frames[0] === "main.js:1:2");
+  }
 });
 
 Deno.test("global token bucket answers 429 and refills", async () => {
@@ -148,3 +180,31 @@ Deno.test(
     assert(response.status === 404);
   },
 );
+
+Deno.test("store drops invalid messages before issuing SQL", async () => {
+  const calls: unknown[][] = [];
+  const pool = {
+    query: (...args: unknown[]) => {
+      calls.push(args);
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    },
+  } as unknown as Pick<pg.Pool, "query">;
+  const store = new PostgresClientErrorStore(pool, () => 0);
+  for (const message of [
+    "Example Person",
+    "example_person",
+    "",
+    "type_error ",
+  ]) {
+    await store.record({ ...report, message } as Parameters<
+      typeof store.record
+    >[0]);
+  }
+  assert(calls.length === 0);
+  await store.record({ ...report, message: "type_error" } as Parameters<
+    typeof store.record
+  >[0]);
+  assert(calls.length === 1);
+  const params = calls[0]?.[1] as unknown[];
+  assert(params[4] === "type_error");
+});

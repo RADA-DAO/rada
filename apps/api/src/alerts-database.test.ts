@@ -23,7 +23,7 @@ Deno.test(
       service = new pg.Pool({ connectionString: url.toString() });
       const insert = (name: string, route: string) =>
         admin.query(
-          "INSERT INTO ops.client_errors(build, route, kind, name, message, frames) VALUES ('alertfx', $2, 'error', $1, 'secret message', '[\"f.js:1:1\"]')",
+          "INSERT INTO ops.client_errors(build, route, kind, name, message, frames) VALUES ('alertfx', $2, 'error', $1, 'unknown', '[\"f.js:1:1\"]')",
           [name, route],
         );
       await admin.query("UPDATE ops.alert_state SET client_errors_after = 0");

@@ -1,15 +1,14 @@
 // Server-side re-sanitization. The client already sanitizes; this never trusts it.
-// Keep the redaction rules in step with packages/platform-sdk/src/client-errors.ts.
+// Keep the diagnostic allowlist in step with the SDK and SQL.
 export type ClientErrorReport = {
   kind: "error" | "unhandledrejection";
   name: string;
-  message: string;
+  message: DiagnosticCode;
   frames: string[];
   build: string;
   route: string;
 };
 
-export const MAX_MESSAGE = 120;
 export const MAX_FRAMES = 10;
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const BUILD = /^[0-9A-Za-z._-]{1,32}$/;
@@ -17,19 +16,22 @@ const ROUTE = /^[a-z][a-z0-9_.:-]{0,63}$/;
 const FRAME = /^[A-Za-z0-9._-]{1,80}:\d{1,6}:\d{1,6}$/;
 const KEYS = ["kind", "name", "message", "frames", "build", "route"];
 
-export function sanitizeMessage(value: string): string {
-  return value
-    .slice(0, 1000)
-    .replace(/\p{Cc}/gu, " ")
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*|\bwww\.\S+/gi, "<url>")
-    .replace(/[^\s@<>()]+@[^\s@<>()]+/g, "<email>")
-    .replace(/-?\d+:[0-9a-fA-F]{64}/g, "<addr>")
-    .replace(/\b(?:0x)?[0-9a-fA-F]{8,}\b/g, "<hex>")
-    .replace(/[A-Za-z0-9_+/=-]{24,}/g, "<addr>")
-    .replace(/\d+/g, "#")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_MESSAGE);
+export const DIAGNOSTIC_CODES = [
+  "unknown",
+  "type_error",
+  "range_error",
+  "reference_error",
+  "syntax_error",
+  "uri_error",
+  "eval_error",
+  "aggregate_error",
+  "abort_error",
+  "timeout_error",
+] as const;
+export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
+
+export function isDiagnosticCode(value: unknown): value is DiagnosticCode {
+  return DIAGNOSTIC_CODES.some((code) => code === value);
 }
 
 /** Returns a clean report, or null when the shape is not exactly the contract. */
@@ -43,8 +45,7 @@ export function parseReport(value: unknown): ClientErrorReport | null {
   if (
     (kind !== "error" && kind !== "unhandledrejection") ||
     typeof name !== "string" ||
-    typeof message !== "string" ||
-    message.length > 2000 ||
+    !isDiagnosticCode(message) ||
     !Array.isArray(frames) ||
     frames.length > 50 ||
     frames.some((frame) => typeof frame !== "string") ||
@@ -57,7 +58,7 @@ export function parseReport(value: unknown): ClientErrorReport | null {
   return {
     kind,
     name: NAME.test(name) ? name : "Error",
-    message: sanitizeMessage(message),
+    message,
     frames: (frames as string[])
       .filter((frame) => FRAME.test(frame))
       .slice(0, MAX_FRAMES),

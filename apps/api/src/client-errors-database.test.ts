@@ -24,7 +24,7 @@ Deno.test(
       service = new pg.Pool({ connectionString: url.toString() });
       const build = `t${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
       await admin.query(
-        "INSERT INTO ops.client_errors(received_at, build, route, kind, name, message, frames) VALUES (now() - interval '31 days', 'oldfixture', 'home', 'error', 'E', '', '[]')",
+        "INSERT INTO ops.client_errors(received_at, build, route, kind, name, message, frames) VALUES (now() - interval '31 days', 'oldfixture', 'home', 'error', 'E', 'unknown', '[]')",
       );
       let now = 1_000_000_000;
       const app = createApp(
@@ -52,7 +52,7 @@ Deno.test(
           body: JSON.stringify({
             kind: "error",
             name: "TypeError",
-            message: "balance 987654321 for a@b.example",
+            message: "type_error",
             frames: ["main.js:3:4"],
             build,
             route: "wallet",
@@ -64,7 +64,7 @@ Deno.test(
         [build],
       );
       assert(rows.rowCount === 1);
-      assert(rows.rows[0].message === "balance <hex> for <email>");
+      assert(rows.rows[0].message === "type_error");
       assert(rows.rows[0].frames[0] === "main.js:3:4");
       // The first insert purged the 31-day-old row.
       const old = await admin.query(
@@ -73,7 +73,7 @@ Deno.test(
       assert(old.rowCount === 0);
       // Within the hour no further purge runs.
       await admin.query(
-        "INSERT INTO ops.client_errors(received_at, build, route, kind, name, message, frames) VALUES (now() - interval '40 days', 'oldfixture', 'home', 'error', 'E', '', '[]')",
+        "INSERT INTO ops.client_errors(received_at, build, route, kind, name, message, frames) VALUES (now() - interval '40 days', 'oldfixture', 'home', 'error', 'E', 'unknown', '[]')",
       );
       now += 60_000;
       assert((await send()).status === 204);
