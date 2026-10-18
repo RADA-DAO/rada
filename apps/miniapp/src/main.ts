@@ -8,7 +8,7 @@ import { createHoldersScreen } from "./holders-screen.ts";
 import * as payment from "./payment-copy.ts";
 import { openAppPermissions } from "./permissions.ts";
 import { mountLazyProfile, createCollectionScreen } from "./profile-loader.ts";
-import { mountReview } from "./review.ts";
+import { mountLazyReview } from "./review-loader.ts";
 import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
 import { loadAppIcon } from "./app-icon.ts";
@@ -100,6 +100,7 @@ const launcher = createHome({
     runner.mount(
       {
         appId: app.appId,
+        versionId: app.versionId,
         manifest: app.manifest,
         artifactUrl: app.artifactUrl,
         artifactSha256: app.artifactSha256,
@@ -365,9 +366,10 @@ function render() {
   });
   const queue = view.querySelector<HTMLElement>("[data-review-queue]");
   if (queue)
-    reviewDispose = mountReview(queue, {
+    reviewDispose = mountLazyReview(queue, {
       locale,
       read: (signal) => platform.readReviewQueue(signal),
+      reports: (signal) => platform.readAppReports(signal),
       decide: (appId, versionId, decision, reason, signal) =>
         platform.reviewAppVersion(appId, versionId, decision, reason, signal),
       closePreview: dismissApp,

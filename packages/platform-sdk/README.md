@@ -69,9 +69,7 @@ requests remain denied.
 Personal-data permissions use a host-owned consent dialog and authenticated
 `/me/consents` API. The profile shows active grants and lets the person revoke
 them. The API uses the privileged one-hour authentication window for writes and
-the existing self-only `identity.consents` policy. This host does not yet serve
-the protected personal data; future services must check current consent again
-for each read. The sandbox protocol derives from the earlier community app
+the existing self-only `identity.consents` policy. Capability services check current consent again for each operation. The sandbox protocol derives from the earlier community app
 host, with a new platform-only authentication boundary.
 
 Reviewer methods validate queue responses and decision parameters within the
@@ -95,3 +93,21 @@ and must be reconciled. The platform blocks Back during the active payment reque
 against the configured API base, and keeps authentication inside the SDK.
 `readFrogDetails` validates the owner-only, privacy-safe detail projection before
 screens render it. Neither method exposes launch credentials to components.
+
+## Community game capabilities
+
+The host supports `rada.member.records.get/list/put/delete` with `storage.self`,
+`rada.member.scores.submit/list/rank` with `scores`, and `rada.member.report`.
+Records and scores require the reviewed release grant and app-scoped consent;
+services recheck both on every operation. Request consent through the existing
+platform permission sheet. Records use compare-and-set versions, including
+versioned deletion; consent revocation erases personal records atomically.
+Scores expose live public frog names or null for anonymous people, without
+private identity fields. Scores have no connection to DAO decisions or money.
+
+`appCapability` retains authentication in the adapter. The host supplies its
+trusted app ID and artifact hash; report submission additionally attaches its
+`versionId`. Reports collect text only in `reportWindow`, never from a child
+payload, and return only `{ submitted }`. `readAppReports` is reviewer-only and
+must never be passed into a community frame. Reports share the apps review UI.
+See [capability payloads and limits](../../docs/contributing/community-apps.md#personal-records-leaderboards-and-problem-reports).

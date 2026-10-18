@@ -4,6 +4,7 @@ export const APP_PERMISSIONS = [
   "theme.read",
   "navigation",
   "storage.self",
+  "scores",
   "dao.public.read",
   "telegram.username.read",
   "wallet.address.read",
@@ -21,6 +22,8 @@ export const APP_PERMISSIONS = [
 ] as const;
 export type AppPermission = (typeof APP_PERMISSIONS)[number];
 export const CONSENT_PERMISSIONS = [
+  "storage.self",
+  "scores",
   "telegram.username.read",
   "wallet.address.read",
   "wallet.balances.read",
@@ -36,6 +39,7 @@ export type AppManifest = {
   minPlatformVersion: string;
   /** Square PNG, WebP or SVG inside the artifact's own folder; at most APP_ICON_MAX_BYTES. */
   icon?: string;
+  boards?: Record<string, { min: number; max: number }>;
 };
 const requiredKeys = [
   "name",
@@ -46,7 +50,7 @@ const requiredKeys = [
 ];
 // `trustLevel` is a retired declaration: official status is a registry decision,
 // so an author may still write "community" but nothing else, and it is dropped.
-const keys = [...requiredKeys, "icon", "trustLevel"];
+const keys = [...requiredKeys, "icon", "trustLevel", "boards"];
 export const APP_ICON_MAX_BYTES = 64 * 1024;
 /** Relative, lower-case path of at most three segments; never absolute, hidden or climbing. */
 export const APP_ICON_PATH =
@@ -94,6 +98,40 @@ export function parseAppManifest(value: unknown): AppManifest {
     typeof input.minPlatformVersion !== "string" ||
     !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(input.minPlatformVersion)
   )
+    throw new Error("invalid_manifest");
+  if (input.boards !== undefined) {
+    if (
+      !input.permissions.includes("scores") ||
+      !input.boards ||
+      typeof input.boards !== "object" ||
+      Array.isArray(input.boards)
+    )
+      throw new Error("invalid_manifest");
+    const boards = Object.entries(input.boards);
+    if (
+      boards.length < 1 ||
+      boards.length > 10 ||
+      boards.some(([id, bounds]) => {
+        if (
+          !/^[a-z][a-z0-9_-]{0,31}$/.test(id) ||
+          !bounds ||
+          typeof bounds !== "object" ||
+          Array.isArray(bounds)
+        )
+          return true;
+        const b = bounds as Record<string, unknown>;
+        return (
+          Object.keys(b).length !== 2 ||
+          !Number.isSafeInteger(b.min) ||
+          !Number.isSafeInteger(b.max) ||
+          Number(b.min) < -1000000000 ||
+          Number(b.max) > 1000000000 ||
+          Number(b.min) > Number(b.max)
+        );
+      })
+    )
+      throw new Error("invalid_manifest");
+  } else if (input.permissions.includes("scores"))
     throw new Error("invalid_manifest");
   const [major, minor, patch] = input.minPlatformVersion
     .split(".")

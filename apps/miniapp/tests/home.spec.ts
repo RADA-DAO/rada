@@ -406,3 +406,65 @@ test("a failed screen chunk offers retry and pending imports cannot replace home
   await pressBack(page);
   await expect(appsHeading(page)).toBeVisible();
 });
+
+test("community host loads on launch and retries a failed chunk", async ({
+  page,
+}) => {
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  const chunks: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "script") chunks.push(request.url());
+  });
+  let fail = true;
+  await page.route("**/assets/community-app-*.js*", (route) => {
+    if (fail) {
+      fail = false;
+      return route.abort();
+    }
+    return route.continue();
+  });
+  await launch(page);
+  await expect(tile(page, "Game fixture")).toBeVisible();
+  expect(
+    chunks.some((url) => /community-app-|app-capabilities-|review-/.test(url)),
+  ).toBe(false);
+  await tile(page, "Game fixture").click();
+  await expect(
+    page.getByText(t("en", "home.openFailed", { app: "Game fixture" })),
+  ).toBeVisible();
+  await tile(page, "Game fixture").click();
+  await expect(page.locator("iframe")).toHaveCount(1);
+  expect(chunks.some((url) => /community-app-.*retry=1/.test(url))).toBe(true);
+});
+
+test("Back during community host loading prevents a late mount", async ({
+  page,
+}) => {
+  await page.route("**/apps/published", (route) =>
+    route.fulfill({ json: { apps: published } }),
+  );
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested!: () => void;
+  const started = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  await page.route("**/assets/community-app-*.js*", async (route) => {
+    requested();
+    await pending;
+    await route.continue();
+  });
+  await launch(page);
+  await tile(page, "Game fixture").click();
+  await started;
+  await pressBack(page);
+  await expect(appsHeading(page)).toBeVisible();
+  release();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(appsHeading(page)).toBeVisible();
+});

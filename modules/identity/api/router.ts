@@ -18,6 +18,8 @@ export function registerIdentityRoutes(
   syntheticOnly = false,
 ) {
   const consentCapabilities = new Set([
+    "storage.self",
+    "scores",
     "telegram.username.read",
     "wallet.address.read",
     "wallet.balances.read",

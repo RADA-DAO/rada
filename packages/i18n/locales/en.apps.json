@@ -1,0 +1,15 @@
+{
+  "title": "Report a problem",
+  "description": "Only reviewers can read your report and identity. The app and version are attached automatically. Do not include passwords or other private information.",
+  "category": "Category",
+  "text": "What went wrong?",
+  "send": "Send report",
+  "bug": "Something is broken",
+  "content": "Inappropriate content",
+  "privacy": "Privacy concern",
+  "queue": "Problem reports",
+  "reporter": "Reporter: {{id}}",
+  "version": "Version: {{id}}",
+  "boards": "Score bounds: {{boards}}",
+  "otherCategory": "Other"
+}

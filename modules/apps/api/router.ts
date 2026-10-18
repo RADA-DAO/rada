@@ -1,3 +1,4 @@
+import { registerCapabilityRoutes } from "./capabilities-router.ts";
 import type { Context, Hono } from "hono";
 import { parseAppManifest } from "../../../packages/platform-sdk/src/app-manifest.ts";
 import type { RegistryStore } from "./store.ts";
@@ -64,6 +65,7 @@ export function registerRegistryRoutes(
     privileged: boolean,
   ) => Promise<string | null>,
 ) {
+  registerCapabilityRoutes(app, store, authenticated);
   const origin = new URL(artifactOrigin);
   if (
     origin.protocol !== "https:" ||

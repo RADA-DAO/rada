@@ -18,6 +18,8 @@ import {
 import type { initializePlatform } from "../../../packages/platform-sdk/src/index.ts";
 
 const permissionKeys = {
+  "storage.self": "shell.permissions.storage",
+  scores: "shell.permissions.scores",
   "telegram.username.read": "shell.permissions.telegramUsername",
   "wallet.address.read": "shell.permissions.walletAddress",
   "wallet.balances.read": "shell.permissions.walletBalances",
