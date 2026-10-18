@@ -331,8 +331,12 @@ test("late queue response cannot replace a destination after Back", async ({
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
-  // Only the built-in SPLASH, Holders, Treasury and DAO tiles: no late queue rows.
-  await expect(page.getByRole("listitem")).toHaveCount(4);
+  // Built-ins and the external shortcut; no late review queue rows.
+  await expect(
+    page
+      .getByRole("list", { name: "Installed apps", exact: true })
+      .getByRole("listitem"),
+  ).toHaveCount(5);
 });
 
 test("non-reviewer profile has no admin entry", async ({ page, request }) => {

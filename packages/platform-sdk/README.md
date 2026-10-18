@@ -111,3 +111,10 @@ trusted app ID and artifact hash; report submission additionally attaches its
 payload, and return only `{ submitted }`. `readAppReports` is reviewer-only and
 must never be passed into a community frame. Reports share the apps review UI.
 See [capability payloads and limits](../../docs/contributing/community-apps.md#personal-records-leaderboards-and-problem-reports).
+
+Launcher adapters keep authentication inside the SDK: `readLayout`/`saveLayout`
+use server versions, `readActivity` returns private recent and thresholded
+aggregate popular apps, and `recordOpen` records a platform or published app.
+`openCryptoNos` passes only the fixed Telegram product URL to the host.
+`installLauncherDrag` owns pointer capture on explicit drag handles; callers
+provide native keyboard alternatives and never attach their own gesture handlers.

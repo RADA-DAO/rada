@@ -24,3 +24,15 @@ Leaderboards publish current JPEGPE public frog names through its projection,
 never identity tables. Scores are app-local and grant no governance or payment
 rights. Reviewer-only problem reports attach the exact published version and
 are listed alongside pending versions. See the community app guide for limits.
+
+Launcher preferences use migrations 0063–0064 and `/apps/launcher/layout`
+(GET, POST with `{version, layout}`). The authenticated subject is resolved by
+identity; callers cannot select another subject. Saves compare versions and
+return 409 on conflict. Layouts support ordered app IDs, pins, favourites and
+named folders, with bounded server validation and no base-table grants.
+`/apps/launcher/activity` returns only the caller's recent IDs and aggregate
+popular IDs/counts. POST accepts one published or built-in app ID. Popularity
+counts distinct people over 30 days, requires five people, and deduplicates
+repeat daily opens. Older activity is removed when this interface runs.
+The optional reviewed manifest category is `games` or `apps`; official grouping
+still comes exclusively from the registry tier.

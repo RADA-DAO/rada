@@ -32,6 +32,7 @@ export const CONSENT_PERMISSIONS = [
 ] as const;
 export type ConsentPermission = (typeof CONSENT_PERMISSIONS)[number];
 export type AppManifest = {
+  category?: "games" | "apps";
   name: string;
   author: string;
   designRoute: "standard" | "free-style";
@@ -50,7 +51,7 @@ const requiredKeys = [
 ];
 // `trustLevel` is a retired declaration: official status is a registry decision,
 // so an author may still write "community" but nothing else, and it is dropped.
-const keys = [...requiredKeys, "icon", "trustLevel", "boards"];
+const keys = [...requiredKeys, "icon", "trustLevel", "boards", "category"];
 export const APP_ICON_MAX_BYTES = 64 * 1024;
 /** Relative, lower-case path of at most three segments; never absolute, hidden or climbing. */
 export const APP_ICON_PATH =
@@ -82,6 +83,8 @@ export function parseAppManifest(value: unknown): AppManifest {
     Object.keys(input).some((key) => !keys.includes(key)) ||
     ("icon" in input &&
       (typeof input.icon !== "string" || !APP_ICON_PATH.test(input.icon))) ||
+    ("category" in input &&
+      !["games", "apps"].includes(input.category as string)) ||
     !text(input.name, 64) ||
     !text(input.author, 64) ||
     ("trustLevel" in input && input.trustLevel !== "community") ||

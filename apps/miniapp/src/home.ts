@@ -1,7 +1,6 @@
+import { createLauncherDesktop } from "./home-launcher.ts";
 import {
   type AppTier,
-  AppGrid,
-  AppTile,
   Embed,
   EmptyState,
   ErrorState,
@@ -10,6 +9,8 @@ import {
 } from "../../../packages/ui/src/index.ts";
 import { t, type Locale } from "../../../packages/i18n/src/index.ts";
 import type {
+  initializePlatform,
+  Navigation,
   OwnProfile,
   PublishedApp,
 } from "../../../packages/platform-sdk/src/index.ts";
@@ -26,6 +27,8 @@ export type HomeIdentity = {
  * it. Opening pushes the app onto the platform stack; Back and swipe pop it.
  */
 export function createHome(options: {
+  platform: ReturnType<typeof initializePlatform>;
+  navigation: Navigation;
   locale(): Locale;
   authenticated: boolean;
   read(signal: AbortSignal): Promise<PublishedApp[]>;
@@ -38,8 +41,15 @@ export function createHome(options: {
   ): Promise<() => void>;
   render(): void;
   /** Built-in apps in the shell, shown before registry apps for everyone. */
-  builtIn(): { name: string; tier?: AppTier; onOpen(): void }[];
+  builtIn(): { id: string; name: string; tier?: AppTier; onOpen(): void }[];
 }) {
+  const desktop = createLauncherDesktop({
+    ...options,
+    render() {
+      if (!running && options.navigation.top.key === "launcher")
+        options.render();
+    },
+  });
   const lifecycle = new AbortController();
   let status: Status = options.authenticated ? "loading" : "guest";
   let apps: PublishedApp[] = [];
@@ -88,6 +98,7 @@ export function createHome(options: {
       if (id !== generation) return;
       apps = next;
       status = "ready";
+      void desktop.load();
     } catch (error) {
       if (id !== generation || lifecycle.signal.aborted) return;
       status =
@@ -101,6 +112,7 @@ export function createHome(options: {
 
   function open(app: PublishedApp) {
     if (running) return;
+    desktop.opened(app.appId);
     failed = undefined;
     const frame = Embed({ fill: true });
     frame.replaceChildren(
@@ -118,37 +130,33 @@ export function createHome(options: {
   }
 
   function tiles(): Node {
-    const shown = status === "ready" ? apps : [];
-    return AppGrid({
-      label: text("home.gridLabel"),
-      tiles: [
-        ...options.builtIn().map((app) =>
-          AppTile({
-            name: app.name,
-            tier: app.tier ?? "official",
-            ...(app.tier === "platform"
-              ? {}
-              : { tierLabel: text("home.tier.official") }),
-            onOpen: () => {
-              app.onOpen();
-            },
-          }),
-        ),
-        ...shown.map((app) =>
-          AppTile({
-            name: app.manifest.name,
-            tier: app.tier,
-            tierLabel: text(`home.tier.${app.tier}`),
-            ...(app.iconUrl && icons.has(app.iconUrl)
-              ? { iconUrl: icons.get(app.iconUrl) as string }
-              : {}),
-            onOpen: () => {
-              open(app);
-            },
-          }),
-        ),
-      ],
-    });
+    return desktop.content([
+      ...options.builtIn().map((app) => ({
+        id: app.id,
+        name: app.name,
+        group: "rada",
+        tier: app.tier ?? ("official" as const),
+        tierLabel: text("home.tier.official"),
+        onOpen() {
+          desktop.opened(app.id);
+          app.onOpen();
+        },
+      })),
+      ...(status === "ready" ? apps : []).map((app) => ({
+        id: app.appId,
+        name: app.manifest.name,
+        group:
+          app.tier === "official" ? "rada" : (app.manifest.category ?? "apps"),
+        tier: app.tier,
+        tierLabel: text(`home.tier.${app.tier}`),
+        ...(app.iconUrl && icons.has(app.iconUrl)
+          ? { iconUrl: icons.get(app.iconUrl) as string }
+          : {}),
+        onOpen() {
+          open(app);
+        },
+      })),
+    ]);
   }
 
   return {
@@ -229,6 +237,7 @@ export function createHome(options: {
       return content;
     },
     dispose() {
+      desktop.dispose();
       lifecycle.abort();
       generation++;
       dropIcons();

@@ -101,3 +101,12 @@ Production initial JS measures 45,696/39,245 bytes (gzip/Brotli), down from
 Lazy JS measures 188,640/157,467 bytes; only lazy limits change to
 189,000/158,000 to account for deferred code. Styles and fonts remain unchanged.
 No dependency was added.
+
+The desktop adds search, RADA/Games/Apps/Favourites filters, private server-saved
+pins/order/folders and recent opens. Arrange apps loads its editor on demand;
+stale saves require a reload before saving again. Drag the app-name handle or
+use the named earlier/later buttons. Folder deletion returns its apps to the
+root; reset clears personal layout choices. CryptoNos is a separate-product
+shortcut using only Telegram's external-link API; no credential or history is
+sent to that product. Built-in secondary screens share a deferred chunk to keep
+the existing initial and lazy bundle budgets unchanged.

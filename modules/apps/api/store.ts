@@ -9,6 +9,11 @@ export type SubmittedVersion = {
   status: string;
 };
 export interface RegistryStore {
+  launcher?(
+    id: string,
+    kind: "layout" | "activity",
+    body?: unknown,
+  ): Promise<unknown>;
   capability?(
     id: string,
     appId: string,
@@ -192,6 +197,19 @@ export class PostgresRegistryStore implements RegistryStore {
   }
   reports(id: string) {
     return this.own<unknown[]>(id, "SELECT apps.report_queue() AS result");
+  }
+  launcher(id: string, kind: "layout" | "activity", body?: unknown) {
+    const b = body as
+      { version: number; layout: unknown; appId: string } | undefined;
+    return this.own<unknown>(
+      id,
+      kind === "layout"
+        ? "SELECT apps.launcher_layout($1,$2::jsonb) AS result"
+        : "SELECT apps.launcher_activity($1) AS result",
+      kind === "layout"
+        ? [b?.version ?? null, b ? JSON.stringify(b.layout) : null]
+        : [b?.appId ?? null],
+    );
   }
   async published() {
     const result = await this.service.query<{ result: unknown[] }>(

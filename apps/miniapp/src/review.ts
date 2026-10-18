@@ -187,6 +187,13 @@ export function mountReview(
       description: `${version.appId} · ${String(version.versionNo)} · ${version.manifest.author}`,
       children: [
         declarations,
+        Text(
+          text(
+            version.manifest.category === "games"
+              ? "launcher.games"
+              : "launcher.apps",
+          ),
+        ),
         ...(version.manifest.boards
           ? [
               Text(

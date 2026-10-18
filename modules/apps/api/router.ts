@@ -1,3 +1,4 @@
+import { registerLauncherRoutes } from "./launcher-router.ts";
 import { registerCapabilityRoutes } from "./capabilities-router.ts";
 import type { Context, Hono } from "hono";
 import { parseAppManifest } from "../../../packages/platform-sdk/src/app-manifest.ts";
@@ -65,6 +66,7 @@ export function registerRegistryRoutes(
     privileged: boolean,
   ) => Promise<string | null>,
 ) {
+  registerLauncherRoutes(app, store, authenticated);
   registerCapabilityRoutes(app, store, authenticated);
   const origin = new URL(artifactOrigin);
   if (

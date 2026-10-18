@@ -1,4 +1,3 @@
-import { loadTreasury as loadTreasuryScreen } from "../../../modules/treasury/ui/index.ts";
 import { createChunkLoader } from "./chunk-loader.ts";
 import { createLazyScreen } from "./lazy-screen.ts";
 import type { createSplashShell } from "./splash-shell.ts";
@@ -7,7 +6,7 @@ import {
   type SplashRoute,
 } from "../../../modules/splash/ui/index.ts";
 import {
-  loadGovernance,
+  type loadGovernance,
   isGovernanceRoute,
   type GovernanceRoute,
 } from "../../../modules/governance/ui/index.ts";
@@ -29,17 +28,16 @@ export function createBuiltIns(options: {
   locale(): Locale;
   membership(): string;
   openWallet(): void;
+  openHolders(): void;
 }) {
   let splash: ReturnType<typeof createSplashShell> | undefined;
   let governance:
     | ReturnType<Awaited<ReturnType<typeof loadGovernance>>["createGovernance"]>
     | undefined;
-  const loadDAO = createChunkLoader(loadGovernance, "governance");
-  const loadSplash = createChunkLoader(
-    () => import("./splash-shell.ts"),
-    "splash",
-  );
-  const loadTreasury = createChunkLoader(loadTreasuryScreen, "treasury");
+  const loadScreens = () => import("./desktop-screens.ts");
+  const loadDAO = createChunkLoader(loadScreens, "governance");
+  const loadSplash = createChunkLoader(loadScreens, "splash");
+  const loadTreasury = createChunkLoader(loadScreens, "treasury");
   const lazy = createLazyScreen();
   const open = (key: SplashRoute | GovernanceRoute | "treasury") => {
     options.navigation.push({ key, edgeBack: true });
@@ -47,12 +45,14 @@ export function createBuiltIns(options: {
   return {
     tiles: () => [
       {
+        id: "builtin:splash",
         name: t(options.locale(), "splash.title"),
         onOpen: () => {
           open("splash");
         },
       },
       {
+        id: "builtin:governance",
         name: t(options.locale(), "governance.title"),
         tier: "platform" as const,
         onOpen: () => {
@@ -60,10 +60,19 @@ export function createBuiltIns(options: {
         },
       },
       {
+        id: "builtin:treasury",
         name: t(options.locale(), "treasury.title"),
         tier: "platform" as const,
         onOpen: () => {
           open("treasury");
+        },
+      },
+      {
+        id: "builtin:holders",
+        name: t(options.locale(), "holders.title"),
+        tier: "platform" as const,
+        onOpen: () => {
+          options.openHolders();
         },
       },
     ],

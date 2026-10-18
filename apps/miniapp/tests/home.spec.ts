@@ -1,95 +1,17 @@
-import { test, expect, type Page } from "@playwright/test";
-import { createHash } from "node:crypto";
+import { test, expect } from "@playwright/test";
 import { t } from "../../../packages/i18n/src/index.ts";
-
-const artifact = `<main id="artifact">Home fixture app</main>`;
-const sha256 = createHash("sha256").update(artifact).digest("hex");
-const release = (appId: string, name: string, tier: string) => ({
-  appId,
-  registryId: "00000000-0000-4000-8000-000000000001",
-  versionId: "00000000-0000-4000-8000-000000000002",
-  versionNo: 1,
-  tier,
-  manifest: {
-    name,
-    author: "Fixture author",
-    designRoute: "standard",
-    permissions: ["identity.self.read"],
-    minPlatformVersion: "1.0.0",
-  },
+import {
   sha256,
-  artifactUrl: `https://artifacts.example/artifacts/${sha256}.html`,
-  grantedPermissions: ["identity.self.read"],
-});
-const published = [
-  release("fixture.governance", "Governance fixture", "official"),
-  release("fixture.game", "Game fixture", "community"),
-];
-
-/** Telegram stand-in; `initData` empty means a guest launch. */
-async function launch(page: Page, initData = "synthetic-home-fixture") {
-  await page.route("https://telegram.org/js/telegram-web-app.js", (route) =>
-    route.fulfill({ body: "" }),
-  );
-  await page.addInitScript((initData) => {
-    if (window !== window.top) return;
-    const listeners = new Map<string, () => void>();
-    Object.assign(window, {
-      Telegram: {
-        WebApp: {
-          initData,
-          ready() {},
-          expand() {},
-          onEvent() {},
-          offEvent() {},
-          BackButton: {
-            show() {},
-            hide() {},
-            onClick: (cb: () => void) => listeners.set("back", cb),
-            offClick: () => listeners.delete("back"),
-          },
-        },
-      },
-      fixtureHost: { back: () => listeners.get("back")?.() },
-    });
-  }, initData);
-  await page.goto("/");
-}
-const pressBack = (page: Page) =>
-  page.evaluate(() => {
-    (window as unknown as { fixtureHost: { back(): void } }).fixtureHost.back();
-  });
-const appsHeading = (page: Page) =>
-  page.getByRole("heading", { name: "Apps", exact: true });
-const tile = (page: Page, name: string) =>
-  page
-    .getByRole("list", { name: t("en", "home.gridLabel") })
-    .getByRole("button", { name, exact: true });
-
-const ownProfile = (profile: unknown) => ({
-  subject_id: "00000000-0000-4000-8000-000000000101",
-  profile,
-  membership: { status: "unavailable" },
-});
-
-test.beforeEach(async ({ page }) => {
-  page.on("pageerror", (error) => {
-    throw error;
-  });
-  await page.route("**/me", (route) =>
-    route.fulfill({
-      json: ownProfile({ visibility: "private", public: null }),
-    }),
-  );
-  await page.route("https://artifacts.example/**", (route) =>
-    route.fulfill({
-      contentType: "text/html",
-      headers: { "access-control-allow-origin": "*" },
-      body: artifact,
-    }),
-  );
-});
-
+  release,
+  published,
+  launch,
+  pressBack,
+  appsHeading,
+  tile,
+  ownProfile,
+  installHomeFixtures,
+} from "./home-fixture.ts";
+installHomeFixtures();
 test("home lists approved apps with tier marks and opens one onto the stack", async ({
   page,
 }) => {
@@ -102,7 +24,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
   const grid = page.getByRole("list", { name: t("en", "home.gridLabel") });
-  await expect(grid.getByRole("listitem")).toHaveCount(6);
+  await expect(grid.getByRole("listitem")).toHaveCount(7);
   for (const name of ["Holders", "DAO", "Treasury"]) {
     await expect(tile(page, name)).toBeVisible();
     await expect(tile(page, name)).toHaveAccessibleDescription("");
@@ -131,7 +53,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   const returned = async () => {
     await expect(appsHeading(page)).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await expect(grid.getByRole("listitem")).toHaveCount(6);
+    await expect(grid.getByRole("listitem")).toHaveCount(7);
   };
 
   await official.click();
@@ -184,7 +106,7 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
   // Built-in SPLASH and platform Holders, Treasury and DAO tiles remain.
-  await expect(page.getByRole("listitem")).toHaveCount(4);
+  await expect(page.getByRole("listitem")).toHaveCount(5);
 });
 
 test("a guest sees how to sign in and no catalog request is made", async ({
@@ -286,7 +208,7 @@ test("home keeps a generic identity when the profile cannot be read", async ({
   await expect(
     page.getByText(t("en", "home.identityMember"), { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(6);
+  await expect(page.getByRole("listitem")).toHaveCount(7);
 });
 
 test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({
@@ -336,7 +258,7 @@ test("secondary screens load on demand and return home through the stack", async
   });
   await launch(page, "");
   await expect(appsHeading(page)).toBeVisible();
-  expect(chunks.some((url) => /holders-|splash-shell-|screen-/.test(url))).toBe(
+  expect(chunks.some((url) => /holders-|desktop-screens-/.test(url))).toBe(
     false,
   );
   for (const name of ["DAO", "Holders", "SPLASH"]) {
@@ -363,9 +285,9 @@ test("secondary screens load on demand and return home through the stack", async
       await expect(appsHeading(page)).toBeVisible();
     }
   }
-  expect(chunks.some((url) => /screen-/.test(url))).toBe(true);
+  expect(chunks.some((url) => /desktop-screens-/.test(url))).toBe(true);
   expect(chunks.some((url) => /holders-/.test(url))).toBe(true);
-  expect(chunks.some((url) => /splash-shell-/.test(url))).toBe(true);
+  expect(chunks.some((url) => /desktop-screens-/.test(url))).toBe(true);
 });
 
 test("a failed screen chunk offers retry and pending imports cannot replace home", async ({

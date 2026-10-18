@@ -125,3 +125,9 @@ component tests cover activation, selection and aborted artwork reads.
 `TransactionRow` composes a read-only monetary movement with localized direction,
 amount, counterparty, time and optional decision actions. Its catalog entry and
 component tests cover the anonymous fallback and plain-text rendering.
+
+`LauncherBrowser` provides instant normalized name search, category filters,
+favourites, an announced result count and caller-owned filter state. Folder
+contents remain searchable while hidden from the desktop root. `ReorderItem`
+provides named native earlier/later buttons and boundary states; callers install
+pointer dragging through the platform SDK. Both have unit tests and catalog entries.

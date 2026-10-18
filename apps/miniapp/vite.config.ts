@@ -62,14 +62,15 @@ export default defineConfig({
       name: "secondary-screen-retries",
       generateBundle(_, bundle) {
         const sources = {
+          "launcher-editor": "/apps/miniapp/src/desktop-screens.ts",
           review: "/apps/miniapp/src/review.ts",
           "community-app": "/apps/miniapp/src/community-app.ts",
-          treasury: "/modules/treasury/ui/screen.ts",
-          governance: "/modules/governance/ui/screen.ts",
+          treasury: "/apps/miniapp/src/desktop-screens.ts",
+          governance: "/apps/miniapp/src/desktop-screens.ts",
           profile: "/apps/miniapp/src/profile-panel.ts",
           collection: "/apps/miniapp/src/collection.ts",
           holders: "/apps/miniapp/src/holders.ts",
-          splash: "/apps/miniapp/src/splash-shell.ts",
+          splash: "/apps/miniapp/src/desktop-screens.ts",
         };
         const files = Object.fromEntries(
           Object.entries(sources).flatMap(([name, source]) => {

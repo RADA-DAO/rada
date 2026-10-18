@@ -84,6 +84,9 @@ const builtIns = createBuiltIns({
   platform,
   navigation,
   locale: () => locale,
+  openHolders: () => {
+    routes.open("holders");
+  },
   openWallet: () => {
     routes.open("profile");
     if (platform.authenticatedLaunch) void loadProfile();
@@ -94,6 +97,8 @@ runner.expose();
 const launcher = createHome({
   locale: () => locale,
   authenticated: platform.authenticatedLaunch,
+  platform,
+  navigation,
   read: (signal) => platform.readPublishedApps(signal),
   loadIcon: loadAppIcon,
   mount: (app, container, origin) =>
@@ -111,16 +116,7 @@ const launcher = createHome({
       true,
     ),
   render,
-  builtIn: () => [
-    ...builtIns.tiles(),
-    {
-      name: text("holders.title"),
-      tier: "platform",
-      onOpen: () => {
-        routes.open("holders");
-      },
-    },
-  ],
+  builtIn: builtIns.tiles,
 });
 applyProfileTheme(null);
 const swipe = installShellSwipe(

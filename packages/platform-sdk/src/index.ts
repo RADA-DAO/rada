@@ -1,3 +1,4 @@
+import { launcherAdapter } from "./launcher-layout.ts";
 import type { appCapabilitiesAdapter } from "./app-capabilities.ts";
 import { frogAdapter } from "./frog-details.ts";
 export type { FrogDetails } from "./frog-details.ts";
@@ -43,6 +44,7 @@ export type { Navigation, NavEntry } from "./navigation.ts";
 
 type Insets = { top?: number; right?: number; bottom?: number; left?: number };
 type TelegramHost = {
+  openTelegramLink?(url: string): void;
   initData?: string;
   viewportHeight?: number;
   safeAreaInset?: Insets;
@@ -225,6 +227,10 @@ export function initializePlatform(options: {
     },
     ...profileAdapter(profileUrl, authHeaders),
     ...frogAdapter(profileUrl, authHeaders),
+    ...launcherAdapter(apiOrigin?.origin ?? "/api", authHeaders),
+    openCryptoNos() {
+      host?.openTelegramLink?.("https://t.me/CryptonosShop_bot");
+    },
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...rankingsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     async appCapability(
