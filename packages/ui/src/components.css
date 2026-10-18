@@ -138,7 +138,8 @@ textarea.rada-field-control {
   font-weight: var(--rada-font-weight-tab);
   color: var(--text-muted);
 }
-.rada-tabs [aria-current="page"] {
+.rada-tabs [aria-current="page"],
+.rada-tabs [aria-pressed="true"] {
   border: var(--rada-rule);
   background: var(--surface-raised);
   color: var(--text-primary);

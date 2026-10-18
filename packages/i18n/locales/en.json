@@ -383,5 +383,34 @@
       "429": "Too many proposals or requests. Try again in {{seconds}} seconds.",
       "503": "Membership could not be verified. Try again later."
     }
+  },
+  "launcher": {
+    "search": "Search apps",
+    "all": "All",
+    "rada": "RADA",
+    "games": "Games",
+    "apps": "Apps",
+    "favourites": "Favourites",
+    "pinned": "Pinned",
+    "recent": "Recently opened",
+    "popular": "Popular",
+    "separate": "Separate product",
+    "cryptonos": "CryptoNos",
+    "edit": "Arrange apps",
+    "folder": "Folder name",
+    "create": "Create folder",
+    "rename": "Rename",
+    "delete": "Delete folder",
+    "move": "Move to",
+    "up": "Move earlier",
+    "down": "Move later",
+    "reset": "Reset layout",
+    "save": "Save layout",
+    "conflict": "Your layout changed elsewhere. Reload before saving.",
+    "empty": "No matching apps",
+    "count": "Apps: {{count}}",
+    "pin": "Pin",
+    "favourite": "Favourite",
+    "root": "Desktop"
   }
 }

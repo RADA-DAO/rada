@@ -159,3 +159,9 @@ await test("review queue validates immutable releases and strips private metadat
   ])
     assert.throws(() => parseReviewQueue(input));
 });
+await test("reviewed manifest category is optional and limited to apps or games", () => {
+  for (const category of ["apps", "games"])
+    assert.equal(parseAppManifest({ ...valid, category }).category, category);
+  for (const category of [null, "official", "rada", [], 1])
+    assert.throws(() => parseAppManifest({ ...valid, category }));
+});

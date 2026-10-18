@@ -1,3 +1,4 @@
+export { createGovernance } from "./screen.ts";
 export const GOVERNANCE_ROUTES = [
   "governance",
   "governance-proposal",

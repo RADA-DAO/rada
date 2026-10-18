@@ -150,3 +150,12 @@
   border-radius: var(--rada-radius-small);
   box-shadow: var(--rada-shadow-tile);
 }
+
+.rada-launcher-filters {
+  display: flex;
+  overflow-x: auto;
+}
+.rada-launcher-filters .rada-button {
+  flex: 1 0 auto;
+  white-space: nowrap;
+}

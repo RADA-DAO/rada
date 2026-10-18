@@ -1,3 +1,4 @@
+import { launcherCatalog } from "./catalog-launcher.ts";
 import { TransactionRow } from "./transaction-row.ts";
 // Development and test pages only: vite.config.ts adds this entry when CATALOG=true.
 // Every component in every variant and state, with fixed data, for visual tests.
@@ -356,6 +357,7 @@ ScreenHost(root).append(
           }),
         ],
       }),
+      ...launcherCatalog(),
       frogCards(),
       mediaSection(),
       gallery(),
