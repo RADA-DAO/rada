@@ -18,19 +18,7 @@ import { openBidSheet } from "./bid-sheet.ts";
 import { loadInto, type SplashContext } from "./context.ts";
 import { clock, jpegpe } from "./format.ts";
 
-/** The viewer's own bid on a lot, compared with the current top bid. */
-function ownState(context: SplashContext, lot: Lot, own: OwnBid | undefined) {
-  if (!own) return [];
-  const top = lot.topAmount ? BigInt(lot.topAmount) : 0n;
-  const atTop = BigInt(own.amount) >= top;
-  return [
-    Badge(context.text(atTop ? "splash.youAtTop" : "splash.youOutbid"), {
-      tone: atTop ? "strong" : "neutral",
-    }),
-  ];
-}
-
-/** The pond: this round's frogs on auction, the top bid and time left. */
+/** The pond: public bidder counts and private own bids. */
 export function mountPond(
   container: HTMLElement,
   context: SplashContext,
@@ -66,10 +54,10 @@ export function mountPond(
     const actions: Node[] = [];
     if (round.acceptingBids && context.authenticated) {
       const bid: HTMLButtonElement = Button(
-        text(own ? "splash.raiseBid" : "splash.placeBid"),
+        text(own ? "splash.editBid" : "splash.placeBid"),
         {
           variant: own ? "secondary" : "primary",
-          ariaLabel: text(own ? "splash.raiseBidFor" : "splash.bidFor", {
+          ariaLabel: text(own ? "splash.editBidFor" : "splash.bidFor", {
             author: `${author} · ${lot.submissionId}`,
           }),
           onClick: () => {
@@ -104,12 +92,6 @@ export function mountPond(
       }),
       children: [
         Facts([
-          {
-            label: text("splash.topBid"),
-            value: lot.topAmount
-              ? jpegpe(locale, lot.topAmount)
-              : text("splash.noBids"),
-          },
           { label: text("splash.bidders"), value: String(lot.bidderCount) },
           ...(own
             ? [
@@ -120,7 +102,7 @@ export function mountPond(
               ]
             : []),
         ]),
-        ...ownState(context, lot, own),
+        ...(own?.nameContested ? [Badge(text("splash.nameContested"))] : []),
       ],
       actions,
     });

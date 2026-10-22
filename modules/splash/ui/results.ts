@@ -46,7 +46,7 @@ export function mountResults(
                   },
                 ]),
           ]
-        : [{ label: text("splash.outcome"), value: text("splash.noBidsBack") }];
+        : [{ label: text("splash.outcome"), value: text("splash.archived") }];
     return ListItem({
       leading: Picture({
         src: lot.imageUrl,
@@ -55,7 +55,12 @@ export function mountResults(
         size: "thumb",
       }),
       title: text(lot.outcome === "won" ? "splash.won" : "splash.unsold"),
-      children: [Facts(facts)],
+      children: [
+        Facts([
+          { label: text("splash.bidders"), value: String(lot.bidderCount) },
+          ...facts,
+        ]),
+      ],
     });
   }
 

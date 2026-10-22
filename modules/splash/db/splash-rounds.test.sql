@@ -6,6 +6,7 @@ SELECT identity.resolve_telegram(620001) AS author \gset
 SELECT identity.resolve_telegram(620002) AS bidder_b \gset
 SELECT identity.resolve_telegram(620003) AS bidder_c \gset
 SELECT identity.resolve_telegram(620004) AS bidder_d \gset
+SELECT identity.resolve_telegram(620005) AS bidder_e \gset
 RESET ROLE;
 -- B has a public profile; a frog named Taken_Name already exists.
 SELECT gen_random_uuid() AS b_frog \gset
@@ -44,7 +45,7 @@ LANGUAGE plpgsql AS $$
 DECLARE result text;
 BEGIN
   PERFORM set_config('rada.subject_id', who::text, true);
-  SELECT b.status INTO result FROM splash.place_bid(frog, amount, name) AS b;
+  SELECT b.status INTO result FROM splash.place_bid(frog, amount * 1e9, name) AS b;
   RETURN result;
 END $$;
 GRANT EXECUTE ON FUNCTION pg_temp.bid(uuid, uuid, numeric, text) TO splash_service;
@@ -59,34 +60,40 @@ SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'bad name') = 'invalid
 SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, '1abc') = 'invalid_name', 'digit start');
 SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'taken_NAME') = 'name_taken', 'taken');
 SELECT pg_temp.check(pg_temp.bid(:'bidder_b', gen_random_uuid(), 100, 'Alpha') = 'not_on_auction', 'unknown');
--- f1: B and C tie at 100; B was first, so B wins.
-SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'Alpha') = 'placed', 'B f1');
-SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f1', 100, 'Beta') = 'placed', 'C f1');
-SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 90, 'Alpha') = 'bid_too_low', 'lower');
-SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'Alpha') = 'bid_unchanged', 'same');
--- f2: C wins with 60 but proposes "alpha", which B (100 on f1) chose earlier.
-SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f2', 50, 'Gamma') = 'placed', 'D f2');
+-- f1: duplicated low amounts lose; B wins at 100, although E bid higher.
+SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 110, 'Alpha') = 'placed', 'B f1');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f1', 10, 'Beta') = 'placed', 'C f1');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f1', 10, 'Gamma') = 'placed', 'duplicate low');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'alpha') = 'placed', 'lower accepted');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_b', :'f1', 100, 'Alpha') = 'placed', 'same accepted');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_e', :'f1', 200, 'Higher') = 'placed', 'higher loses');
+-- f2: C wins at 1 but B's frog has more competition, so B gets Alpha.
 SELECT set_config('rada.subject_id', :'bidder_c', true);
-SELECT pg_temp.check((SELECT name_contested FROM splash.place_bid(:'f2', 60, 'alpha')), 'contested');
--- f3: D raises; the name choice time is kept, the amount time moves.
-SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f3', 10, 'Delta') = 'placed', 'D f3');
-SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f3', 20, 'Delta') = 'placed', 'D f3 raise');
+SELECT pg_temp.check((SELECT name_contested FROM splash.place_bid(:'f2', 1e9, 'alpha')), 'contested');
+-- f3: only duplicated amounts: no winner. A lower bid keeps the name choice time.
+SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f3', 20, 'Delta') = 'placed', 'D f3');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_d', :'f3', 10, 'delta') = 'placed', 'D f3 lower');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f3', 10, 'Echo') = 'placed', 'C f3 duplicate');
 SELECT set_config('rada.subject_id', :'bidder_d', true);
 SELECT pg_temp.check((SELECT count(*) = 2 FROM splash.my_bids() WHERE status = 'active'), 'D active bids');
-SELECT pg_temp.check((SELECT amount = 20 FROM splash.my_bids() WHERE submission_id = :'f3'), 'raised');
--- Open round projection: amounts and bidder counts, leader only when public (B).
-SELECT pg_temp.check((SELECT top_amount = 100 AND bidder_count = 2 AND leader_frog_id = :'b_frog'
-  FROM splash.current_round() WHERE submission_id = :'f1'), 'f1 leader public');
-SELECT pg_temp.check((SELECT top_amount = 60 AND leader_frog_id IS NULL
-  FROM splash.current_round() WHERE submission_id = :'f2'), 'f2 leader private');
-SELECT pg_temp.check((SELECT top_amount IS NULL AND bidder_count = 0
-  FROM splash.current_round() WHERE submission_id = :'f4'), 'f4 no bids');
+SELECT pg_temp.check((SELECT amount = 10e9 FROM splash.my_bids() WHERE submission_id = :'f3'), 'lowered');
+SELECT pg_temp.check((SELECT name_contested FROM splash.my_bids() WHERE submission_id = :'f1') = false, 'own flag');
+-- Public round exposes no bid amounts or bidder identities, even for public profiles.
+SELECT pg_temp.check((SELECT bidder_count = 4 FROM splash.current_round()
+  WHERE submission_id = :'f1'), 'f1 count');
+SELECT pg_temp.check((SELECT array_agg(key ORDER BY key) = ARRAY[
+  'accepting_bids','author_accent_color','author_background_color','author_frog_id',
+  'author_username','background_removed','bidder_count','ends_at','height',
+  'round_id','starts_at','submission_id','submitted_at','width']
+  FROM jsonb_object_keys((SELECT to_jsonb(r) FROM splash.current_round() r LIMIT 1)) key), 'public fields');
+SELECT pg_temp.check((SELECT status = 'invalid_amount' FROM splash.place_bid(:'f2', 1500000000, 'Half')), 'fractional token');
+SELECT pg_temp.check((SELECT status = 'invalid_amount' FROM splash.place_bid(:'f2', 1, 'Tiny')), 'smallest unit');
 -- Not due yet: nothing closes.
 SELECT pg_temp.check(splash.advance_rounds() = 0, 'early close');
 RESET ROLE;
-SELECT pg_temp.check((SELECT count(*) = 2 FROM splash.bids WHERE submission_id = :'f3'), 'history kept');
+SELECT pg_temp.check((SELECT count(*) = 3 FROM splash.bids WHERE submission_id = :'f3'), 'history kept');
 SELECT pg_temp.check((SELECT amount_since > name_chosen_at FROM splash.bids
-  WHERE submission_id = :'f3' ORDER BY bid_id DESC LIMIT 1), 'times');
+  WHERE submission_id = :'f3' AND bidder_subject_id = :'bidder_d' ORDER BY bid_id DESC LIMIT 1), 'times');
 
 SELECT pg_sleep(greatest(0, extract(epoch FROM (:'r1_end'::timestamptz - clock_timestamp())) + 0.2));
 SET LOCAL ROLE splash_service;
@@ -104,22 +111,24 @@ SELECT pg_temp.check((SELECT count(*) = 1 FROM splash.round_closures WHERE round
 SELECT pg_temp.check((SELECT count(*) = 4 FROM splash.lot_results WHERE round_id = :r1), 'four decisions');
 
 -- Decisions.
-SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_b' AND amount = 100 AND username = 'Alpha'
-  AND name_outcome = 'reserved' AND bidder_count = 2 FROM splash.lot_results
-  WHERE submission_id = :'f1'), 'f1 tie-break');
-SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_c' AND amount = 60 AND username IS NULL
+SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_b' AND amount = 100e9 AND username = 'Alpha'
+  AND name_outcome = 'reserved' AND bidder_count = 4 FROM splash.lot_results
+  WHERE submission_id = :'f1'), 'lowest unique wins');
+SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_c' AND amount = 1e9 AND username IS NULL
   AND requested_username = 'alpha' AND name_outcome = 'conflict'
   AND claim_deadline = :'r1_end'::timestamptz + interval '24 hours'
   FROM splash.lot_results WHERE submission_id = :'f2'), 'f2 conflict');
-SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_d' AND amount = 20 AND username = 'Delta'
-  FROM splash.lot_results WHERE submission_id = :'f3'), 'f3 raise wins');
+SELECT pg_temp.check((SELECT winner_subject_id IS NULL AND amount IS NULL AND bidder_count = 2
+  FROM splash.lot_results WHERE submission_id = :'f3'), 'no unique bid');
 SELECT pg_temp.check((SELECT winner_subject_id IS NULL AND bidder_count = 0
   FROM splash.lot_results WHERE submission_id = :'f4'), 'f4 unsold');
 
--- The next round opened right after: only the unsold frog returns to auction.
+SELECT pg_temp.check(splash.current_state(:'f3') = 'archived'
+  AND splash.current_state(:'f4') = 'archived', 'unsold archived');
+-- The next round opens without any of the closed frogs.
 SELECT pg_temp.check((SELECT count(*) = 1 FROM splash.rounds WHERE round_id > :r1
   AND starts_at = :'r1_end'::timestamptz), 'next round');
-SELECT pg_temp.check((SELECT array_agg(submission_id) = ARRAY[:'f4'::uuid] FROM splash.lots
+SELECT pg_temp.check((SELECT count(*) = 0 FROM splash.lots
   WHERE round_id > :r1), 'next lots');
 
 SET LOCAL ROLE splash_service;
@@ -138,12 +147,12 @@ SELECT pg_temp.check((SELECT status = 'lost' AND granted_username IS NULL FROM s
 SELECT pg_temp.check((SELECT status = 'won' AND name_outcome = 'conflict' FROM splash.my_bids()
   WHERE submission_id = :'f2'), 'C won f2');
 -- The claim change sees the pending win.
-SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_c' AND amount = 60 AND username IS NULL
+SELECT pg_temp.check((SELECT winner_subject_id = :'bidder_c' AND amount = 1e9 AND username IS NULL
   FROM splash.pending_claim(:'f2')), 'pending claim');
 SELECT pg_temp.check((SELECT count(*) = 0 FROM splash.pending_claim(:'f4')), 'no claim');
 -- A won name is held until the claim: it cannot be bid again, in any case.
-SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f4', 5, 'ALPHA') = 'name_taken', 'name permanent');
-SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f4', 5, 'Omega') = 'placed', 'next round bid');
+SELECT pg_temp.check(pg_temp.bid(:'bidder_c', :'f4', 5, 'Omega') = 'not_on_auction', 'archived cannot bid');
+SELECT pg_temp.check((SELECT count(*) = 1 FROM splash.submission_image(:'f4')), 'archived image');
 -- Least privilege.
 DO $$ BEGIN
   PERFORM * FROM splash.bids;

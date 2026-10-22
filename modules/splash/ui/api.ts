@@ -9,8 +9,6 @@ export type Lot = {
   submissionId: string;
   imageUrl: string;
   author: Profile;
-  /** Smallest JPEGPE units; null without bids. */
-  topAmount: string | null;
   bidderCount: number;
 };
 export type Round = {
@@ -26,6 +24,7 @@ export type OwnBid = {
   name: string;
   roundEndsAt: number;
   status: "active" | "won" | "lost";
+  nameContested: boolean;
 };
 export type ClaimState = "open" | "expired" | "claimed" | "burned";
 export type Claim = {
@@ -40,7 +39,8 @@ export type Claim = {
 export type ResultLot = {
   submissionId: string;
   imageUrl: string;
-  outcome: "won" | "no_bids";
+  outcome: "won" | "archived";
+  bidderCount: number;
   amount: string | null;
   name: string | null;
   winner: Profile;
@@ -158,7 +158,6 @@ export function splashClient(api: ModuleApi) {
             submissionId: id(lot.submission_id),
             imageUrl: image(lot.image_path),
             author: profile(lot.author),
-            topAmount: amountOrNull(lot.top_amount),
             bidderCount: count(lot.bidder_count),
           };
         }),
@@ -175,6 +174,7 @@ export function splashClient(api: ModuleApi) {
           name: text(bid.name),
           roundEndsAt: time(bid.round_ends_at),
           status: oneOf(bid.status, ["active", "won", "lost"] as const),
+          nameContested: bid.name_contested === true,
         };
       });
     },
@@ -248,7 +248,8 @@ export function splashClient(api: ModuleApi) {
           return {
             submissionId: id(lot.submission_id),
             imageUrl: image(lot.image_path),
-            outcome: oneOf(lot.outcome, ["won", "no_bids"] as const),
+            outcome: oneOf(lot.outcome, ["won", "archived"] as const),
+            bidderCount: count(lot.bidder_count),
             amount: amountOrNull(lot.amount),
             name: textOrNull(lot.name),
             winner: profile(lot.winner),

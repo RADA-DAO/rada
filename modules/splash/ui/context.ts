@@ -51,8 +51,6 @@ const known = new Set([
   "self_bid",
   "not_on_auction",
   "name_taken",
-  "bid_too_low",
-  "bid_unchanged",
   "round_closed",
   "not_winner",
   "wallet_not_linked",

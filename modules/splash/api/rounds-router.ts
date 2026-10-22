@@ -1,3 +1,4 @@
+import { JPEGPE_WHOLE } from "../../../packages/payment-encoding/jpegpe.ts";
 import { BodyTooLarge, readBoundedBody } from "../../../packages/http/body.ts";
 import { validPaymentAmount } from "../../../packages/payment-encoding/amount.ts";
 import type { Hono } from "hono";
@@ -29,8 +30,6 @@ const refusalStatus: Record<BidRefusal, 400 | 403 | 404 | 409 | 429> = {
   not_on_auction: 404,
   self_bid: 403,
   name_taken: 409,
-  bid_too_low: 409,
-  bid_unchanged: 409,
   round_closed: 409,
 };
 
@@ -52,7 +51,8 @@ export function parseBid(text: string): BidInput | "invalid_body" | BidRefusal {
     typeof amount === "number" && Number.isSafeInteger(amount)
       ? String(amount)
       : amount;
-  if (!validPaymentAmount(digits)) return "invalid_amount";
+  if (!validPaymentAmount(digits) || BigInt(digits) % JPEGPE_WHOLE !== 0n)
+    return "invalid_amount";
   // The naming rule itself belongs to JPEGPE and is checked in SQL.
   if (typeof name !== "string" || name.length < 1 || name.length > 32)
     return "invalid_name";
@@ -84,9 +84,7 @@ export function registerRoundRoutes(
           background_removed: lot.backgroundRemoved,
           image_path: imagePath(lot.submissionId),
           author: profile(lot.author),
-          top_amount: lot.topAmount,
           bidder_count: lot.bidderCount,
-          leader: profile(lot.leader),
         })),
       },
     });
@@ -141,6 +139,7 @@ export function registerRoundRoutes(
         placed_at: bid.placedAt,
         round_ends_at: bid.roundEndsAt,
         status: bid.status,
+        name_contested: bid.nameContested,
         granted_name: bid.grantedUsername,
         name_outcome: bid.nameOutcome,
         claim_deadline: bid.claimDeadline,
@@ -175,7 +174,7 @@ export function registerRoundRoutes(
         height: lot.height,
         background_removed: lot.backgroundRemoved,
         image_path: imagePath(lot.submissionId),
-        outcome: lot.amount === null ? "no_bids" : "won",
+        outcome: lot.amount === null ? "archived" : "won",
         bidder_count: lot.bidderCount,
         amount: lot.amount,
         name: lot.username,

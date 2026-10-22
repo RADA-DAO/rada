@@ -28,7 +28,7 @@ export type PondFrog = {
 };
 export type OwnSubmission = {
   submissionId: string;
-  state: "in_pond" | "won" | "claimed" | "burned";
+  state: "archived" | "in_pond" | "won" | "claimed" | "burned";
   submittedAt: string;
   width: number;
   height: number;

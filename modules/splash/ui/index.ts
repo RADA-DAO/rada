@@ -33,7 +33,7 @@ export const isSplashRoute = (key: string): key is SplashRoute =>
   (SPLASH_ROUTES as readonly string[]).includes(key);
 
 /**
- * SPLASH, the official auction app, as screens built into the shell. The shell
+ * SPLASH, the official game app, as screens built into the shell. The shell
  * owns the frame, navigation, wallet and payment window; SPLASH reaches only
  * its own module API through the platform-scoped client.
  */

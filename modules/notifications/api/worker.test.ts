@@ -67,7 +67,7 @@ await test("templates have no interpolation or private payload surface", () => {
       assert.ok(text.length > 15);
       assert.doesNotMatch(
         text,
-        /\{\{|@|https?:|[0-9a-f]{8}-|telegram_user_id|subject_id/,
+        /\{\{|@|https?:|[0-9a-f]{8}-|telegram_user_id|subject_id|outbid|top bid|highest bid|\u043f\u0435\u0440\u0435\u0431\u0438\u043b\u0438|\u043d\u0430\u0439\u0432\u0438\u0449\u0430 \u0441\u0442\u0430\u0432\u043a\u0430/i,
       );
     }
 });

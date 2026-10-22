@@ -2,14 +2,14 @@
 
 Owns frog submissions to the pond (the image, the author's subject id, the
 append-only state history and the per-author submission limit), the 24-hour
-auction rounds with their bids and decisions, and the paid claims and burns of
+game rounds with their bids and decisions, and the paid claims and burns of
 won frogs.
 
 ## Why a separate module
 
 JPEGPE owns frogs (colour, ownership, public projections). A submission is not a
-frog yet: it is an author's artwork waiting in the auction pond, with its own
-lifecycle (`in_pond`, later won, claimed, burned), image storage and abuse
+frog yet: it is an author's artwork waiting in the pond, with its own
+lifecycle (`in_pond`, `archived`, `won`, `claimed`, `burned`), image storage and abuse
 limits. Keeping that in SPLASH leaves JPEGPE's tables, roles and colour protocol
 untouched. SPLASH reaches other modules only through published SQL functions,
 all granted to `splash_owner` alone: `identity.current_subject()`,
@@ -40,25 +40,28 @@ Rounds (amounts are smallest JPEGPE units as decimal strings; no funds are locke
 a bid is a promise paid at claim):
 
 - `GET /v1/splash/round` (public): the current round (`round_id`, `starts_at`,
-  `ends_at`, `accepting_bids`) and its frogs with `top_amount`, `bidder_count`,
-  `author` and `leader`. Author and leader appear only as a public profile
-  (a selected, still-owned frog), otherwise `null`. `round` is `null` before the
-  first round opens.
+  `ends_at`, `accepting_bids`) and its frogs with `bidder_count` and
+  `author` (a selected, still-owned public profile frog, otherwise `null`).
+  No bid amounts or bidder profiles are public while the round is open.
+  `round` is `null` before the first round opens.
 - `POST /v1/splash/bids` (signed launch within one hour): JSON
   `{ "submission_id", "amount", "name" }`. `201` with the bid and
-  `name_contested` (another frog of the round has a bid proposing the same
-  name). Errors: `400` (`invalid_body`, `invalid_amount`, `invalid_name`), `401`,
+  `name_contested` (another bidder of the round proposed the same name).
+  Errors: `400` (`invalid_body`, `invalid_amount`, `invalid_name`), `401`,
   `403` (`self_bid`), `404` (`not_on_auction`), `409` (`name_taken`,
-  `bid_too_low`, `bid_unchanged`, `round_closed`), `413`, `429` with `Retry-After`.
+  `round_closed`), `413`, `429` with `Retry-After`.
 - `GET /v1/splash/bids/mine` (signed launch required): the caller's active bid per
-  frog with `status` (`active`, `won`, `lost`); for wins also `granted_name`,
+  frog with `name_contested` and `status` (`active`, `won`, `lost`); for wins
+  also `granted_name`,
   `name_outcome` and `claim_deadline`.
 - `GET /v1/splash/names/:name` (signed launch required): `{ name, status }`
   where `status` is `available`, `taken` or `invalid` under JPEGPE's rule
   (`splash.name_status`). It is a hint for the bid sheet, not a hold: the name
   can still be taken before the round closes.
 - `GET /v1/splash/rounds/:id/results` (public): decisions of a closed round; `404`
-  for unknown or still-open rounds. Winners appear only as a public profile.
+  for unknown or still-open rounds. Each frog has `outcome` (`won`, `archived`),
+  `bidder_count` and the winning `amount` (null without a winner). Winners appear
+  only as a public profile.
 
 Claims (signed launch; starting needs one within the last hour):
 
@@ -94,7 +97,7 @@ through `ui/index.ts`. They use `@rada/ui` components, `@rada/i18n` keys and a
 platform client limited to `/v1/splash/*` (`platform.moduleApi("splash")`), so
 launch credentials stay in the SDK. Screens never import `api/` code.
 
-- Pond: this round's frogs with images, top bid, bidders, time left in the
+- Pond: this round's frogs with images, bidder counts, time left in the
   UTC day and the viewer's own bid; the bid sheet takes an amount in JPEGPE and
   a permanent name with a live check (`GET /v1/splash/names/:name`), and says
   that a bid is a promise paid at claim and that unpaid wins burn.
@@ -110,30 +113,32 @@ launch credentials stay in the SDK. Screens never import `api/` code.
 - A round is one UTC day (00:00 to 24:00). Its frogs are those in the pond, with
   an image, submitted before the round started; frogs submitted later wait for
   the next round. At most one round is unclosed at a time.
-- A bid is a positive integer amount at most `2^120 - 1` and a proposed permanent
-  name. The name must be valid and free under JPEGPE's rule (1 to 32 characters, a letter first, then
-  letters, digits or `_`; unique ignoring case, including reserved names). The
-  author cannot bid on their own frog. Any verified person may bid; owning a frog
-  is not required.
-- One active bid per bidder per frog: a new bid replaces it and every version is
-  kept. A replacement cannot lower the amount; the same amount is accepted only
-  with a different name (ignoring case). The amount time (for ties) is kept while
-  the amount is unchanged; the name choice time is kept while the name is unchanged (ignoring
-  case).
-- Closing: per frog the highest amount wins; on a tie the bidder who reached that
-  amount first wins. Winners then claim names in order of amount (higher first),
-  then earlier name choice, then earlier bid. Each name is held in JPEGPE for the
-  frog id (`name_outcome` `reserved`); it becomes permanent only when the paid
-  claim completes and is released if the frog burns, so an unpaid bid cannot take
-  a name for good. A winner whose name is already taken still wins the frog,
-  without a name: `name_outcome` is `conflict` when another winner of the same
-  round took it and `unavailable` otherwise; the name is then chosen at claim.
-  This follows the old SPLASH settlement, where a losing username left the frog
-  "needs choice".
-- A win is a pending claim until the end of the next round (`claim_deadline` =
-  round end + 24 hours). The frog leaves the pond (state `won`) and its image stays
-  public. `readPendingClaim` gives the claim change the winner, amount, name and
-  deadline. Frogs without bids stay in the pond for the next round.
+- A bid is a positive whole number of JPEGPE, minimum 1 token, stored and sent
+  in smallest units (9 decimals). New bids must be multiples of one token and at
+  most `2^120 - 1` smallest units. Existing staging rows remain settleable.
+  The proposed permanent name must be valid and available under JPEGPE's rule
+  (1 to 32 characters, a letter first, then letters, digits or `_`, unique
+  ignoring case). Authors cannot bid on their own frogs; any verified person can bid.
+- Each bidder has one active bid per frog. Replacements may increase, decrease
+  or repeat the amount and name; every version is retained. Name choice time is
+  preserved while the name is unchanged ignoring case.
+- Bids are secret: the public pond exposes only bidder counts. The viewer sees
+  their own amount, name and whether another bidder in this round proposed the
+  same name. Losing amounts are never public, including after closing.
+- Closing groups active bids per frog by amount. The smallest amount offered by
+  exactly one bidder wins. If none is unique, including when there are no bids,
+  the frog becomes `archived` (unsold), leaves the pond and never carries over.
+  Its image and result remain public.
+- Winners requesting the same name have priority by distinct bidder count on
+  their frog (descending), winning amount (ascending), name choice time, then
+  frog id. JPEGPE holds the name until paid claim (`name_outcome = reserved`).
+  A winner who loses a name still wins the frog and chooses a name at claim:
+  `conflict` means another winner of this round held it; otherwise `unavailable`.
+- A winner pays exactly their winning amount at claim. The frog becomes `won`
+  and `claim_deadline` is round end + 24 hours; unpaid wins burn under the safety
+  checks below. `readPendingClaim` exposes the winner, amount, name and deadline.
+- Past rounds contain only this module's rounds, with each frog, winner's public
+  profile (or anonymous), winning amount and bidder count. No legacy history is imported.
 - `splash.advance_rounds()` closes every due round and opens the current one. It
   holds an advisory lock, each close locks the round row (bids in flight hold a
   share lock on it and check for a closure after acquiring it) and the closure

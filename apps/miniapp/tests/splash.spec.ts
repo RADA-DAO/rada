@@ -23,13 +23,13 @@ test.beforeEach(async ({ page }) => {
 const json = (route: Route, body: unknown, status = 200) =>
   route.fulfill({ status, json: body });
 
-test("browse the round, place a bid with a live name check, then raise it", async ({
+test("browse the round, place a bid with a live name check, then lower it", async ({
   page,
 }) => {
   const placed: unknown[] = [];
   let mine: unknown[] = [];
   await page.route("**/v1/splash/round", (route) =>
-    json(route, placed.length ? round("2000000000", 1) : round(null, 0)),
+    json(route, placed.length ? round(1) : round(0)),
   );
   await page.route("**/v1/splash/bids/mine", (route) =>
     json(route, { bids: mine }),
@@ -55,6 +55,7 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
         placed_at: "2026-10-16T01:00:00.000Z",
         round_ends_at: "2026-10-17T00:00:00.000Z",
         status: "active",
+        name_contested: true,
         granted_name: null,
         name_outcome: null,
         claim_deadline: null,
@@ -73,7 +74,7 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
       name: en("splash.frogByAlt", { author: "Painter" }),
     }),
   ).toBeVisible();
-  await expect(page.getByText(en("splash.noBids"))).toBeVisible();
+  await expect(page.getByText(en("splash.bidders"))).toBeVisible();
 
   await page
     .getByRole("button", {
@@ -81,6 +82,11 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
     })
     .click();
   const sheet = page.getByRole("dialog", { name: en("splash.bidTitle") });
+  await expect(sheet.getByText(en("splash.bidRule"))).toBeVisible();
+  await expect(sheet.getByLabel(en("splash.bidAmountLabel"))).toHaveAttribute(
+    "inputmode",
+    "numeric",
+  );
   await expect(sheet.getByText(en("splash.promise"))).toBeVisible();
   await expect(sheet.getByText(en("splash.burnRule"))).toBeVisible();
   await sheet.getByLabel(en("splash.bidAmountLabel")).fill("2");
@@ -105,11 +111,14 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
     { submission_id: FROG, amount: "2000000000", name: "Lily_1" },
   ]);
   await expect(page.getByText(en("splash.bidPlaced"))).toBeVisible();
-  await expect(page.getByText(en("splash.youAtTop"))).toBeVisible();
+  await expect(
+    page.getByText(en("splash.yourBid"), { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(en("splash.nameContested"))).toBeVisible();
 
-  // Raise: Escape closes the sheet without placing anything, then raise for real.
+  // Escape closes without a replacement; then lower the bid.
   const raise = page.getByRole("button", {
-    name: en("splash.raiseBidFor", { author: `Painter · ${FROG}` }),
+    name: en("splash.editBidFor", { author: `Painter · ${FROG}` }),
   });
   await expect(raise).toBeFocused();
   await raise.click();
@@ -118,13 +127,19 @@ test("browse the round, place a bid with a live name check, then raise it", asyn
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(raise).toBeFocused();
   await raise.click();
-  const again = page.getByRole("dialog", { name: en("splash.raiseTitle") });
+  const again = page.getByRole("dialog", { name: en("splash.editTitle") });
   await again.getByLabel(en("splash.bidAmountLabel")).fill("2,5");
-  await again.getByRole("button", { name: en("splash.raiseBid") }).click();
+  await again.getByRole("button", { name: en("splash.editBid") }).click();
+  await expect(again.getByRole("alert")).toHaveText(
+    en("splash.error.invalid_amount"),
+  );
+  expect(placed).toHaveLength(1);
+  await again.getByLabel(en("splash.bidAmountLabel")).fill("1");
+  await again.getByRole("button", { name: en("splash.editBid") }).click();
   await expect(again).toHaveCount(0);
   expect(placed[1]).toEqual({
     submission_id: FROG,
-    amount: "2500000000",
+    amount: "1000000000",
     name: "Lily_1",
   });
 
