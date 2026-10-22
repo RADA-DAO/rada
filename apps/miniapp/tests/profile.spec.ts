@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { createHmac, randomUUID, createHash } from "node:crypto";
 import pg from "pg";
+import { launch, ownProfile } from "./home-fixture.ts";
+import { t } from "../../../packages/i18n/src/index.ts";
 function signed(id: number, age = 0) {
   const data = new URLSearchParams({
     auth_date: String(Math.floor(Date.now() / 1000) - age),
@@ -190,6 +192,9 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     await page
       .getByRole("button", { name: `Use ${name.toUpperCase()}`, exact: true })
       .click();
+    await page
+      .getByRole("button", { name: "Profile details", exact: true })
+      .click();
     await expect(
       page.getByRole("button", { name: "Make profile private", exact: true }),
     ).toBeVisible();
@@ -211,9 +216,17 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     await expect(
       page
         .locator("[data-selected-frog]")
+        .getByRole("img", { name: "Artwork unavailable", exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page
+        .locator("[data-selected-frog]")
         .getByText("Artwork unavailable", { exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await page.unroute("**/v1/frogs/*/artwork/*");
+    await page
+      .getByRole("button", { name: "Profile details", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Make profile private", exact: true })
       .click();
@@ -236,6 +249,9 @@ test("own frog selection, private clearing, transfer and app consent revocation"
     expect((await readMe()).profile.visibility).toBe("private");
     await page
       .getByRole("button", { name: `Use ${name.toUpperCase()}`, exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Profile details", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Make profile private", exact: true }),
@@ -296,5 +312,73 @@ test("own frog selection, private clearing, transfer and app consent revocation"
       data: { frogId: null },
     });
     await db.end();
+  }
+});
+
+test("profile keeps authorized review and membership visible outside details", async ({
+  page,
+}) => {
+  let membership = "unavailable";
+  let reviewStatus = 403;
+  await page.route("**/me", (route) =>
+    route.fulfill({
+      json: {
+        ...ownProfile({ visibility: "private", public: null }),
+        membership: { status: membership },
+      },
+    }),
+  );
+  for (const path of ["me/wallet", "me/wallet/balances"])
+    await page.route(`**/${path}`, (route) =>
+      route.fulfill({ json: { wallets: [] } }),
+    );
+  await page.route("**/apps/review-queue", (route) =>
+    route.fulfill({
+      status: reviewStatus,
+      json: reviewStatus === 200 ? { versions: [] } : { error: "fixture" },
+    }),
+  );
+  await launch(page);
+  const review = page.getByRole("button", { name: "App review", exact: true });
+  const privateLabel = page.getByText("Private profile", { exact: true });
+  for (const status of [403, 200, 503]) {
+    reviewStatus = status;
+    membership = "unavailable";
+    await page.getByRole("button", { name: "Profile", exact: true }).click();
+    const menu = page.locator("#profile-details");
+    await expect(menu).toBeHidden();
+    await expect(privateLabel).toHaveCount(1);
+    await expect(privateLabel).toBeVisible();
+    await expect(
+      page.getByText(t("en", "shell.membership.unavailable"), { exact: true }),
+    ).toBeVisible();
+    if (status === 200) await expect(review).toBeVisible();
+    else await expect(review).toHaveCount(0);
+    if (status === 503)
+      await expect(
+        page.getByText(t("en", "review.accessUnavailable")),
+      ).toBeVisible();
+    membership = "member";
+    await page
+      .getByRole("button", {
+        name: t("en", "profile.retryMembership"),
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByText(t("en", "shell.membership.member"), { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Profile details", exact: true })
+      .click();
+    await expect(menu).toBeVisible();
+    await expect(privateLabel).toHaveCount(1);
+    await expect(
+      menu.getByText("Private profile", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "App permissions", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Apps", exact: true }).click();
   }
 });

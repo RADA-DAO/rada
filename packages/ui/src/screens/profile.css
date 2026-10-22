@@ -1,0 +1,281 @@
+/* Profile identity and financial overview use the RADA OS banner proportions. */
+.rada-profile-view {
+  --profile-radius: 46px 22px 46px 22px;
+  --profile-height: clamp(164px, 45cqw, 178px);
+  --profile-name: clamp(21px, 7.1cqw, 28px);
+  --profile-rule: 1px;
+  --profile-icon: 17px;
+  --profile-icon-inset: 6px;
+  --profile-wallet-gap: 12px;
+  --profile-wallet-inset: 3px;
+  --profile-wallet-margin: 20px 0 24px;
+  --profile-row-height: 72px;
+  --profile-row-padding: 10px;
+  --profile-token-size: 48px;
+  --profile-token-title: 16px;
+  --profile-token-detail: 12px;
+  --profile-token-detail-gap: 5px;
+  --profile-status-size: 11px;
+  --profile-status-margin: 7px;
+  --profile-name-right: clamp(15px, 4.8cqw, 19px);
+  --profile-name-bottom: clamp(14px, 4.6cqw, 18px);
+  --profile-name-width: calc(100% - clamp(30px, 9.6cqw, 38px));
+  --profile-art-bottom: -3px;
+  --profile-art-height: calc(100% + 15px);
+  --profile-name-shadow: 0 1px 1px rgb(0 0 0 / 0.52);
+  --profile-tracking: -0.025em;
+  --profile-menu-radius: 20px 12px 20px 12px;
+  --profile-menu-shadow: inset 0 1px 0 var(--glass-glint);
+  --profile-touch: 44px;
+  --profile-duration: 0.18s;
+  --profile-inner-inset: 1px;
+  --profile-inner-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-edge) 72%, transparent),
+    inset 0 -1px 0 var(--glass-edge-bottom),
+    inset 18px 0 28px color-mix(in srgb, var(--glass-glint) 42%, transparent),
+    inset -18px 0 30px rgb(var(--shadow-rgb) / 0.09);
+  --profile-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 4px 12px rgb(var(--shadow-rgb) / 0.08);
+  container-type: inline-size;
+}
+.rada-profile-view > .rada-screen-header,
+.rada-profile-view .rada-screen-title {
+  position: absolute;
+  width: var(--profile-rule);
+  height: var(--profile-rule);
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.rada-profile-banner {
+  position: relative;
+  height: var(--profile-height);
+  overflow: hidden;
+  border-radius: var(--profile-radius);
+  border: var(--profile-rule) solid
+    color-mix(in srgb, var(--theme-base) 52%, white);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--theme-base) 78%, white),
+    color-mix(in srgb, var(--theme-base) 93%, white)
+  );
+  box-shadow: var(--profile-shadow);
+}
+.rada-profile-banner::after {
+  content: "";
+  position: absolute;
+  inset: var(--profile-inner-inset);
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: var(--profile-inner-shadow);
+}
+.rada-profile-portrait {
+  position: absolute;
+  left: 0;
+  bottom: var(--profile-art-bottom);
+  width: 47%;
+  height: var(--profile-art-height);
+  display: grid;
+  place-items: center;
+}
+.rada-profile-portrait img {
+  position: static;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom;
+}
+.rada-profile-name {
+  position: absolute;
+  right: var(--profile-name-right);
+  bottom: var(--profile-name-bottom);
+  max-width: var(--profile-name-width);
+  font:
+    800 var(--profile-name)/0.94 Sora,
+    Onest,
+    sans-serif;
+  color: var(--text-primary);
+  text-align: right;
+  letter-spacing: var(--profile-tracking);
+  text-shadow: var(--profile-name-shadow);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rada-profile-actions {
+  justify-content: space-between;
+  gap: 0;
+  margin-top: var(--profile-row-padding);
+}
+.rada-profile-action {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--profile-touch);
+  min-width: var(--profile-touch);
+  width: var(--profile-touch);
+  height: var(--profile-touch);
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.rada-profile-action::before {
+  content: "";
+  position: absolute;
+  inset: var(--profile-icon-inset);
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--control-secondary-bg);
+  border: var(--profile-rule) solid var(--control-secondary-border);
+}
+.rada-profile-action svg {
+  width: var(--profile-icon);
+  height: var(--profile-icon);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rada-profile-view .rada-screen-body > * + * {
+  margin-top: 0;
+}
+.rada-profile-view [data-profile-wallet] {
+  margin: var(--profile-wallet-margin);
+  padding-inline: var(--profile-wallet-inset);
+  font-family: var(--rada-font-body);
+  font-weight: 500;
+}
+.rada-profile-assets {
+  margin-top: var(--profile-wallet-gap);
+}
+.rada-profile-assets .rada-list-item {
+  display: grid;
+  grid-template-columns: var(--profile-token-size) minmax(0, 1fr) minmax(
+      0,
+      auto
+    );
+  gap: var(--profile-wallet-gap);
+  align-items: center;
+  border: 0;
+  min-height: var(--profile-row-height);
+  padding: var(--profile-row-padding) 0;
+}
+.rada-profile-assets .rada-avatar {
+  width: var(--profile-token-size);
+  height: var(--profile-token-size);
+  flex-shrink: 0;
+}
+.rada-profile-assets .rada-list-item-title,
+.rada-profile-position > :first-child {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--profile-token-title);
+  line-height: 1.2;
+  letter-spacing: var(--profile-tracking);
+  font-weight: 600;
+}
+.rada-profile-assets .rada-list-item-text,
+.rada-profile-position > :nth-child(2) {
+  margin: var(--profile-token-detail-gap) 0 0;
+  color: var(--text-muted);
+  font-size: var(--profile-token-detail);
+  line-height: 1.3;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.rada-profile-position {
+  min-width: 0;
+  text-align: right;
+}
+.rada-profile-wallet-status {
+  margin: var(--profile-status-margin) 0 0;
+  font-size: var(--profile-status-size);
+  line-height: 1.5;
+}
+.rada-profile-wallet-status:empty {
+  display: none;
+}
+.rada-profile-menu,
+.rada-profile-wallet-manager {
+  margin-top: var(--rada-space-4);
+  padding: var(--rada-space-4);
+  border: var(--profile-rule) solid var(--control-secondary-border);
+  border-radius: var(--profile-menu-radius);
+  background: var(--surface-soft);
+  box-shadow: var(--profile-menu-shadow);
+}
+.rada-profile-view [hidden] {
+  display: none;
+}
+.rada-profile-menu .rada-button:not(.rada-profile-action) {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--rada-radius-small);
+  box-shadow: none;
+  text-align: left;
+}
+.rada-profile-menu .rada-error-state,
+.rada-profile-inline-error {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.rada-profile-menu > .rada-text,
+.rada-profile-menu [data-profile-details] > .rada-text {
+  font-size: var(--profile-token-detail);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rada-profile-action {
+    transition: transform var(--profile-duration) var(--rada-ease-emphasized);
+  }
+  .rada-profile-action:active {
+    transform: translateY(var(--profile-rule)) scale(0.93);
+  }
+}
+
+.rada-profile-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--rada-space-2);
+  padding-top: var(--rada-space-2);
+}
+.rada-profile-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rada-space-2);
+  align-self: flex-start;
+  padding: var(--rada-space-1) var(--rada-space-3);
+  border: var(--profile-rule) solid var(--control-secondary-border);
+  border-radius: var(--rada-radius-small);
+  background: var(--surface-soft);
+  box-shadow: var(--profile-menu-shadow);
+}
+.rada-profile-status > .rada-text {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--profile-token-detail);
+}
+.rada-profile-status > .rada-button {
+  font-size: var(--profile-token-detail);
+}
+.rada-profile-entry {
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: var(--profile-menu-radius);
+  background: var(--surface-soft);
+  border: var(--profile-rule) solid var(--control-secondary-border);
+  box-shadow: var(--profile-menu-shadow);
+}

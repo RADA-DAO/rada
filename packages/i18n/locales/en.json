@@ -155,7 +155,9 @@
     "showAddress": "Show address {{address}}",
     "hideAddress": "Hide address {{address}}",
     "copyAddressFor": "Copy full address {{address}}",
-    "revokeFor": "Remove wallet link {{address}}"
+    "revokeFor": "Remove wallet link {{address}}",
+    "dash": "—",
+    "approximate": "≈"
   },
   "payment": {
     "title": "RADA · Confirm payment",
@@ -179,7 +181,9 @@
     "saving": "Saving your profile…",
     "notOwned": "This frog is no longer in your collection. Refresh to choose another.",
     "publicDescription": "Your selected frog’s name, artwork and colors are public. Your collection stays private.",
-    "artUnavailable": "Artwork unavailable"
+    "artUnavailable": "Artwork unavailable",
+    "details": "Profile details",
+    "retryMembership": "Retry membership status"
   },
   "catalog": {
     "title": "Component catalog",

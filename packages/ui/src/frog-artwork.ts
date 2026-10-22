@@ -4,12 +4,16 @@ export function loadFrogArtwork(
   options: {
     alt: string;
     missingArtLabel: string;
+    accessiblePlaceholderOnly?: boolean;
     load(signal: AbortSignal): Promise<Blob>;
     signal: AbortSignal;
   },
 ): void {
   const placeholder = document.createElement("small");
-  placeholder.textContent = options.missingArtLabel;
+  if (options.accessiblePlaceholderOnly) {
+    placeholder.setAttribute("role", "img");
+    placeholder.setAttribute("aria-label", options.missingArtLabel);
+  } else placeholder.textContent = options.missingArtLabel;
   artwork.append(placeholder);
   let url: string | undefined;
   let observer: IntersectionObserver | undefined;

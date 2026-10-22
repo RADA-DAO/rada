@@ -1,6 +1,9 @@
+import { profileActionIcon } from "../../../packages/ui/src/frog-card.ts";
 import type { TonConnectUI } from "@tonconnect/ui";
 import {
   Button,
+  Group,
+  Avatar,
   List,
   ListItem,
   Section,
@@ -30,6 +33,7 @@ export function mountWallet(
   container: HTMLElement,
   locale: Locale,
   platform: WalletPlatform,
+  actions?: HTMLElement,
 ): () => void {
   const controller = new AbortController();
   const text = (key: Parameters<typeof t>[1]) => t(locale, key);
@@ -40,17 +44,36 @@ export function mountWallet(
   let connector: TonConnectUI | undefined;
   let unsubscribe: (() => void) | undefined;
   const status = Text("", { live: "polite" });
+  status.classList.add("rada-profile-wallet-status");
   const list = List({ label: text("wallet.title") });
   const connectButton = Button(text("wallet.connect"), {
     variant: "primary",
     onClick: () => void connect(),
   });
-  container.append(
-    Section({
-      title: text("wallet.title"),
-      children: [connectButton, status, list],
-    }),
-  );
+  const manager = Section({
+    title: text("wallet.title"),
+    children: [connectButton, list],
+  });
+  manager.classList.add("rada-profile-wallet-manager");
+  manager.hidden = Boolean(actions);
+  manager.id = "profile-wallet-manager";
+  if (actions) {
+    const manage = profileActionIcon(
+      Button(text("wallet.title"), {
+        onClick: () => {
+          manager.hidden = !manager.hidden;
+          manage.setAttribute("aria-expanded", String(!manager.hidden));
+        },
+      }),
+      "wallet",
+    );
+    manage.setAttribute("aria-expanded", "false");
+    manage.setAttribute("aria-controls", manager.id);
+    actions.prepend(manage);
+  }
+  const assets = List({ label: text("wallet.title") });
+  assets.classList.add("rada-profile-assets");
+  container.append(assets, status, manager);
   async function refresh() {
     status.textContent = text("wallet.loading");
     try {
@@ -60,7 +83,44 @@ export function mountWallet(
       ]);
       if (isDisposed()) return;
       list.replaceChildren();
+      assets.replaceChildren();
       status.textContent = wallets.length ? "" : text("wallet.empty");
+      if (wallets.length) {
+        for (const token of ["jpegpe", "gram"] as const) {
+          const amounts = wallets.map(
+            (wallet) =>
+              balances.find((item) => item.address === wallet.address)
+                ?.balances[token],
+          );
+          const amount = amounts.every(
+            (value) => value !== null && value !== undefined,
+          )
+            ? {
+                raw: amounts
+                  .reduce((sum, value) => sum + BigInt(value.raw), 0n)
+                  .toString(),
+                decimals: 9,
+              }
+            : null;
+          const label = text(token === "gram" ? "wallet.ton" : "wallet.jpegpe");
+          const position = walletPosition(
+            displayAmount(amount, locale, 0, amount?.decimals ?? 9) ??
+              text("wallet.dash"),
+          );
+          const row = ListItem({
+            leading: Avatar({
+              name: label,
+              imageUrl:
+                token === "jpegpe"
+                  ? "/profile/jpegpe.webp"
+                  : "/profile/ton.svg",
+            }),
+            title: label,
+          });
+          row.append(position);
+          assets.append(row);
+        }
+      }
       for (const wallet of wallets) {
         const value = balances.find(
           (item) => item.address === wallet.address,
@@ -223,4 +283,14 @@ export function mountWallet(
     unsubscribe?.();
     connector?.setConnectRequestParameters(null);
   };
+}
+
+/** USD valuations use the primary line; unvalued tokens show their exact amount. */
+export function walletPosition(amount: string, usdValue?: string): HTMLElement {
+  const position = Group([
+    Text(usdValue ?? amount),
+    ...(usdValue ? [Text(amount)] : []),
+  ]);
+  position.classList.add("rada-profile-position");
+  return position;
 }
