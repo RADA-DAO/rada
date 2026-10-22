@@ -27,7 +27,7 @@ export default defineConfig({
   webServer: {
     cwd: new URL("../..", import.meta.url).pathname,
     command:
-      "E2E_TONCONNECT_MOCK=true npm run build:miniapp && npx vite preview --config apps/miniapp/vite.config.ts",
+      "VITE_TELEGRAM_APP_LINK=https://t.me/rada_fixture_bot/app E2E_TONCONNECT_MOCK=true npm run build:miniapp && npx vite preview --config apps/miniapp/vite.config.ts",
     port: 4173,
     reuseExistingServer: !process.env.CI,
   },

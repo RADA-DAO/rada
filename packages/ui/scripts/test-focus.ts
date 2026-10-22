@@ -131,6 +131,36 @@ await test("a launcher refresh restores its focused tile without scrolling the w
   assert.deepEqual(focus, [{ preventScroll: true }]);
 });
 
+await test("moving a live profile action restores focus lost during reparenting", () => {
+  fakeDocument.body.replaceChildren();
+  const host = ScreenHost(fakeDocument.body as unknown as HTMLElement);
+  const settings = Button("Settings");
+  settings.dataset.focusKey = "shell-settings";
+  const view = Screen({ title: "Profile", actions: [settings] });
+  fake(host).append(fake(view));
+  mutations.at(-1)?.();
+  settings.focus();
+  fake(settings).remove();
+  fake(view).append(fake(settings));
+  fakeDocument.activeElement = fakeDocument.body;
+  const focus: FocusOptions[] = [];
+  const nativeFocus = settings.focus.bind(settings);
+  settings.focus = (options) => {
+    focus.push(options ?? {});
+    nativeFocus(options);
+  };
+  mutations.at(-1)?.();
+  assert.equal(fakeDocument.activeElement, fake(settings));
+  assert.deepEqual(focus, [{ preventScroll: true }]);
+
+  const next = Button("Next");
+  fake(view).append(fake(next));
+  next.focus();
+  mutations.at(-1)?.();
+  assert.equal(fakeDocument.activeElement, fake(next));
+  assert.equal(focus.length, 1);
+});
+
 await test("a queued sheet close never steals focus from a screen control", () => {
   fakeDocument.body.replaceChildren();
   const opener = Button("Rules");

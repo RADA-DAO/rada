@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { launch } from "./home-fixture.ts";
+import { signedLaunch } from "./telegram-fixture.ts";
 import pg from "pg";
 
 test.beforeEach(async ({ page }) => {
@@ -21,7 +23,7 @@ test("an uncaught error reaches the API once, sanitized", async ({
     if (request.url().endsWith("/v1/client-errors"))
       bodies.push(request.postDataBuffer()?.toString("utf8") ?? "");
   });
-  await page.goto("/");
+  await launch(page, signedLaunch());
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();

@@ -183,6 +183,7 @@ export function createHome(options: {
       running = undefined;
     },
     content(): Node[] {
+      if (status === "guest") return [];
       const content: Node[] = [];
       if (failed) {
         const retry = failed;
@@ -197,14 +198,7 @@ export function createHome(options: {
         );
       }
       content.push(tiles());
-      if (status === "guest")
-        content.push(
-          EmptyState({
-            title: text("home.guestTitle"),
-            message: text("home.guestDescription"),
-          }),
-        );
-      else if (status === "loading")
+      if (status === "loading")
         content.push(Loading({ message: text("home.loading") }));
       else if (status === "ready") {
         // Registry apps join the grid above; say so only when there are none.

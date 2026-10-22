@@ -1,14 +1,15 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signedLaunch } from "./telegram-fixture.ts";
 
 /** Telegram stand-in that records BackButton visibility and can press it. */
 async function host(page: Page) {
-  await page.addInitScript(() => {
+  await page.addInitScript((initData) => {
     const listeners = new Map<string, () => void>();
     const log: string[] = [];
     Object.assign(window, {
       Telegram: {
         WebApp: {
-          initData: "",
+          initData,
           viewportHeight: innerHeight,
           ready() {},
           expand() {},
@@ -41,7 +42,7 @@ async function host(page: Page) {
         },
       },
     });
-  });
+  }, signedLaunch());
 }
 type Fixture = { log: string[]; back(): void; resize(height: number): void };
 const lastBackState = (page: Page) =>
@@ -189,13 +190,17 @@ test("a focused field stays visible above the on-screen keyboard", async ({
   page,
 }) => {
   await openProfile(page);
+  const activePage = page.locator(".rada-workspace-page:not([inert])");
+  await expect(activePage.locator(".rada-profile-view")).toBeVisible();
   await page.evaluate(() => {
     const spacer = document.createElement("div");
     spacer.style.height = "600px";
     const field = document.createElement("input");
     field.id = "low-field";
     field.type = "text";
-    document.querySelector(".rada-screen-body")?.append(spacer, field);
+    document
+      .querySelector(".rada-workspace-page:not([inert]) .rada-screen-body")
+      ?.append(spacer, field);
   });
   await page.evaluate(() => {
     (window as unknown as { fixtureHost: Fixture }).fixtureHost.resize(420);
@@ -207,4 +212,11 @@ test("a focused field stays visible above the on-screen keyboard", async ({
       return box ? box.y + box.height <= 420 - 12 && box.y >= 0 : false;
     })
     .toBe(true);
+  await expect(page.locator("#low-field")).toBeFocused();
+  expect(await activePage.evaluate((page) => page.scrollTop)).toBeGreaterThan(
+    0,
+  );
+  expect(
+    await page.locator(".screen").evaluate((screen) => screen.scrollLeft),
+  ).toBe(0);
 });
