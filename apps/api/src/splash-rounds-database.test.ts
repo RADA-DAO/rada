@@ -120,27 +120,33 @@ Deno.test(
           headers: { ...(await as(id)), "content-type": "application/json" },
           body: JSON.stringify({ submission_id: frog, amount, name: proposed }),
         });
-      assert((await bid(A, frogs[0], "100")).status === 403);
+      assert((await bid(A, frogs[0], "100000000000")).status === 403);
       assert((await bid(B, frogs[0], "0")).status === 400);
-      assert((await bid(B, frogs[0], "100", "no spaces")).status === 400);
-      assert((await bid(B, crypto.randomUUID(), "100")).status === 404);
-      assert((await bid(B, frogs[0], "100")).status === 201);
-      assert((await bid(C, frogs[0], "100", `Rb${hex(4)}`)).status === 201);
-      const contested = await bid(C, frogs[1], "50");
+      assert(
+        (await bid(B, frogs[0], "100000000000", "no spaces")).status === 400,
+      );
+      assert(
+        (await bid(B, crypto.randomUUID(), "100000000000")).status === 404,
+      );
+      assert((await bid(B, frogs[0], "100000000000")).status === 201);
+      assert(
+        (await bid(C, frogs[0], "100000000000", `Rb${hex(4)}`)).status === 201,
+      );
+      const contested = await bid(C, frogs[1], "50000000000");
       assert(contested.status === 201);
       assert((await contested.json()).name_contested === true);
-      // Raising replaces the active bid; lowering or repeating is refused.
-      assert((await bid(B, frogs[0], "150")).status === 201);
-      assert((await bid(B, frogs[0], "120")).status === 409);
-      assert((await bid(B, frogs[0], "150")).status === 409);
+      // Replacements can go up, down or repeat. B ends below C.
+      assert((await bid(B, frogs[0], "150000000000")).status === 201);
+      assert((await bid(B, frogs[0], "40000000000")).status === 201);
+      assert((await bid(B, frogs[0], "40000000000")).status === 201);
 
       const current = await (await app.request("/v1/splash/round")).json();
       if (Number(current.round.round_id) === Number(round.round_id)) {
         const lot = current.round.frogs.find(
           (f: { submission_id: string }) => f.submission_id === frogs[0],
         );
-        assert(lot.top_amount === "150" && lot.bidder_count === 2);
-        assert(lot.leader === null && lot.author === null);
+        assert(lot.bidder_count === 2 && lot.author === null);
+        assert(!("amount" in lot) && Object.keys(lot).length === 8);
       }
       assert(!JSON.stringify(current).includes(bidderB));
       assert(
@@ -151,7 +157,7 @@ Deno.test(
       await new Promise((resolve) =>
         setTimeout(resolve, round.ends_at.getTime() - Date.now() + 300),
       );
-      assert((await bid(C, frogs[0], "999")).status === 409);
+      assert((await bid(C, frogs[0], "999000000000")).status === 409);
       // Four closers race; exactly one closes the round.
       const closed = await Promise.all([
         store.advanceRounds(),
@@ -167,7 +173,7 @@ Deno.test(
       );
       assert(decisions.rows[0].n === 2);
 
-      // Winner B (raised to 150) keeps the name; C wins frog 2 but loses the name.
+      // Winner B (lowered to 40) keeps the name; C wins frog 2 but loses the name.
       let results = await (
         await app.request(`/v1/splash/rounds/${round.round_id}/results`)
       ).json();
@@ -177,9 +183,9 @@ Deno.test(
       const second = results.frogs.find(
         (f: { submission_id: string }) => f.submission_id === frogs[1],
       );
-      assert(first.amount === "150" && first.name === name);
+      assert(first.amount === "40000000000" && first.name === name);
       assert(first.name_outcome === "reserved" && first.winner === null);
-      assert(second.amount === "50" && second.name === null);
+      assert(second.amount === "50000000000" && second.name === null);
       assert(second.name_outcome === "conflict" && second.winner === null);
       for (const id of [author, bidderB, bidderC])
         assert(!JSON.stringify(results).includes(id));
@@ -200,7 +206,9 @@ Deno.test(
       try {
         const claim = await readPendingClaim(client, frogs[1]);
         if (!claim) throw new Error("Pending claim missing");
-        assert(claim.winnerSubjectId === bidderC && claim.amount === "50");
+        assert(
+          claim.winnerSubjectId === bidderC && claim.amount === "50000000000",
+        );
         assert(claim.username === null && claim.nameOutcome === "conflict");
         assert(
           new Date(claim.claimDeadline).getTime() ===

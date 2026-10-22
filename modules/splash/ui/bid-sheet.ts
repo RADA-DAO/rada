@@ -14,11 +14,13 @@ import { aborted, errorText, type SplashContext } from "./context.ts";
 import { jpegpe, JPEGPE_DECIMALS } from "./format.ts";
 import { nameField } from "./name-field.ts";
 
-const amountErrors = new Set([
-  "invalid_amount",
-  "bid_too_low",
-  "bid_unchanged",
-]);
+export function wholeBidUnits(value: string): string | null {
+  return /^[1-9][0-9]*$/.test(value)
+    ? parseUnits(value, JPEGPE_DECIMALS)
+    : null;
+}
+
+const amountErrors = new Set(["invalid_amount"]);
 const nameErrors = new Set(["invalid_name", "name_taken"]);
 
 /**
@@ -38,15 +40,15 @@ export function openBidSheet(
   const controller = new AbortController();
   const amount = Field({
     label: text("splash.bidAmountLabel"),
-    inputMode: "decimal",
+    inputMode: "numeric",
     hint: own
-      ? text("splash.bidRaiseHint", { amount: jpegpe(locale, own.amount) })
+      ? text("splash.bidEditHint", { amount: jpegpe(locale, own.amount) })
       : text("splash.bidAmountHint"),
   });
   amount.control.setAttribute("autocomplete", "off");
   const name = nameField(context, own?.name ?? "");
   const status = LiveRegion();
-  const place = Button(text(own ? "splash.raiseBid" : "splash.placeBid"), {
+  const place = Button(text(own ? "splash.editBid" : "splash.placeBid"), {
     variant: "primary",
     onClick: () => void submit(),
   });
@@ -54,7 +56,7 @@ export function openBidSheet(
     amount.setError();
     name.setError();
     status.replaceChildren();
-    const units = parseUnits(amount.control.value, JPEGPE_DECIMALS);
+    const units = wholeBidUnits(amount.control.value);
     if (!units) {
       amount.setError(text("splash.error.invalid_amount"));
       amount.control.focus();
@@ -88,7 +90,7 @@ export function openBidSheet(
     }
   }
   const dialog = openSheet({
-    title: text(own ? "splash.raiseTitle" : "splash.bidTitle"),
+    title: text(own ? "splash.editTitle" : "splash.bidTitle"),
     closeLabel: text("common.close"),
     navigation: context.navigation,
     opener: options.opener,
@@ -104,12 +106,7 @@ export function openBidSheet(
         size: "thumb",
       }),
       Facts([
-        {
-          label: text("splash.topBid"),
-          value: lot.topAmount
-            ? jpegpe(locale, lot.topAmount)
-            : text("splash.noBids"),
-        },
+        { label: text("splash.bidders"), value: String(lot.bidderCount) },
         ...(own
           ? [
               {
@@ -119,6 +116,7 @@ export function openBidSheet(
             ]
           : []),
       ]),
+      Text(text("splash.bidRule")),
       amount.element,
       name.element,
       Text(text("splash.promise")),

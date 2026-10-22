@@ -27,9 +27,9 @@ DO $$ BEGIN
   PERFORM pg_temp.check(splash.reserve_submission_attempt() BETWEEN 1 AND 86400, 'processing limit');
 END $$;
 SELECT pg_temp.check((SELECT status = 'placed' FROM splash.place_bid(
-  :'frog', 1329227995784915872903807060280344575, 'Alpha')), 'maximum bid');
-SELECT pg_temp.check((SELECT status = 'bid_unchanged' FROM splash.place_bid(
-  :'frog', 1329227995784915872903807060280344575, 'alpha')), 'case insensitive equivalent');
+  :'frog', 1329227995784915872903807060000000000, 'Alpha')), 'maximum bid');
+SELECT pg_temp.check((SELECT status = 'placed' FROM splash.place_bid(
+  :'frog', 1329227995784915872903807060000000000, 'alpha')), 'case insensitive equivalent');
 SELECT pg_temp.check((SELECT status = 'invalid_amount' FROM splash.place_bid(
   :'frog', 1329227995784915872903807060280344576, 'Beta')), 'above maximum');
 SELECT set_config('fixture.frog', :'frog', true);
@@ -39,20 +39,20 @@ BEGIN
     SELECT status INTO result FROM splash.place_bid(current_setting('fixture.frog')::uuid, 0, 'Alpha');
     PERFORM pg_temp.check(result = 'invalid_amount', 'failed attempts counted');
   END LOOP;
-  SELECT status INTO result FROM splash.place_bid(current_setting('fixture.frog')::uuid, 1, 'Beta');
+  SELECT status INTO result FROM splash.place_bid(current_setting('fixture.frog')::uuid, 1000000000, 'Beta');
   PERFORM pg_temp.check(result = 'rate_limited', 'per subject lot limit');
 END $$;
 SELECT set_config('rada.subject_id', :'other_bidder', true);
-SELECT pg_temp.check((SELECT status = 'placed' FROM splash.place_bid(:'frog', 1, 'Beta')), 'independent bidder');
+SELECT pg_temp.check((SELECT status = 'placed' FROM splash.place_bid(:'frog', 1000000000, 'Beta')), 'independent bidder');
 RESET ROLE;
-SELECT pg_temp.check((SELECT count(*) = 2 FROM splash.bids), 'only accepted history');
+SELECT pg_temp.check((SELECT count(*) = 3 FROM splash.bids), 'only accepted history');
 -- Expired budgets are reclaimed and admission resumes.
 UPDATE splash.attempt_budgets SET expires_at = clock_timestamp() - interval '1 second';
 SET LOCAL ROLE splash_service;
 SELECT set_config('rada.subject_id', :'bidder', true);
 SELECT pg_temp.check(splash.reserve_submission_attempt() = 0, 'processing expiry');
-SELECT pg_temp.check((SELECT status = 'bid_unchanged' FROM splash.place_bid(
-  :'frog', 1329227995784915872903807060280344575, 'ALPHA')), 'bid expiry');
+SELECT pg_temp.check((SELECT status = 'placed' FROM splash.place_bid(
+  :'frog', 1329227995784915872903807060000000000, 'ALPHA')), 'bid expiry');
 -- Distinct lots cannot bypass the shared budget, even for refused attempts.
 DO $$ DECLARE result text;
 BEGIN

@@ -1,10 +1,10 @@
+import { JPEGPE_WHOLE } from "../../../packages/payment-encoding/jpegpe.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Hono } from "hono";
 import type { BidResult, RoundStore } from "./rounds.ts";
 import { parseBid, registerRoundRoutes } from "./rounds-router.ts";
 import { startRoundScheduler } from "./rounds.ts";
-
 const FROG = "11111111-1111-4111-8111-111111111111";
 const PUBLIC = {
   frogId: "33333333-3333-4333-8333-333333333333",
@@ -12,13 +12,12 @@ const PUBLIC = {
   backgroundColor: "#112233",
   accentColor: null,
 };
-
 function build(
   result: BidResult = {
     status: "placed",
     bidId: "7",
     roundId: 3,
-    amount: "100",
+    amount: "100000000000",
     username: "Alpha",
     placedAt: "2026-10-16T01:00:00.000Z",
     nameContested: true,
@@ -45,9 +44,7 @@ function build(
             height: 64,
             backgroundRemoved: true,
             author: null,
-            topAmount: "100",
             bidderCount: 2,
-            leader: PUBLIC,
           },
           {
             submissionId: "22222222-2222-4222-8222-222222222222",
@@ -56,9 +53,7 @@ function build(
             height: 64,
             backgroundRemoved: false,
             author: null,
-            topAmount: null,
             bidderCount: 0,
-            leader: null,
           },
         ],
       }),
@@ -77,6 +72,7 @@ function build(
           placedAt: "2026-10-15T02:00:00.000Z",
           roundEndsAt: "2026-10-16T00:00:00.000Z",
           status: "won",
+          nameContested: true,
           grantedUsername: null,
           nameOutcome: "conflict",
           claimDeadline: "2026-10-17T00:00:00.000Z",
@@ -98,7 +94,7 @@ function build(
                   height: 64,
                   backgroundRemoved: true,
                   bidderCount: 2,
-                  amount: "100",
+                  amount: "100000000000",
                   username: "Alpha",
                   nameOutcome: "reserved",
                   claimDeadline: "2026-10-17T00:00:00.000Z",
@@ -140,15 +136,18 @@ function build(
     });
   return { app, bids, bid };
 }
-
 test("bid input is validated before reaching the store", () => {
   assert.equal(parseBid("{"), "invalid_body");
   assert.equal(parseBid("[]"), "invalid_body");
   assert.equal(
-    parseBid(JSON.stringify({ submission_id: "x", amount: "1", name: "A" })),
+    parseBid(
+      JSON.stringify({ submission_id: "x", amount: "1000000000", name: "A" }),
+    ),
     "invalid_body",
   );
   for (const amount of [
+    "1",
+    "1500000000",
     "0",
     "-1",
     "1.5",
@@ -170,18 +169,20 @@ test("bid input is validated before reaching the store", () => {
     );
   for (const name of ["", "x".repeat(33), 5, null])
     assert.equal(
-      parseBid(JSON.stringify({ submission_id: FROG, amount: "1", name })),
+      parseBid(
+        JSON.stringify({ submission_id: FROG, amount: "1000000000", name }),
+      ),
       "invalid_name",
     );
   assert.deepEqual(
     parseBid(
       JSON.stringify({
         submission_id: FROG.toUpperCase(),
-        amount: 42,
+        amount: 42000000000,
         name: "Frog_1",
       }),
     ),
-    { submissionId: FROG, amount: "42", username: "Frog_1" },
+    { submissionId: FROG, amount: "42000000000", username: "Frog_1" },
   );
   assert.deepEqual(
     parseBid(
@@ -194,13 +195,12 @@ test("bid input is validated before reaching the store", () => {
     { submissionId: FROG, amount: "1" + "0".repeat(30), username: "Big" },
   );
 });
-
 test("placing a bid needs a fresh signed launch and passes only the verified id", async () => {
   const { bid, bids } = build();
   assert.equal(
     (
       await bid(
-        { submission_id: FROG, amount: "100", name: "Alpha" },
+        { submission_id: FROG, amount: "100000000000", name: "Alpha" },
         "tma old",
       )
     ).status,
@@ -209,7 +209,12 @@ test("placing a bid needs a fresh signed launch and passes only the verified id"
   assert.equal(
     (
       await bid(
-        { submission_id: FROG, amount: "100", name: "Alpha", bidder: "999" },
+        {
+          submission_id: FROG,
+          amount: "100000000000",
+          name: "Alpha",
+          bidder: "999",
+        },
         "",
       )
     ).status,
@@ -224,7 +229,7 @@ test("placing a bid needs a fresh signed launch and passes only the verified id"
   assert.equal(bids.length, 0);
   const response = await bid({
     submission_id: FROG,
-    amount: "100",
+    amount: "100000000000",
     name: "Alpha",
     bidder: "999",
   });
@@ -233,23 +238,25 @@ test("placing a bid needs a fresh signed launch and passes only the verified id"
     bid_id: "7",
     round_id: 3,
     submission_id: FROG,
-    amount: "100",
+    amount: "100000000000",
     name: "Alpha",
     placed_at: "2026-10-16T01:00:00.000Z",
     name_contested: true,
   });
   assert.deepEqual(bids, [
-    { id: "101", submissionId: FROG, amount: "100", username: "Alpha" },
+    {
+      id: "101",
+      submissionId: FROG,
+      amount: "100000000000",
+      username: "Alpha",
+    },
   ]);
 });
-
 test("store refusals map to stable HTTP errors", async () => {
   const cases: [BidResult["status"], number][] = [
     ["self_bid", 403],
     ["not_on_auction", 404],
     ["name_taken", 409],
-    ["bid_too_low", 409],
-    ["bid_unchanged", 409],
     ["round_closed", 409],
     ["invalid_name", 400],
     ["invalid_amount", 400],
@@ -258,30 +265,33 @@ test("store refusals map to stable HTTP errors", async () => {
     const { bid } = build({ status } as BidResult);
     const response = await bid({
       submission_id: FROG,
-      amount: "5",
+      amount: "5000000000",
       name: "Alpha",
     });
     assert.equal(response.status, code, status);
     assert.deepEqual(await response.json(), { error: status });
   }
 });
-
-test("current round shows amounts and only public leader profiles", async () => {
+test("public pond contains counts and author only, never other bids", async () => {
   const { app } = build();
   const body = await (await app.request("/v1/splash/round")).json();
   assert.equal(body.round.round_id, 3);
-  assert.equal(body.round.frogs[0].top_amount, "100");
-  assert.deepEqual(body.round.frogs[0].leader, {
-    frog_id: PUBLIC.frogId,
-    username: "Leader",
-    background_color: "#112233",
-    accent_color: null,
-  });
-  assert.equal(body.round.frogs[1].leader, null);
-  assert.equal(body.round.frogs[1].top_amount, null);
+  assert.deepEqual(
+    Object.keys(body.round.frogs[0]).sort(),
+    [
+      "submission_id",
+      "submitted_at",
+      "width",
+      "height",
+      "background_removed",
+      "image_path",
+      "author",
+      "bidder_count",
+    ].sort(),
+  );
+  assert.equal(body.round.frogs[0].bidder_count, 2);
   assert.ok(!JSON.stringify(body).includes("subject"));
 });
-
 test("own bids require login; results are public for closed rounds only", async () => {
   const { app } = build();
   assert.equal((await app.request("/v1/splash/bids/mine")).status, 401);
@@ -291,6 +301,7 @@ test("own bids require login; results are public for closed rounds only", async 
     })
   ).json();
   assert.equal(mine.bids[0].status, "won");
+  assert.equal(mine.bids[0].name_contested, true);
   assert.equal(mine.bids[0].name_outcome, "conflict");
   assert.equal(mine.bids[0].granted_name, null);
   for (const id of ["0", "abc", "1.5", "99999999999999999"])
@@ -304,11 +315,10 @@ test("own bids require login; results are public for closed rounds only", async 
   ).json();
   assert.equal(results.frogs[0].outcome, "won");
   assert.equal(results.frogs[0].winner.username, "Leader");
-  assert.equal(results.frogs[1].outcome, "no_bids");
+  assert.equal(results.frogs[1].outcome, "archived");
   assert.equal(results.frogs[1].winner, null);
   assert.ok(!JSON.stringify(results).includes("subject"));
 });
-
 test("name availability needs a signed launch and relays JPEGPE's rule", async () => {
   const { app } = build();
   const status = async (name: string, authorization = "tma old") => {
@@ -326,7 +336,6 @@ test("name availability needs a signed launch and relays JPEGPE's rule", async (
   assert.deepEqual(await status("x".repeat(33)), [200, "invalid"]);
   assert.deepEqual(await status("Alpha", "tma none"), [401, null]);
 });
-
 test("the round scheduler never overlaps and logs only the error class", async () => {
   let calls = 0;
   let release: () => void = () => {};
@@ -356,34 +365,29 @@ test("the round scheduler never overlaps and logs only the error class", async (
   });
   assert.ok(!lines.join("").includes("secret"));
 });
-
-test("bid amounts fit the payment encoding at its inclusive boundary", () => {
+test("whole-token bids fit the payment encoding boundary", () => {
   const maximum = (1n << 120n) - 1n;
-  for (const amount of [maximum - 1n, maximum]) {
-    const parsed = parseBid(
+  const wholeMaximum = maximum - (maximum % JPEGPE_WHOLE);
+  const parseAmount = (amount: bigint) =>
+    parseBid(
       JSON.stringify({
         submission_id: FROG,
         amount: String(amount),
         name: "A",
       }),
     );
-    assert.notEqual(typeof parsed, "string");
-  }
-  assert.equal(
-    parseBid(
-      JSON.stringify({
-        submission_id: FROG,
-        amount: String(maximum + 1n),
-        name: "A",
-      }),
-    ),
-    "invalid_amount",
-  );
+  for (const amount of [JPEGPE_WHOLE, wholeMaximum])
+    assert.notEqual(typeof parseAmount(amount), "string");
+  for (const amount of [maximum, wholeMaximum + JPEGPE_WHOLE])
+    assert.equal(parseAmount(amount), "invalid_amount");
 });
-
 test("bid admission refusals include a retry delay", async () => {
   const { bid } = build({ status: "rate_limited" });
-  const response = await bid({ submission_id: FROG, amount: "1", name: "A" });
+  const response = await bid({
+    submission_id: FROG,
+    amount: "1000000000",
+    name: "A",
+  });
   assert.equal(response.status, 429);
   assert.equal(response.headers.get("retry-after"), "60");
 });

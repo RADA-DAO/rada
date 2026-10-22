@@ -5,8 +5,8 @@ import {
   type MessageKey,
 } from "../../../packages/i18n/src/index.ts";
 
-/** JPEGPE has 9 decimals; amounts travel as smallest units. */
-export const JPEGPE_DECIMALS = 9;
+import { JPEGPE_DECIMALS } from "../../../packages/payment-encoding/jpegpe.ts";
+export { JPEGPE_DECIMALS };
 /** JPEGPE's username rule, mirrored only to skip a request for an obvious typo. */
 export const NAME_RULE = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 

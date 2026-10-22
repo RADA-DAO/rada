@@ -1,3 +1,4 @@
+import { wholeBidUnits } from "./bid-sheet.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type {
@@ -44,9 +45,7 @@ await test("the round is read publicly and shows only public names", async () =>
             submission_id: FROG,
             image_path: `/v1/splash/submissions/${FROG}/image`,
             author: null,
-            top_amount: "1500000000",
             bidder_count: 2,
-            leader: { username: "Leader" },
           },
         ],
       },
@@ -61,7 +60,6 @@ await test("the round is read publicly and shows only public names", async () =>
     submissionId: FROG,
     imageUrl: `https://api.example/v1/splash/submissions/${FROG}/image`,
     author: null,
-    topAmount: "1500000000",
     bidderCount: 2,
   });
 });
@@ -132,4 +130,52 @@ await test("formatting: amounts, countdown and image size", () => {
   assert.equal(clock(47 * 3_600_000 + 1), "47:00:01");
   assert.deepEqual(fitWithin(4000, 2000), { width: 1024, height: 512 });
   assert.deepEqual(fitWithin(300, 200), { width: 300, height: 200 });
+});
+
+await test("bid entry accepts whole tokens only", () => {
+  assert.equal(wholeBidUnits("1"), "1000000000");
+  assert.equal(wholeBidUnits("12"), "12000000000");
+  for (const value of ["0", "-1", "1.5", "2,5", "1e3", "", " 1", "01"])
+    assert.equal(wholeBidUnits(value), null, value);
+});
+
+await test("past rounds expose only the winning amount and preserve unsold bidder counts", async () => {
+  const { client } = fakeApi({
+    "GET /v1/splash/rounds/3/results": ok({
+      round_id: 3,
+      starts_at: "2026-10-16T00:00:00Z",
+      frogs: [
+        {
+          submission_id: FROG,
+          image_path: `/v1/splash/submissions/${FROG}/image`,
+          outcome: "archived",
+          bidder_count: 2,
+          amount: null,
+          name: null,
+          winner: null,
+          claim_deadline: null,
+        },
+      ],
+    }),
+    "GET /v1/splash/bids/mine": ok({
+      bids: [
+        {
+          round_id: 4,
+          submission_id: FROG,
+          amount: "2000000000",
+          name: "Lily",
+          round_ends_at: "2026-10-17T00:00:00Z",
+          status: "active",
+          name_contested: true,
+        },
+      ],
+    }),
+  });
+  const results = await client.results(3, signal);
+  assert.equal(results.lots[0]?.outcome, "archived");
+  assert.equal(results.lots[0].bidderCount, 2);
+  assert.equal(results.lots[0].amount, null);
+  const bids = await client.myBids(signal);
+  assert.equal(bids[0]?.amount, "2000000000");
+  assert.equal(bids[0].nameContested, true);
 });

@@ -16,10 +16,7 @@ export type RoundLot = {
   height: number;
   backgroundRemoved: boolean;
   author: PublicProfile;
-  /** Smallest JPEGPE units as a decimal string; null without bids. */
-  topAmount: string | null;
   bidderCount: number;
-  leader: PublicProfile;
 };
 export type CurrentRound = {
   roundId: number;
@@ -35,9 +32,7 @@ export type BidRefusal =
   | "name_taken"
   | "not_on_auction"
   | "round_closed"
-  | "self_bid"
-  | "bid_too_low"
-  | "bid_unchanged";
+  | "self_bid";
 export type BidResult =
   | {
       status: "placed";
@@ -46,7 +41,7 @@ export type BidResult =
       amount: string;
       username: string;
       placedAt: string;
-      /** Another frog of this round has a bid proposing the same name. */
+      /** Another bidder in this round proposed the same name. */
       nameContested: boolean;
     }
   | { status: BidRefusal };
@@ -60,6 +55,7 @@ export type OwnBid = {
   placedAt: string;
   roundEndsAt: string;
   status: "active" | "won" | "lost";
+  nameContested: boolean;
   grantedUsername: string | null;
   nameOutcome: NameOutcome | null;
   claimDeadline: string | null;
@@ -148,9 +144,7 @@ export async function queryCurrentRound(
         height: row.height as number,
         backgroundRemoved: row.background_removed as boolean,
         author: profile(row, "author"),
-        topAmount: (row.top_amount as string | null) ?? null,
         bidderCount: row.bidder_count as number,
-        leader: profile(row, "leader"),
       })),
   };
 }
@@ -189,6 +183,7 @@ export async function queryOwnBids(client: Queryable): Promise<OwnBid[]> {
     placedAt: iso(row.placed_at),
     roundEndsAt: iso(row.round_ends_at),
     status: row.status as OwnBid["status"],
+    nameContested: row.name_contested === true,
     grantedUsername: (row.granted_username as string | null) ?? null,
     nameOutcome: (row.name_outcome as NameOutcome | null) ?? null,
     claimDeadline: isoOrNull(row.claim_deadline),

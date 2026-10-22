@@ -92,7 +92,7 @@ export const openSplash = async (page: Page) => {
     page.getByRole("heading", { name: en("splash.title"), exact: true }),
   ).toBeVisible();
 };
-export const round = (topAmount: string | null, bidders: number) => ({
+export const round = (bidders: number) => ({
   round: {
     round_id: 7,
     starts_at: "2026-10-16T00:00:00.000Z",
@@ -107,9 +107,7 @@ export const round = (topAmount: string | null, bidders: number) => ({
         background_removed: true,
         image_path: image(FROG),
         author: { username: "Painter" },
-        top_amount: topAmount,
         bidder_count: bidders,
-        leader: null,
       },
     ],
   },
