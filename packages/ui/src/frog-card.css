@@ -68,21 +68,6 @@
   font: var(--rada-frog-name-font);
   text-shadow: var(--rada-frog-name-shadow);
 }
-.profile-collection {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, var(--rada-collection-column)), 1fr)
-  );
-  gap: var(--rada-space-4);
-}
-.profile-collection .jpegpe-card {
-  margin: var(--rada-frog-collection-margin);
-}
-.profile-collection > div {
-  min-width: 0;
-}
-
 .rada-frog-gallery {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

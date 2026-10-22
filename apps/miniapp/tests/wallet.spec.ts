@@ -109,6 +109,9 @@ test("wallet balances display, unlink, TON Connect relink and restored session",
     }, token);
     await page.goto("/");
     await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await page
+      .getByRole("button", { name: t("en", "wallet.title"), exact: true })
+      .click();
     await expect(page.getByText(shortAddress, { exact: true })).toBeVisible();
     await expect(
       page.getByText("TON: 900,719,925,474.10 · JPEGPE: 12,345,678,901.23", {
@@ -158,6 +161,9 @@ test("wallet balances display, unlink, TON Connect relink and restored session",
     });
     await page.reload();
     await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await page
+      .getByRole("button", { name: t("en", "wallet.title"), exact: true })
+      .click();
     await expect(page.getByText("No wallet linked yet.")).toBeVisible();
     await page.getByRole("button", { name: "Connect wallet" }).click();
     await expect(page.getByText(shortAddress, { exact: true })).toBeVisible();
@@ -169,6 +175,9 @@ test("wallet balances display, unlink, TON Connect relink and restored session",
     await page.getByRole("button", { name: "Settings" }).click();
     await page.getByRole("combobox", { name: "Language" }).selectOption("uk");
     await page.getByRole("button", { name: t("uk", "common.close") }).click();
+    await page
+      .getByRole("button", { name: t("uk", "wallet.title"), exact: true })
+      .click();
     await expect(
       page.getByText(
         `${t("uk", "wallet.ton")}: ${new Intl.NumberFormat("uk").format(900719925474n)},10 · ${t("uk", "wallet.jpegpe")}: ${new Intl.NumberFormat("uk").format(12345678901n)},23`,

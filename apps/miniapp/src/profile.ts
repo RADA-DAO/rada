@@ -1,8 +1,11 @@
 import {
+  ProfileFrogCard,
+  profileActionIcon,
+} from "../../../packages/ui/src/frog-card.ts";
+import {
   Actions,
   Button,
   ErrorState,
-  FrogCard,
   Group,
   LiveRegion,
   Loading,
@@ -26,24 +29,23 @@ export function mountProfile(
   const text = (key: Parameters<typeof t>[1]) => t(options.locale, key);
   const status = LiveRegion();
   const selected = options.selected;
-  if (selected) {
-    const hero = Group([
-      FrogCard(selected, {
-        missingArtLabel: text("profile.artUnavailable"),
-        ...(selected.artwork_url
-          ? {
-              artwork: {
-                load: (signal: AbortSignal) =>
-                  options.artwork(selected.artwork_url ?? "", signal),
-                signal: controller.signal,
-              },
-            }
-          : {}),
-      }),
-    ]);
-    hero.dataset.selectedFrog = "true";
-    container.append(hero);
-  }
+  const hero = Group([
+    ProfileFrogCard(selected, {
+      emptyLabel: text("shell.private"),
+      missingArtLabel: text("profile.artUnavailable"),
+      ...(selected?.artwork_url
+        ? {
+            artwork: {
+              load: (signal: AbortSignal) =>
+                options.artwork(selected.artwork_url ?? "", signal),
+              signal: controller.signal,
+            },
+          }
+        : {}),
+    }),
+  ]);
+  if (selected) hero.dataset.selectedFrog = "true";
+  container.append(hero);
   const clear = Button(text("profile.clear"), {
     onClick: () => {
       clear.disabled = true;
@@ -68,26 +70,34 @@ export function mountProfile(
         });
     },
   });
-  container.append(
+  const details = Group([
     Text(
       text(selected ? "profile.publicDescription" : "shell.privateDescription"),
     ),
-    Actions([
+    ...(selected ? [clear] : []),
+    status,
+  ]);
+  details.dataset.profileDetails = "true";
+  const actions = Actions([
+    profileActionIcon(
       Button(text("collection.change"), {
-        variant: "primary",
         onClick: () => {
           options.openCollection();
         },
       }),
+      "appearance",
+    ),
+    profileActionIcon(
       Button(text("collection.open"), {
         onClick: () => {
           options.openCollection();
         },
       }),
-      ...(selected ? [clear] : []),
-    ]),
-    status,
-  );
+      "collection",
+    ),
+  ]);
+  actions.classList.add("rada-profile-actions");
+  container.append(actions, details);
   return () => {
     controller.abort();
   };
