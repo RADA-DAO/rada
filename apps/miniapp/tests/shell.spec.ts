@@ -673,13 +673,13 @@ test("profile projects each validated membership status and refreshes on click",
     .click();
   status = "member";
   await page
-    .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+    .getByRole("button", { name: t("uk", "shell.me"), exact: true })
     .click();
   await expect(
     page.getByText(ukLocale.shell.membership.member, { exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+    .getByRole("button", { name: t("uk", "shell.action"), exact: true })
     .click();
   profilePayload = {
     visibility: "public",
@@ -691,13 +691,13 @@ test("profile projects each validated membership status and refreshes on click",
     },
   };
   await page
-    .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+    .getByRole("button", { name: t("uk", "shell.me"), exact: true })
     .click();
   await expect(
     page.getByText(ukLocale.shell.unavailable, { exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+    .getByRole("button", { name: t("uk", "shell.action"), exact: true })
     .click();
   profilePayload = { visibility: "private", public: null };
   for (const scope of ["profile", "response", "membership"] as const) {
@@ -712,14 +712,14 @@ test("profile projects each validated membership status and refreshes on click",
     if (scope === "membership")
       membershipExtras = { telegram_user_id: "private-fixture" };
     await page
-      .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+      .getByRole("button", { name: t("uk", "shell.me"), exact: true })
       .click();
     await expect(
       page.getByText(ukLocale.shell.unavailable, { exact: true }),
     ).toBeVisible();
     expect(await page.content()).not.toContain("private-fixture");
     await page
-      .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+      .getByRole("button", { name: t("uk", "shell.action"), exact: true })
       .click();
     profilePayload = { visibility: "private", public: null };
     responseExtras = {};
@@ -728,7 +728,7 @@ test("profile projects each validated membership status and refreshes on click",
   for (const malformed of ["unexpected", ["member"]]) {
     status = malformed;
     await page
-      .getByRole("button", { name: ukLocale.shell.profile, exact: true })
+      .getByRole("button", { name: t("uk", "shell.me"), exact: true })
       .click();
     await expect(
       page.getByText(ukLocale.shell.unavailable, { exact: true }),
@@ -737,7 +737,7 @@ test("profile projects each validated membership status and refreshes on click",
       page.getByText(enLocale.shell.membership.member, { exact: true }),
     ).toHaveCount(0);
     await page
-      .getByRole("button", { name: ukLocale.shell.apps, exact: true })
+      .getByRole("button", { name: t("uk", "shell.action"), exact: true })
       .click();
   }
 });
@@ -755,21 +755,26 @@ test("expired authentication has a manual retry", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
-test("swipe and Apps tab share the launcher destination", async ({ page }) => {
+test("swipe and home page button share the launcher destination", async ({
+  page,
+}) => {
   await host(page);
   await page.goto("/");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   const bounds = await page.locator(".screen").boundingBox();
   if (!bounds) throw new Error("Screen bounds unavailable");
-  await page.mouse.move(bounds.x + 24, 240);
+  await page.mouse.move(bounds.x + bounds.width * 0.85, 240);
   await page.mouse.down();
-  await page.mouse.move(bounds.x + bounds.width * 0.85, 245, { steps: 12 });
+  await page.mouse.move(bounds.x + 24, 245, { steps: 12 });
   await page.mouse.up();
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Profile", exact: true }).click();
-  await page.getByRole("button", { name: "Apps", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Navigation", exact: true })
+    .getByRole("button", { name: "Apps", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
@@ -814,4 +819,127 @@ test("unavailable response can recover with manual retry", async ({ page }) => {
   await expect(
     page.getByText("Private profile", { exact: true }),
   ).toBeVisible();
+});
+
+test("workspace dots expose three pages and community returns by swipe", async ({
+  page,
+}) => {
+  await host(page);
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Navigation" });
+  await expect(nav.getByRole("button")).toHaveCount(3);
+  await nav.getByRole("button", { name: "Community", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Community", exact: true }),
+  ).toBeVisible();
+  const banner = page.locator(".rada-community-banner");
+  await expect(
+    banner.getByRole("heading", { name: "Community", exact: true }),
+  ).toBeVisible();
+  await expect(banner.getByRole("navigation")).toHaveCount(0);
+  // Overflow alone does not contain the banner's own shadow or outline.
+  // A rounded paint clip prevents any of these from appearing above its edge.
+  await expect(banner).toHaveCSS("clip-path", "inset(0px round 32px)");
+  const generatedPaint = await banner.evaluate((node) => {
+    const ancestors: Element[] = [];
+    for (let parent = node.parentElement; parent; parent = parent.parentElement)
+      ancestors.push(parent);
+    return [node, ...node.querySelectorAll("*"), ...ancestors].flatMap(
+      (element) =>
+        ["::before", "::after"].flatMap((pseudo) => {
+          const style = getComputedStyle(element, pseudo);
+          return style.content !== "none" &&
+            style.content !== "normal" &&
+            style.display !== "none"
+            ? [`${element.getAttribute("class") ?? element.tagName}${pseudo}`]
+            : [];
+        }),
+    );
+  });
+  expect(generatedPaint).toEqual([]);
+  const title = banner.getByRole("heading", {
+    name: "Community",
+    exact: true,
+  });
+  await page.keyboard.press("Tab");
+  await title.focus();
+  await expect(banner).toHaveCSS("overflow-x", "clip");
+  await expect(title).toHaveCSS("outline-offset", "-2px");
+  const placement = await banner.evaluate((node) => {
+    const heading = node.querySelector("h1");
+    if (!heading) throw new Error("Community heading unavailable");
+    const banner = node.getBoundingClientRect();
+    const title = heading.getBoundingClientRect();
+    return {
+      bottom: banner.bottom - title.bottom,
+      left: title.left - banner.left,
+      scrollTop: node.scrollTop,
+    };
+  });
+  expect(placement.bottom).toBeCloseTo(23, 0);
+  expect(placement.left).toBeCloseTo(26, 0);
+  expect(placement.scrollTop).toBe(0);
+  await expect(
+    page.locator(".rada-community > .rada-screen-body > :first-child"),
+  ).toHaveClass("rada-group rada-community-banner");
+  const tokens = page.locator(".rada-community-panel .rada-tabs");
+  const jpegpe = tokens.getByRole("button", { name: "JPEGPE", exact: true });
+  const ton = tokens.getByRole("button", { name: "TON", exact: true });
+  await expect(jpegpe).toHaveCSS("border-top-width", "0px");
+  await expect(ton).toHaveCSS("border-top-width", "0px");
+  await expect(ton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await ton.click();
+  await expect(ton).toHaveAttribute("aria-current", "page");
+  await expect(jpegpe).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  const bounds = await page.locator(".screen").boundingBox();
+  if (!bounds) throw new Error("Screen bounds unavailable");
+  await page.mouse.move(bounds.x + 24, 240);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width * 0.4, 245, { steps: 6 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".rada-workspace-track")
+        .evaluate((node) =>
+          (node as HTMLElement).style.getPropertyValue("--workspace-drag"),
+        ),
+    )
+    .not.toBe("");
+  await expect(
+    nav.getByRole("button", { name: "Community", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await page.mouse.move(bounds.x + bounds.width * 0.85, 245, { steps: 6 });
+  await page.mouse.up();
+  await expect(
+    nav.getByRole("button", { name: "Apps", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+});
+
+test("workspace stays centered and focus never scrolls its page rail", async ({
+  page,
+}) => {
+  await host(page);
+  await page.goto("/");
+  const screen = page.locator(".screen");
+  const nav = page.getByRole("navigation", { name: "Navigation", exact: true });
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("Viewport unavailable");
+  const width = Math.min(viewport.width, 430);
+  const bounds = await screen.boundingBox();
+  if (!bounds) throw new Error("Screen bounds unavailable");
+  expect(bounds.width).toBe(width);
+  expect(bounds.x).toBeCloseTo((viewport.width - width) / 2);
+  await expect(nav.getByRole("button")).toHaveCount(3);
+  for (let pass = 0; pass < 2; pass++) {
+    await nav.getByRole("button", { name: "Profile", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeFocused();
+    await expect.poll(() => screen.evaluate((node) => node.scrollLeft)).toBe(0);
+    await nav.getByRole("button", { name: "Apps", exact: true }).click();
+    await expect(page.locator(".rada-os-wordmark")).toBeInViewport({
+      ratio: 1,
+    });
+    await expect.poll(() => screen.evaluate((node) => node.scrollLeft)).toBe(0);
+  }
 });

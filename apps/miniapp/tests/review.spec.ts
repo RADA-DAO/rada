@@ -158,28 +158,27 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
         .locator(".screen")
         .evaluate((element) => element.scrollHeight > element.clientHeight),
     ).toBe(true);
-    const navigation = page.getByRole("navigation");
-    const footerIsPinned = () =>
-      navigation.evaluate((footer) => {
-        const bounds = footer.getBoundingClientRect();
-        return (
-          bounds.bottom <= innerHeight && bounds.bottom > innerHeight - 100
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    const actionsClearSafeArea = async () => {
+      const actions = row.locator(".rada-actions");
+      await actions.scrollIntoViewIfNeeded();
+      await expect(
+        row.getByRole("button", { name: "Approve", exact: true }),
+      ).toBeInViewport({ ratio: 1 });
+      await expect(
+        row.getByRole("button", { name: "Reject", exact: true }),
+      ).toBeInViewport({ ratio: 1 });
+      return actions.evaluate((actions) => {
+        const bounds = actions.getBoundingClientRect();
+        const safeBottom = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--app-safe-bottom",
+          ),
         );
+        return bounds.top >= 0 && bounds.bottom <= innerHeight - safeBottom;
       });
-    expect(await footerIsPinned()).toBe(true);
-    const actionsClearFooter = () =>
-      row.locator(".rada-actions").evaluate((actions) => {
-        const footer = document.querySelector(".screen nav");
-        const screen = actions.closest(".screen");
-        if (!footer || !screen) throw new Error("Screen footer missing");
-        screen.scrollTop = screen.scrollHeight;
-        return (
-          footer.getBoundingClientRect().top >=
-          actions.getBoundingClientRect().bottom
-        );
-      });
-    expect(await actionsClearFooter()).toBe(true);
-    expect(await footerIsPinned()).toBe(true);
+    };
+    expect(await actionsClearSafeArea()).toBe(true);
     await row
       .getByLabel("Decision reason")
       .fill("Reviewed in isolated sandbox");
@@ -192,13 +191,15 @@ test("real reviewer queue, isolated preview and recorded approve/reject decision
     });
     expect(second.status()).toBe(201);
     const next = (await second.json()) as { versionId: string };
-    await page.getByRole("button", { name: "Profile", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("heading", { name: "Profile", exact: true }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "App review", exact: true }).click();
     await row
       .getByLabel("Decision reason")
       .fill("Requested capabilities need revision");
-    expect(await actionsClearFooter()).toBe(true);
-    expect(await footerIsPinned()).toBe(true);
+    expect(await actionsClearSafeArea()).toBe(true);
     await row.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(row).toHaveCount(0);
     const records = await db.query(
@@ -326,17 +327,24 @@ test("late queue response cannot replace a destination after Back", async ({
   });
   await launch(page);
   await expect(page.getByText("Loading…", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Apps", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("heading", { name: "Profile", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Navigation", exact: true })
+    .getByRole("button", { name: "Apps", exact: true })
+    .click();
   finish?.();
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
-  // Built-ins and the external shortcut; no late review queue rows.
+  // Folders, built-ins and the external shortcut; no late review queue rows.
   await expect(
     page
       .getByRole("list", { name: "Installed apps", exact: true })
       .getByRole("listitem"),
-  ).toHaveCount(5);
+  ).toHaveCount(9);
 });
 
 test("non-reviewer profile has no admin entry", async ({ page, request }) => {

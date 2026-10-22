@@ -4,24 +4,16 @@ import {
   Embed,
   EmptyState,
   ErrorState,
-  Identity,
   Loading,
 } from "../../../packages/ui/src/index.ts";
 import { t, type Locale } from "../../../packages/i18n/src/index.ts";
 import type {
   initializePlatform,
   Navigation,
-  OwnProfile,
   PublishedApp,
 } from "../../../packages/platform-sdk/src/index.ts";
 
 type Status = "guest" | "loading" | "ready" | "expired" | "unavailable";
-export type HomeIdentity = {
-  authenticated: boolean;
-  visibility: string;
-  frog: OwnProfile["profile"]["public"];
-};
-
 /**
  * The launcher: published apps as tiles, plus the app the viewer opened from
  * it. Opening pushes the app onto the platform stack; Back and swipe pop it.
@@ -41,7 +33,13 @@ export function createHome(options: {
   ): Promise<() => void>;
   render(): void;
   /** Built-in apps in the shell, shown before registry apps for everyone. */
-  builtIn(): { id: string; name: string; tier?: AppTier; onOpen(): void }[];
+  builtIn(): {
+    id: string;
+    name: string;
+    tier?: AppTier;
+    iconUrl?: string;
+    onOpen(): void;
+  }[];
 }) {
   const desktop = createLauncherDesktop({
     ...options,
@@ -135,6 +133,7 @@ export function createHome(options: {
         id: app.id,
         name: app.name,
         group: "rada",
+        ...(app.iconUrl ? { iconUrl: app.iconUrl } : {}),
         tier: app.tier ?? ("official" as const),
         tierLabel: text("home.tier.official"),
         onOpen() {
@@ -170,24 +169,6 @@ export function createHome(options: {
     /** Its stack entry left: Back, swipe or the app closing itself. */
     close() {
       running = undefined;
-    },
-    identity(viewer: HomeIdentity): HTMLElement {
-      if (viewer.frog)
-        return Identity({
-          name: viewer.frog.username,
-          caption: text("shell.public"),
-        });
-      if (!viewer.authenticated)
-        return Identity({
-          name: text("home.identityGuest"),
-          caption: text("shell.guest"),
-        });
-      return Identity({
-        name: text("home.identityMember"),
-        ...(viewer.visibility === "private"
-          ? { caption: text("shell.private") }
-          : {}),
-      });
     },
     content(): Node[] {
       const content: Node[] = [];

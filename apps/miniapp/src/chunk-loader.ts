@@ -5,6 +5,7 @@ export function createChunkLoader<T>(load: () => Promise<T>, name: string) {
   return async (): Promise<T> => {
     if (loaded) return loaded;
     try {
+      await import("@rada/ui/screens/secondary.css");
       if (!failures) loaded = await load();
       else {
         const response = await fetch(

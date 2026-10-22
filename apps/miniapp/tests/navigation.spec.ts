@@ -145,27 +145,34 @@ async function drag(
   await page.mouse.up();
 }
 
-test("edge swipe right goes back, a short drag cancels", async ({
+test("workspace swipe follows page order and a short drag cancels", async ({
   page,
 }, info) => {
   test.skip(!info.project.name.endsWith("mobile"), "touch gesture");
   await openProfile(page);
   const width = page.viewportSize()?.width ?? 390;
-  await drag(page, [4, 300], [width * 0.15, 305], 200);
+  await drag(page, [width * 0.85, 300], [width * 0.8, 305], 200);
   await expect(profileHeading(page)).toBeVisible();
   await expect(page.locator(".screen-wrap")).not.toHaveClass(/rada-back/);
-  await drag(page, [4, 300], [width * 0.9, 305]);
+  await expect(page.locator(".rada-workspace-track")).not.toHaveAttribute(
+    "data-settling",
+    "true",
+  );
+  await drag(page, [width * 0.85, 300], [24, 305]);
   await expect(apps(page)).toBeVisible();
   expect(await lastBackState(page)).toBe("hide");
 });
 
-test("swipe ignores horizontal scrollers and the root screen", async ({
+test("workspace swipe changes the root page and ignores horizontal scrollers", async ({
   page,
 }, info) => {
   test.skip(!info.project.name.endsWith("mobile"), "touch gesture");
+  await expect(page.locator(".rada-workspace-page:not([inert])")).toHaveCSS(
+    "touch-action",
+    "pan-y",
+  );
   await drag(page, [4, 300], [350, 305]);
-  await expect(apps(page)).toBeVisible();
-  await openProfile(page);
+  await expect(profileHeading(page)).toBeVisible();
   await page.evaluate(() => {
     const strip = document.createElement("div");
     strip.id = "strip";

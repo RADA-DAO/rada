@@ -70,10 +70,8 @@ await test("one public entry supplies all recipes with resolvable token referenc
     "primitives.css",
     "components.css",
     "launcher.css",
-    "ranking.css",
     "frog-card.css",
     "shell.css",
-    "tally.css",
   ]);
   const recipes = await Promise.all(
     imports.map((name) => readFile(new URL(name, source), "utf8")),

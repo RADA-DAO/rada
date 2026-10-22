@@ -1,4 +1,4 @@
-/** Keep keyboard position when asynchronous screens replace focused controls. */
+/** Restore shell focus on screen replacement; content manages its own focus. */
 export function observeScreenFocus(
   host: HTMLElement,
   headingSelector = "h1",
@@ -10,7 +10,10 @@ export function observeScreenFocus(
   });
   const observer = new MutationObserver(() => {
     const next = host.querySelector<HTMLElement>(headingSelector);
-    const changed = next !== heading;
+    if (next === heading) return;
+    const changed =
+      !next?.dataset.focusKey ||
+      next.dataset.focusKey !== heading?.dataset.focusKey;
     heading = next;
     if (document.querySelector("dialog[open]") && !host.matches("dialog[open]"))
       return;
@@ -18,14 +21,21 @@ export function observeScreenFocus(
     const key = focused?.dataset.focusKey;
     const replacement = key
       ? [...host.querySelectorAll<HTMLElement>("[data-focus-key]")].find(
-          (item) => item.dataset.focusKey === key && !item.matches(":disabled"),
+          (item) =>
+            item.dataset.focusKey === key &&
+            !item.matches(":disabled") &&
+            !item.matches("[inert] *"),
         )
       : undefined;
     const target = changed ? next : (replacement ?? next);
     if (target) {
       if (target === next) target.tabIndex = -1;
-      target.focus({ preventScroll: target !== next });
-      if (target === next) host.scrollTop = 0;
+      // Focus must never horizontally scroll the translated workspace rail.
+      target.focus({ preventScroll: true });
+      if (target === next) {
+        const page = target.closest(".rada-workspace-page") ?? host;
+        page.scrollTop = 0;
+      }
     }
   });
   observer.observe(host, { childList: true, subtree: true });
@@ -45,6 +55,7 @@ export function restoreSheetFocus(opener?: HTMLElement | null): void {
   const target =
     opener?.isConnected && !opener.matches(":disabled")
       ? opener
-      : (replacement ?? document.querySelector<HTMLElement>("main h1"));
-  target?.focus();
+      : (replacement ??
+        document.querySelector<HTMLElement>("main h1:not([inert] *)"));
+  target?.focus({ preventScroll: true });
 }

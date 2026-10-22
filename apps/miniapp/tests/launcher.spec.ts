@@ -65,9 +65,12 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
   await search.fill("");
   await page.getByRole("button", { name: "Games", exact: true }).click();
   await expect(
-    page.getByText("No matching apps", { exact: true }),
+    page.getByRole("dialog").getByText("No matching apps", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   const external = page.getByRole("button", { name: "CryptoNos", exact: true });
   await expect(external).toHaveAccessibleDescription("Separate product");
   await external.click();
@@ -77,8 +80,16 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
     ),
   ).toEqual(["https://t.me/CryptonosShop_bot"]);
   await expect(page.locator("iframe")).toHaveCount(0);
-  await page.getByRole("button", { name: "Arrange apps", exact: true }).click();
+  await page
+    .locator(".rada-launcher-browser .rada-app-tile")
+    .first()
+    .click({ delay: 700 });
   const dialog = page.getByRole("dialog");
+  await expect(dialog).toHaveClass(/rada-launcher-editor/);
+  await expect(dialog).toHaveCSS("border-radius", "0px");
+  await expect(
+    dialog.locator(".rada-launcher-editor-label .rada-app-tile-art").first(),
+  ).toBeVisible();
   await dialog
     .getByRole("button", { name: "SPLASH: Move later", exact: true })
     .focus();
@@ -132,6 +143,8 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
   expect(snapshot.layout.order[0]).toBe("builtin:governance");
   expect(snapshot.layout.folders[0]?.apps).toEqual(["builtin:governance"]);
   await page.getByRole("button", { name: "Weekly", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveClass(/rada-launcher-folder/);
+  await expect(page.getByRole("dialog")).toHaveCSS("border-radius", "0px");
   await expect(
     page.getByRole("dialog").getByRole("button", { name: "DAO", exact: true }),
   ).toBeVisible();
@@ -141,7 +154,8 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
     .click();
   await page.screenshot({ path: info.outputPath("launcher-home.png") });
   conflict = true;
-  await page.getByRole("button", { name: "Arrange apps", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange apps", exact: true }).focus();
+  await page.keyboard.press("Enter");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save layout", exact: true })

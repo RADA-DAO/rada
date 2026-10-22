@@ -1,0 +1,85 @@
+.rada-community > .rada-screen-header {
+  display: none;
+}
+.rada-community > .rada-screen-body {
+  position: relative;
+  padding: var(--rada-space-1) 0;
+}
+.rada-community-banner {
+  position: relative;
+  container-type: inline-size;
+  display: flex;
+  align-items: end;
+  min-height: var(--rada-community-banner-height);
+  padding: var(--rada-community-banner-padding);
+  overflow: clip;
+  /* Clip the complete paint surface, including border glints and shadows. */
+  clip-path: inset(var(--rada-zero-length) round var(--rada-community-radius));
+  border: 0;
+  border-radius: var(--rada-community-radius);
+  background:
+    var(--rada-community-shade),
+    url("/apps/community-pond.webp") center / cover;
+  box-shadow: var(--rada-community-shadow);
+}
+.rada-community-banner .rada-screen-title {
+  position: absolute;
+  left: var(--rada-community-title-left);
+  bottom: var(--rada-community-title-bottom);
+  margin: 0;
+  color: var(--rada-community-ink);
+  font-weight: var(--rada-font-weight-heading);
+  font-size: var(--rada-community-title-size);
+  padding: 0;
+  font-family: var(--rada-font-body);
+  letter-spacing: normal;
+  text-shadow: var(--rada-community-title-shadow);
+}
+.rada-community-banner .rada-screen-title:focus-visible {
+  outline-offset: calc(-1 * var(--rada-focus-width));
+  box-shadow: inset 0 0 0 calc(2 * var(--rada-focus-width)) var(--accent-ring) !important;
+}
+.rada-community-panel {
+  min-height: var(--rada-community-panel-height);
+  padding: var(--rada-space-3);
+  border: var(--rada-os-rule);
+  border-radius: var(--rada-community-radius);
+  background: var(--rada-glass-fill);
+  box-shadow: var(--rada-os-shadow);
+}
+.rada-community-panel .rada-tabs {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.rada-community-banner .rada-tabs {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.rada-community-banner .rada-tabs .rada-button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rada-community-banner .rada-tabs [aria-current="page"] {
+  border-bottom: var(--rada-focus-width) solid currentColor;
+}
+.rada-community-panel .rada-tabs .rada-button {
+  padding: var(--rada-space-3);
+  min-height: var(--rada-os-dot-target);
+  border: 0;
+  border-radius: var(--rada-community-tab-radius);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--rada-font-size-body);
+}
+.rada-community-panel .rada-tabs [aria-current="page"] {
+  background: var(--rada-community-tab-fill);
+  box-shadow: var(--rada-community-tab-shadow);
+  font-weight: var(--rada-font-weight-heading);
+  color: var(--text-primary);
+}

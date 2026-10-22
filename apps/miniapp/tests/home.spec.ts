@@ -20,11 +20,9 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   );
   await launch(page);
   await expect(appsHeading(page)).toBeVisible();
-  await expect(
-    page.getByText(t("en", "home.identityMember"), { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".rada-os-wordmark")).toBeVisible();
   const grid = page.getByRole("list", { name: t("en", "home.gridLabel") });
-  await expect(grid.getByRole("listitem")).toHaveCount(7);
+  await expect(grid.getByRole("listitem")).toHaveCount(11);
   for (const name of ["Holders", "DAO", "Treasury"]) {
     await expect(tile(page, name)).toBeVisible();
     await expect(tile(page, name)).toHaveAccessibleDescription("");
@@ -53,7 +51,7 @@ test("home lists approved apps with tier marks and opens one onto the stack", as
   const returned = async () => {
     await expect(appsHeading(page)).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
-    await expect(grid.getByRole("listitem")).toHaveCount(7);
+    await expect(grid.getByRole("listitem")).toHaveCount(11);
   };
 
   await official.click();
@@ -106,7 +104,7 @@ test("home shows loading, recovers from an error and shows the empty state", asy
   await page.getByRole("button", { name: t("en", "common.retry") }).click();
   await expect(page.getByText(t("en", "home.emptyTitle"))).toBeVisible();
   // Built-in SPLASH and platform Holders, Treasury and DAO tiles remain.
-  await expect(page.getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("listitem")).toHaveCount(9);
 });
 
 test("a guest sees how to sign in and no catalog request is made", async ({
@@ -121,9 +119,7 @@ test("a guest sees how to sign in and no catalog request is made", async ({
   await expect(
     page.getByRole("heading", { name: t("en", "home.guestTitle") }),
   ).toBeVisible();
-  await expect(
-    page.getByText(t("en", "home.identityGuest"), { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".rada-os-wordmark")).toBeVisible();
   expect(calls).toBe(0);
 });
 
@@ -188,14 +184,12 @@ test("home shows the viewer's name and frog right after login", async ({
     });
   });
   await launch(page);
-  await expect(page.getByText("Fixture_frog", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText(t("en", "shell.public"), { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".rada-os-wordmark")).toBeVisible();
+  await expect(page.locator("html")).toHaveCSS("--theme-base", "#123456");
   expect(reads).toBe(1);
 });
 
-test("home keeps a generic identity when the profile cannot be read", async ({
+test("home keeps its launcher when the profile cannot be read", async ({
   page,
 }) => {
   await page.route("**/apps/published", (route) =>
@@ -205,10 +199,8 @@ test("home keeps a generic identity when the profile cannot be read", async ({
     route.fulfill({ status: 503, json: { error: "unavailable" } }),
   );
   await launch(page);
-  await expect(
-    page.getByText(t("en", "home.identityMember"), { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(7);
+  await expect(page.locator(".rada-os-wordmark")).toBeVisible();
+  await expect(page.getByRole("listitem")).toHaveCount(11);
 });
 
 test("a tile shows the approved icon and keeps its monogram when the icon fails", async ({
@@ -286,18 +278,15 @@ test("secondary screens load on demand and return home through the stack", async
     }
   }
   expect(chunks.some((url) => /desktop-screens-/.test(url))).toBe(true);
-  expect(chunks.some((url) => /holders-/.test(url))).toBe(true);
-  expect(chunks.some((url) => /desktop-screens-/.test(url))).toBe(true);
 });
 
 test("a failed screen chunk offers retry and pending imports cannot replace home", async ({
   page,
 }) => {
   let release: (() => void) | undefined;
-  let first = true;
-  await page.route("**/assets/holders-*.js*", async (route) => {
-    if (first) {
-      first = false;
+  await page.route("**/assets/desktop-screens-*.js*", async (route) => {
+    // Fail both the module preload and import; only an explicit retry may proceed.
+    if (!new URL(route.request().url()).searchParams.has("retry")) {
       await route.abort();
     } else {
       await new Promise<void>((resolve) => {
@@ -308,6 +297,9 @@ test("a failed screen chunk offers retry and pending imports cannot replace home
   });
   await launch(page, "");
   await tile(page, "Holders").click();
+  await expect(
+    page.getByRole("button", { name: t("en", "common.retry"), exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: t("en", "common.retry"), exact: true })
     .click();

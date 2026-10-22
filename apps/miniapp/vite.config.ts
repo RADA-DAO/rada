@@ -73,7 +73,7 @@ export default defineConfig({
           governance: "/apps/miniapp/src/desktop-screens.ts",
           profile: "/apps/miniapp/src/profile-panel.ts",
           collection: "/apps/miniapp/src/collection.ts",
-          holders: "/apps/miniapp/src/holders.ts",
+          holders: "/apps/miniapp/src/desktop-screens.ts",
           splash: "/apps/miniapp/src/desktop-screens.ts",
         };
         const files = Object.fromEntries(

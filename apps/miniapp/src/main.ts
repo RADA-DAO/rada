@@ -1,4 +1,13 @@
-import { onPageHide } from "./routes.ts";
+import {
+  onPageHide,
+  createRoutes,
+  installShellSwipe,
+  type Route,
+  createWorkspace,
+  isWorkspace,
+  createSettingsAction,
+  configureShellBack,
+} from "./routes.ts";
 import {
   profileStatus,
   showShellSettings,
@@ -6,22 +15,17 @@ import {
 } from "./profile-status.ts";
 import { createHoldersScreen } from "./holders-screen.ts";
 import * as payment from "./payment-copy.ts";
-import { openAppPermissions } from "./permissions.ts";
 import { mountLazyProfile, createCollectionScreen } from "./profile-loader.ts";
 import { mountLazyReview } from "./review-loader.ts";
-import { createRoutes, home, installShellSwipe, type Route } from "./routes.ts";
 import { createHome } from "./home.ts";
-import { loadAppIcon } from "./app-icon.ts";
 import "@rada/ui/design-system.css";
 import {
   DEFAULT_THEME_BACKGROUND,
   Button,
   ErrorState,
   Group,
-  isSheetOpen,
   Screen,
   ScreenHost,
-  Tabs,
   Text,
 } from "../../../packages/ui/src/index.ts";
 import {
@@ -31,7 +35,6 @@ import {
 } from "../../../packages/i18n/src/index.ts";
 import {
   initializePlatform,
-  configurePageBack,
   type OwnProfile,
   deferPageBackRender,
 } from "../../../packages/platform-sdk/src/index.ts";
@@ -47,11 +50,12 @@ let profile:
   "guest";
 let selectedFrog: OwnProfile["profile"]["public"] = null;
 const holders = createHoldersScreen();
+const community = createHoldersScreen(true);
 const collection = createCollectionScreen();
 let profileDispose: (() => void) | undefined,
   reviewDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
-let settingsButton: HTMLElement | null = null;
+let activeSettingsButton: HTMLElement | null = null;
 const routes = createRoutes();
 const { navigation } = routes;
 const back = () => void navigation.back();
@@ -100,7 +104,10 @@ const launcher = createHome({
   platform,
   navigation,
   read: (signal) => platform.readPublishedApps(signal),
-  loadIcon: loadAppIcon,
+  loadIcon: (url, signal) =>
+    import("./app-icon.ts")
+      .then((module) => module.loadAppIcon(url, signal))
+      .catch(() => undefined),
   mount: (app, container, origin) =>
     runner.mount(
       {
@@ -115,7 +122,9 @@ const launcher = createHome({
       origin,
       true,
     ),
-  render,
+  render: () => {
+    if (route === "launcher") render();
+  },
   builtIn: builtIns.tiles,
 });
 applyProfileTheme(null);
@@ -125,9 +134,24 @@ const swipe = installShellSwipe(
   () => payment.paymentBusy,
   back,
 );
+const workspace = createWorkspace(screen, {
+  route: () => route,
+  navigation,
+  text,
+  enabled: () => !payment.paymentBusy && !launcher.running,
+  profile: () => {
+    if (platform.authenticatedLaunch) void loadProfile();
+  },
+});
 const notes = platform.moduleApi("notifications");
 function showSettings() {
-  showShellSettings(locale, navigation, settingsButton, changeLocale, notes);
+  showShellSettings(
+    locale,
+    navigation,
+    activeSettingsButton,
+    changeLocale,
+    notes,
+  );
 }
 function changeLocale(value: Locale) {
   locale = value;
@@ -161,7 +185,7 @@ async function loadProfile(initial = false) {
   }
   if (stale()) return;
   if (initial) {
-    render();
+    if (isWorkspace(route)) render();
     return;
   }
   if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
@@ -180,40 +204,47 @@ async function loadProfile(initial = false) {
   render();
 }
 function render() {
-  if (deferPageBackRender(screen, render)) return;
+  if (workspace.deferRender(render) || deferPageBackRender(screen, render))
+    return;
   reviewDispose?.();
   reviewDispose = undefined;
   profileDispose?.();
   profileDispose = undefined;
   builtIns.dispose();
   holders.dispose();
+  community.dispose();
   collection.dispose();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
-  configurePageBack(screen, {
-    key: running ? "app" : route,
-    ...(running
-      ? { parent: route, back: () => void navigation.back() }
-      : route !== "launcher" && navigation.below
-        ? {
-            parent: navigation.below.key,
-            back: () => {
-              navigation.back();
-            },
-          }
-        : {}),
-    canSwipe: () => !isSheetOpen(),
-  });
-  settingsButton = Button(
-    text(route === "launcher" ? "shell.brand" : "shell.settings"),
-    {
-      ariaLabel: text("shell.settings"),
-      ...(route === "launcher" ? {} : { icon: "settings" as const }),
-      variant: "ghost",
-      onClick: showSettings,
-    },
+  configureShellBack(screen, running ? "app" : route, navigation);
+  screen.dataset.workspace = String(isWorkspace(route) && !running);
+  if (isWorkspace(route) && !running) workspace.render(renderPage);
+  else renderPage(screen, route);
+}
+function renderPage(screen: HTMLElement, route: Route) {
+  const running = route === "launcher" ? launcher.running : undefined;
+  const settingsButton = createSettingsAction(
+    route === "launcher",
+    text,
+    showSettings,
   );
+  if (route === routes.current()) activeSettingsButton = settingsButton;
+  screen.dataset.workspace = String(isWorkspace(route) && !running);
+  screen.dataset.home = String(route === "launcher" && !running);
+  if (route === "community") {
+    community.render(screen, {
+      locale,
+      active: routes.current() === "community",
+      title: text("shell.community"),
+      brand: text("shell.brand"),
+      actions: [settingsButton],
+      viewerFrogId: selectedFrog?.frog_id ?? null,
+      read: (token, cursor, signal) =>
+        platform.readHolders(token, cursor, signal),
+    });
+    return;
+  }
   if (isBuiltInRoute(route)) {
     builtIns.render(screen, route, {
       brand: text("shell.brand"),
@@ -290,11 +321,9 @@ function render() {
       wallet.dataset.profileWallet = "true";
       const permissions = Button(text("shell.appPermissions"), {
         onClick: () =>
-          void openAppPermissions({
-            text,
-            platform,
-            navigation,
-            opener: permissions,
+          void import("./permissions.ts").then(({ openAppPermissions }) => {
+            const args = { text, platform, navigation, opener: permissions };
+            if (permissions.isConnected) return openAppPermissions(args);
           }),
       });
       content.push(
@@ -317,49 +346,20 @@ function render() {
     ...(route === "launcher"
       ? { titleHidden: true }
       : { brand: text("shell.brand") }),
-    ...(route === "launcher"
-      ? {
-          top: launcher.identity({
-            authenticated: platform.authenticatedLaunch,
-            visibility: profile,
-            frog: selectedFrog,
-          }),
-        }
-      : {}),
     actions: [settingsButton],
     children: content,
-    footer: Tabs({
-      label: text("shell.navigation"),
-      selected: route === "launcher" ? "apps" : "profile",
-      tabs: [
-        {
-          id: "apps",
-          label: text("shell.apps"),
-          onSelect: () => {
-            navigation.push(home);
-          },
-        },
-        {
-          id: "profile",
-          label: text("shell.profile"),
-          onSelect: () => {
-            routes.open("profile");
-            if (platform.authenticatedLaunch) void loadProfile();
-          },
-        },
-      ],
-    }),
   });
   screen.replaceChildren(view);
-  profileDispose = mountLazyProfile(view, {
-    locale,
-    selected: selectedFrog,
-    openCollection: () => {
-      routes.open("collection");
-    },
-    platform,
-    refresh: () => void loadProfile(),
-  });
+  if (route === "profile" && routes.current() === "profile")
+    profileDispose = mountLazyProfile(view, {
+      locale,
+      selected: selectedFrog,
+      openCollection: () => {
+        routes.open("collection");
+      },
+      platform,
+      refresh: () => void loadProfile(),
+    });
   const queue = view.querySelector<HTMLElement>("[data-review-queue]");
   if (queue)
     reviewDispose = mountLazyReview(queue, {
@@ -385,12 +385,14 @@ onPageHide(() => {
   profileGeneration++;
   launcher.dispose();
   holders.dispose();
+  community.dispose();
   collection.dispose();
   profileDispose?.();
   reviewDispose?.();
   builtIns.dispose();
   dismissApp();
   swipe.dispose();
+  workspace.dispose();
   platform.dispose();
   navigation.dispose();
 });

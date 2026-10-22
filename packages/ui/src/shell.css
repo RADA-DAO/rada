@@ -23,7 +23,8 @@ body {
   max-width: var(--rada-shell-width);
   margin: auto;
 }
-.screen {
+.screen,
+.rada-workspace-page {
   box-sizing: border-box;
   height: 100%;
   overflow: auto;
@@ -46,33 +47,201 @@ body {
 .screen *::after {
   box-sizing: border-box;
 }
-.screen {
+.screen:not([data-workspace="true"]) {
+  height: calc(100% - var(--app-safe-bottom, var(--rada-zero-length)));
+}
+.screen,
+.rada-workspace-page {
   overflow-x: clip;
   scrollbar-gutter: stable;
 }
-/* The OS badge occupies the center lane; native edge controls stay with Telegram. */
-.rada-screen-header:not(:has(.rada-screen-brand)) > .rada-button {
-  justify-self: center;
+.screen[data-workspace="true"] {
+  position: relative;
+  padding: 0;
+  overflow: clip;
+  touch-action: pan-y;
+}
+.rada-workspace-track {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  transform: translate3d(
+    calc(
+      var(--workspace-index, 1) * -100% +
+        var(--workspace-drag, var(--rada-zero-length))
+    ),
+    0,
+    0
+  );
+}
+.rada-workspace-track[data-settling="true"] {
+  transition: transform
+    var(--workspace-duration, var(--rada-duration-transition))
+    var(--rada-ease-emphasized);
+}
+.rada-workspace-page {
+  touch-action: pan-y;
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  scrollbar-gutter: auto;
+}
+.rada-workspace-page > .rada-screen-view {
+  min-height: 100%;
+}
+[data-home="true"] {
+  padding-top: calc(
+    var(--rada-space-3) + var(--app-safe-top, var(--rada-zero-length))
+  );
+}
+[data-home="true"] .rada-screen-header {
+  min-height: var(--rada-os-header-height);
+}
+[data-home="true"] .rada-screen-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: var(--rada-space-2) var(--rada-os-gutter) 0;
+}
+[data-home="true"] .rada-screen-body > * {
+  margin-top: 0;
+}
+[data-home="true"] .rada-desktop {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.rada-screen-header .rada-os-wordmark {
+  gap: var(--rada-os-wordmark-gap);
+  padding: 0 var(--rada-space-1);
+  min-height: var(--rada-os-header-height);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--rada-font-body);
+}
+.rada-os-wordmark b {
   font-family: var(--rada-font-brand);
   font-size: var(--rada-shell-wordmark-size);
+  line-height: 1;
   letter-spacing: var(--rada-shell-wordmark-tracking);
-  border: var(--rada-rule);
-  background: var(--rada-glass-fill);
-  box-shadow: var(--rada-shadow-tile);
 }
-
-/* Leave room to scroll the last action clear of pinned navigation. */
-.rada-screen-body:has(~ .rada-tabs) {
-  padding-bottom: calc(
-    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
-  );
+.rada-os-wordmark em {
+  min-width: var(--rada-os-pill-width);
+  height: var(--rada-os-pill-height);
+  display: grid;
+  place-items: center;
+  border: var(--rada-border-width) solid var(--rada-os-pill-edge);
+  border-radius: var(--rada-os-pill-radius);
+  background: var(--rada-os-pill-fill);
+  box-shadow: var(--rada-os-pill-shadow);
+  font-size: var(--rada-font-size-small);
+  font-style: normal;
+  font-weight: var(--rada-font-weight-heading);
+  letter-spacing: normal;
 }
-
-.rada-screen-view > .rada-tabs {
-  height: calc(
-    var(--rada-tabbar-height) + var(--app-safe-bottom, var(--rada-zero-length))
-  );
-  padding-bottom: calc(
-    var(--rada-space-1) + var(--app-safe-bottom, var(--rada-zero-length))
-  );
+.screen > .rada-page-dots {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  gap: 0;
+  height: var(--rada-os-dot-target);
+  min-height: var(--rada-os-dot-target);
+  margin: 0 auto
+    calc(
+      var(--rada-os-nav-inset) + var(--app-safe-bottom, var(--rada-zero-length))
+    );
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.rada-page-dots .rada-button {
+  width: var(--rada-os-dot-target);
+  min-height: var(--rada-os-dot-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rada-page-dots .rada-button::before {
+  content: "";
+  width: var(--rada-dot-size);
+  height: var(--rada-dot-size);
+  border-radius: 50%;
+  background: var(--text-primary);
+  opacity: var(--rada-dot-opacity);
+}
+.rada-page-dots [aria-current="page"]::before {
+  width: var(--rada-dot-active-size);
+  height: var(--rada-dot-active-size);
+  opacity: 0.68;
+}
+.rada-launcher-browser {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--rada-space-5);
+}
+.rada-desktop .rada-app-grid {
+  gap: var(--rada-os-row-gap) var(--rada-os-gap);
+}
+.rada-app-tile-art > svg {
+  width: var(--rada-os-icon-size);
+  height: var(--rada-os-icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rada-desktop .rada-app-tile-tier {
+  display: none;
+}
+.rada-desktop-search {
+  margin-top: auto;
+  position: relative;
+}
+.rada-desktop-search .rada-field-text {
+  position: absolute;
+  clip-path: inset(50%);
+}
+.rada-desktop-search .rada-field-control {
+  border: var(--rada-os-rule);
+  border-radius: var(--rada-os-search-radius);
+  min-height: var(--rada-control-height);
+  padding: var(--rada-space-3) var(--rada-space-4) var(--rada-space-3)
+    var(--rada-space-10);
+  background: var(--surface-raised);
+  box-shadow: var(--rada-os-shadow);
+  backdrop-filter: blur(var(--rada-os-blur));
+}
+.rada-desktop-search::after {
+  content: "";
+  position: absolute;
+  left: var(--rada-space-4);
+  bottom: var(--rada-space-4);
+  width: var(--rada-icon-size);
+  height: var(--rada-icon-size);
+  background: var(--text-primary);
+  mask: var(--rada-os-search-icon) center / contain no-repeat;
+  pointer-events: none;
+}
+.rada-desktop-edit {
+  position: absolute;
+  clip-path: inset(50%);
+  bottom: 0;
+}
+.rada-desktop-edit:focus-visible {
+  clip-path: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen[data-workspace="true"] {
+    scroll-behavior: auto;
+  }
 }

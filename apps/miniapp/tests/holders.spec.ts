@@ -59,7 +59,15 @@ async function launch(page: Page) {
   const tile = page.getByRole("button", { name: "Holders", exact: true });
   await expect(tile).toHaveAttribute("data-tier", "platform");
   await expect(tile).not.toHaveAttribute("aria-describedby");
-  await expect(page.locator(".rada-identity-name")).toHaveText("first_frog");
+  const navigation = page.getByRole("navigation", {
+    name: "Navigation",
+    exact: true,
+  });
+  await navigation
+    .getByRole("button", { name: "Profile", exact: true })
+    .click();
+  await expect(page.locator(".rada-profile-name")).toHaveText(/^first_frog$/i);
+  await navigation.getByRole("button", { name: "Apps", exact: true }).click();
   await tile.click();
 }
 

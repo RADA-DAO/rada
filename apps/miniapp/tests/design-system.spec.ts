@@ -22,21 +22,29 @@ test("shared spacing tokens update the screen, header and navigation", async ({
     "box-shadow",
     "rgb(255, 255, 255) 0px 0px 0px 2px",
   );
-  const screen = page.locator(".screen");
-  const header = page.locator(".rada-screen-header");
+  const screen = page.locator('.rada-workspace-page[data-home="true"]');
+  const header = screen.locator(".rada-screen-header");
   const navigation = page.getByRole("navigation");
-  await expect(screen).toHaveCSS("padding-top", "16px");
+  await expect(screen).toHaveCSS("padding-top", "12px");
+  await expect(screen).toHaveCSS("padding-left", "18px");
   await expect(header).toHaveCSS("gap", "16px");
-  await expect(navigation).toHaveCSS("gap", "4px");
-  await expect(navigation).toHaveCSS("padding-top", "4px");
+  await expect(navigation.getByRole("button").first()).toHaveCSS(
+    "width",
+    "44px",
+  );
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--rada-space-4", "24px");
-    document.documentElement.style.setProperty("--rada-space-1", "8px");
+    document.documentElement.style.setProperty("--rada-space-3", "20px");
+    document.documentElement.style.setProperty("--rada-page-gutter", "22px");
+    document.documentElement.style.setProperty("--rada-os-dot-target", "48px");
   });
-  await expect(screen).toHaveCSS("padding-top", "24px");
+  await expect(screen).toHaveCSS("padding-top", "20px");
+  await expect(screen).toHaveCSS("padding-left", "22px");
   await expect(header).toHaveCSS("gap", "24px");
-  await expect(navigation).toHaveCSS("gap", "8px");
-  await expect(navigation).toHaveCSS("padding-top", "8px");
+  await expect(navigation.getByRole("button").first()).toHaveCSS(
+    "width",
+    "48px",
+  );
   expect(
     await page.evaluate(() =>
       getComputedStyle(document.documentElement)
@@ -145,20 +153,27 @@ test("screen changes focus headings and long screens keep navigation in view", a
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeFocused();
   for (const name of ["Profile", "Apps"]) {
-    await page.getByRole("button", { name, exact: true }).click();
+    await page
+      .getByRole("navigation", { name: "Navigation", exact: true })
+      .getByRole("button", { name, exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name, exact: true }),
     ).toBeFocused();
     await page.evaluate(() => {
-      const body = document.querySelector<HTMLElement>(".rada-screen-body");
+      const body = document.querySelector<HTMLElement>(
+        ".rada-workspace-page:not([inert]) .rada-screen-body",
+      );
       if (!body) throw new Error("Missing body");
       body.style.minHeight = "3000px";
     });
     const navigation = page.getByRole("navigation");
     for (const scroll of [0, 1500, 5000]) {
-      await page.locator(".screen").evaluate((screen, y) => {
-        screen.scrollTo(0, y);
-      }, scroll);
+      await page
+        .locator(".rada-workspace-page:not([inert])")
+        .evaluate((screen, y) => {
+          screen.scrollTo(0, y);
+        }, scroll);
       await expect(navigation).toBeInViewport({ ratio: 1 });
       await expect(
         navigation.getByRole("button", { name: "Profile", exact: true }),
