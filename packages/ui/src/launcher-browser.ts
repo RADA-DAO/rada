@@ -45,6 +45,7 @@ export function LauncherBrowser(options: {
       name,
       tier: "platform",
       onOpen() {
+        tile.focus({ preventScroll: true });
         options.openFolder?.(name, items.map(AppTile));
       },
     });

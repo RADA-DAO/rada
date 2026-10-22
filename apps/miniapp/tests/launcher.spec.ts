@@ -65,11 +65,13 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
   await search.fill("");
   await page.getByRole("button", { name: "Games", exact: true }).click();
   await expect(
-    page.getByRole("dialog").getByText("No matching apps", { exact: true }),
+    page
+      .locator(".rada-launcher-folder")
+      .getByRole("button", { name: "SPLASH", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Close", exact: true })
+    .locator(".rada-launcher-folder")
+    .getByRole("button", { name: "← Desktop", exact: true })
     .click();
   const external = page.getByRole("button", { name: "CryptoNos", exact: true });
   await expect(external).toHaveAccessibleDescription("Separate product");
@@ -143,14 +145,15 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
   expect(snapshot.layout.order[0]).toBe("builtin:governance");
   expect(snapshot.layout.folders[0]?.apps).toEqual(["builtin:governance"]);
   await page.getByRole("button", { name: "Weekly", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveClass(/rada-launcher-folder/);
-  await expect(page.getByRole("dialog")).toHaveCSS("border-radius", "0px");
+  await expect(page.locator(".rada-launcher-folder")).toBeVisible();
   await expect(
-    page.getByRole("dialog").getByRole("button", { name: "DAO", exact: true }),
+    page
+      .locator(".rada-launcher-folder")
+      .getByRole("button", { name: "DAO", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Close", exact: true })
+    .locator(".rada-launcher-folder")
+    .getByRole("button", { name: "← Desktop", exact: true })
     .click();
   await page.screenshot({ path: info.outputPath("launcher-home.png") });
   conflict = true;

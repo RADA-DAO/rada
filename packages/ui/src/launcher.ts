@@ -105,3 +105,13 @@ export function Identity(options: {
   );
   return identity;
 }
+
+/** A folder replaces desktop content while retaining the workspace frame. */
+export function LauncherFolder(options: { title: string; children: Node[] }) {
+  const folder = element("section", "rada-launcher-folder");
+  const heading = element("h1", "rada-folder-title", options.title);
+  heading.tabIndex = -1;
+  heading.dataset.focusKey = `folder:${options.title}`;
+  folder.append(heading, ...options.children);
+  return folder;
+}
