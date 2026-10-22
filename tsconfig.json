@@ -16,6 +16,7 @@
     "skipLibCheck": true,
     "paths": {
       "@rada/ui/design-system.css": ["./packages/ui/src/design-system.css"],
+      "@rada/ui/screens/*": ["./packages/ui/src/screens/*"],
       "@rada/ui": ["./packages/ui/src/index.ts"]
     }
   },

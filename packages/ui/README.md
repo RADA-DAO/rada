@@ -50,6 +50,11 @@ Its internal stylesheets provide the shared foundations, controls, collectible
 card and existing shell recipes. The mini app resolves this public entry through
 Vite and TypeScript aliases. Applications must not import internal CSS files.
 
+A screen with styles of its own imports `@rada/ui/screens/<name>.css` from its
+lazily loaded code. Those stylesheets live in `src/screens/`, use the same
+tokens, and ship only with that screen: the bundle budget keeps the initial CSS
+limit unchanged and counts screen stylesheets as lazy CSS.
+
 `ScreenHost` focuses each replacement screen's heading. When a refresh replaces
 an active control, `data-focus-key` identifies its replacement; otherwise focus
 falls back to the screen heading. Sheets use the same stable key when their

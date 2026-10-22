@@ -115,7 +115,8 @@ export function moduleImportViolations(path, source) {
       errors.push(`${path}: filesystem imports must use relative public paths`);
     if (
       specifier.startsWith("@rada/") &&
-      !["@rada/ui", "@rada/ui/design-system.css"].includes(specifier)
+      !["@rada/ui", "@rada/ui/design-system.css"].includes(specifier) &&
+      !/^@rada\/ui\/screens\/[a-z0-9-]+\.css$/.test(specifier)
     )
       errors.push(
         `${path}: use explicit module index.ts paths instead of aliases`,

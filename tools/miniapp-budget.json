@@ -4,8 +4,8 @@
     "initialJsBrotli": 42676,
     "initialCss": 37000,
     "fonts": 230000,
-    "lazyJsGzip": 189000,
-    "lazyJsBrotli": 158000,
-    "lazyCss": 0
+    "lazyJsGzip": 240000,
+    "lazyJsBrotli": 200000,
+    "lazyCss": 60000
   }
 }

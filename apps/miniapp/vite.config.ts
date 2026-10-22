@@ -40,6 +40,10 @@ export default defineConfig({
         ).pathname,
       },
       {
+        find: /^@rada\/ui\/screens\/([a-z0-9-]+\.css)$/,
+        replacement: `${new URL("../../packages/ui/src/screens/", import.meta.url).pathname}$1`,
+      },
+      {
         find: /^@rada\/ui$/,
         replacement: new URL("../../packages/ui/src/index.ts", import.meta.url)
           .pathname,
