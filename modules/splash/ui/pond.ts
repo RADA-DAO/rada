@@ -18,7 +18,7 @@ import {
 import type { Lot, OwnBid, Round } from "./api.ts";
 import { openBidSheet } from "./bid-sheet.ts";
 import { loadInto, type SplashContext } from "./context.ts";
-import { clock } from "./format.ts";
+import { clock, jpegpe } from "./format.ts";
 
 /** The pond: public bidder counts and private own bids. */
 export function mountPond(
@@ -138,16 +138,27 @@ export function mountPond(
       `${text("splash.bidders")}: ${String(lot.bidderCount)}`,
     );
     const item = ListItem({
-      title: text("splash.byAuthor", { author }),
+      title: text(
+        isCreator
+          ? "splash.yourWork"
+          : own
+            ? "splash.yourSplash"
+            : "splash.placeBid",
+      ),
+      description: isCreator
+        ? text("splash.alreadyInPlay")
+        : own
+          ? text("splash.ownNumber", {
+              amount: jpegpe(context.locale, own.amount),
+            })
+          : text("splash.chooseNumber"),
       leading: card,
       children: [
-        participants,
-        ...(isCreator ? [Badge(text("splash.yourWork"))] : []),
-        ...(own ? [Badge(text("splash.yourBid"))] : []),
         ...(own?.nameContested ? [Badge(text("splash.nameContested"))] : []),
       ],
       actions,
     });
+    item.append(participants);
     const surface = actions[0];
     if (surface instanceof HTMLButtonElement) {
       surface.remove();

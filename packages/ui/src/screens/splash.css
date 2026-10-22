@@ -1,3 +1,5 @@
+@import "./splash-bid.css";
+
 /* SPLASH arena and collectible material, loaded with the screen. */
 .splash-screen,
 .splash-sheet {
@@ -219,24 +221,32 @@
   aspect-ratio: 4 / 5;
   overflow: hidden;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--glass-edge) 88%, transparent);
+  border-radius: 24px;
+  background: linear-gradient(
+    142deg,
+    color-mix(in srgb, var(--glass-glint) 70%, var(--glass-fill-soft)),
+    color-mix(in srgb, var(--glass-fill-strong) 88%, var(--accent-solid))
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.26),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-solid) 13%, transparent),
+    0 11px 25px rgb(var(--shadow-rgb) / 0.15);
+  backdrop-filter: blur(18px) saturate(1.16);
   transition: transform 170ms ease;
 }
 .splash-lot:has(.rada-button):active {
   transform: scale(0.975);
 }
-.splash-lot.has-my-bid .frog-card-plane {
-  outline: var(--rada-focus-width) solid var(--accent-solid);
-  outline-offset: calc(-1 * var(--rada-focus-width));
+.splash-lot.has-my-bid {
+  border-color: color-mix(in srgb, var(--accent-solid) 42%, var(--glass-edge));
 }
 .splash-lot .jpegpe-card {
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
   margin: 0;
 }
 .splash-submission-card .frog-card-plane::before {
@@ -252,20 +262,31 @@
   border: 1px solid var(--splash-edge);
   border-radius: 13px;
   color: var(--splash-white);
-  background: var(--splash-caption);
+  background: rgb(0 0 0 / 0.42);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
   text-align: left;
   pointer-events: none;
 }
+.splash-lot .rada-list-item-text {
+  margin: 3px 0 0;
+  color: rgb(255 255 255 / 0.76);
+  font: 650 10px/1.15 var(--rada-font-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .splash-lot .rada-list-item-title {
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font: 720 11px/1.15 var(--rada-font-body);
 }
 .splash-lot .splash-lot-count {
+  z-index: 7;
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
+  right: 8px;
+  top: 8px;
   min-width: 25px;
   min-height: 25px;
   border: 1px solid var(--splash-edge);
@@ -275,10 +296,10 @@
 }
 .splash-lot > .splash-lot-surface {
   position: absolute;
-  inset: 0;
+  inset: 8px;
   padding: 0;
   border: 0;
-  border-radius: inherit;
+  border-radius: 17px;
   background: transparent;
   box-shadow: none;
 }
@@ -343,37 +364,6 @@
   padding: 14px;
   background: var(--surface-soft);
   margin-block: 12px;
-}
-.splash-sheet {
-  width: min(100%, 440px);
-  padding: 18px;
-  border: 1px solid var(--glass-edge);
-  border-radius: 28px;
-  color: var(--text-primary);
-  background: linear-gradient(155deg, var(--water-top), var(--water-bottom));
-}
-.splash-sheet .rada-sheet-title {
-  font: 840 18px/1 var(--rada-font-body);
-  letter-spacing: -0.045em;
-}
-.splash-sheet .rada-field {
-  margin-block: 13px;
-}
-.splash-sheet--bid .rada-picture {
-  width: min(46vw, 176px);
-  height: auto;
-  aspect-ratio: 1;
-  margin: 0 auto 15px;
-  border: 1px solid var(--glass-edge);
-  border-radius: 25px;
-  background: var(--splash-pattern);
-}
-.splash-sheet--bid .rada-field-control {
-  border-radius: 14px;
-}
-.splash-sheet .rada-sheet-body > .rada-button {
-  width: 100%;
-  border-radius: 14px;
 }
 @media (max-width: 350px) {
   .splash-screen {

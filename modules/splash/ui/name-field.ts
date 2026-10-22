@@ -6,13 +6,17 @@ import { NAME_RULE } from "./format.ts";
  * The proposed permanent frog name with a live availability hint. The check
  * waits for a typing pause and only the latest answer is shown.
  */
-export function nameField(context: SplashContext, initial = "") {
+export function nameField(
+  context: SplashContext,
+  initial = "",
+  bidSheet = false,
+) {
   const { text } = context;
   let latest: AbortController | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let status: "available" | "taken" | "invalid" | "unknown" = "unknown";
   const field = Field({
-    label: text("splash.nameLabel"),
+    label: text(bidSheet ? "splash.bidNameLabel" : "splash.nameLabel"),
     value: initial,
     maxLength: 32,
     hint: text("splash.nameRule"),
@@ -20,25 +24,47 @@ export function nameField(context: SplashContext, initial = "") {
       check(value);
     },
   });
+  if (bidSheet) {
+    field.element.classList.add("splash-bid-name");
+    field.control.setAttribute("placeholder", text("splash.namePlaceholder"));
+    const hint = document.createElement("span");
+    hint.className = "splash-name-timing";
+    hint.textContent = text("splash.nameTiming");
+    hint.setAttribute("aria-hidden", "true");
+    field.element.append(hint);
+    field.element
+      .querySelector(".rada-field-hint")
+      ?.classList.add("rada-visually-hidden");
+  }
   field.control.setAttribute("autocomplete", "off");
   field.control.setAttribute("autocapitalize", "off");
   field.control.setAttribute("spellcheck", "false");
+  function setHint(message: string) {
+    field.setHint(message);
+    if (bidSheet)
+      field.element
+        .querySelector(".rada-field-hint")
+        ?.classList.toggle(
+          "rada-visually-hidden",
+          message === text("splash.nameRule"),
+        );
+  }
   function check(value: string) {
     latest?.abort();
     clearTimeout(timer);
     field.setError();
     if (!value) {
       status = "unknown";
-      field.setHint(text("splash.nameRule"));
+      setHint(text("splash.nameRule"));
       return;
     }
     if (!NAME_RULE.test(value)) {
       status = "invalid";
-      field.setHint(text("splash.nameRule"));
+      setHint(text("splash.nameRule"));
       return;
     }
     status = "unknown";
-    field.setHint(text("splash.nameChecking"));
+    setHint(text("splash.nameChecking"));
     const controller = new AbortController();
     latest = controller;
     timer = setTimeout(() => {
@@ -47,7 +73,7 @@ export function nameField(context: SplashContext, initial = "") {
         .then((result) => {
           if (latest !== controller || context.signal.aborted) return;
           status = result;
-          field.setHint(
+          setHint(
             text(
               result === "available"
                 ? "splash.nameAvailable"
@@ -60,7 +86,7 @@ export function nameField(context: SplashContext, initial = "") {
         .catch(() => {
           if (latest !== controller) return;
           status = "unknown";
-          field.setHint(text("splash.nameUnchecked"));
+          setHint(text("splash.nameUnchecked"));
         });
     }, 350);
   }
