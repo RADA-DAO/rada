@@ -117,9 +117,16 @@ test("a guest sees how to sign in and no catalog request is made", async ({
   });
   await launch(page, "");
   await expect(
-    page.getByRole("heading", { name: t("en", "home.guestTitle") }),
+    page.getByRole("heading", { name: t("en", "shell.brand"), exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".rada-os-wordmark")).toBeVisible();
+  await expect(page.getByRole("list")).toHaveCount(0);
+  await expect(page.getByRole("navigation")).toHaveCount(0);
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
+  await expect(page.getByText(t("en", "home.guestDescription"))).toBeVisible();
+  const entry = "https://t.me/rada_fixture_bot/app";
+  await expect(
+    page.getByRole("link", { name: t("en", "home.guestOpen") }),
+  ).toHaveAttribute("href", entry);
   expect(calls).toBe(0);
 });
 
@@ -248,7 +255,7 @@ test("secondary screens load on demand and return home through the stack", async
   page.on("request", (request) => {
     if (request.resourceType() === "script") chunks.push(request.url());
   });
-  await launch(page, "");
+  await launch(page);
   await expect(appsHeading(page)).toBeVisible();
   expect(chunks.some((url) => /holders-|desktop-screens-/.test(url))).toBe(
     false,
@@ -295,7 +302,7 @@ test("a failed screen chunk offers retry and pending imports cannot replace home
       await route.continue();
     }
   });
-  await launch(page, "");
+  await launch(page);
   await tile(page, "Holders").click();
   await expect(
     page.getByRole("button", { name: t("en", "common.retry"), exact: true }),

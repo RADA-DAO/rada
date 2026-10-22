@@ -1,0 +1,121 @@
+/* RADA OS browser entry material and geometry. */
+.guest-entry {
+  --guest-gap: 10px;
+  --guest-orb-size: 56px;
+  --guest-orb-margin: 6px;
+  --guest-brand-tracking: -0.07em;
+  --guest-button-margin: 18px;
+  --guest-control-height: 44px;
+  --guest-help-width: 360px;
+  --guest-weight: 600;
+  --guest-brand-weight: 720;
+  --guest-orb-edge: rgb(255 255 255 / 0.4);
+  --guest-orb-fill: rgb(var(--shadow-rgb) / 0.18);
+  --guest-orb-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.34),
+    0 12px 28px rgb(var(--shadow-rgb) / 0.16);
+  --guest-light: radial-gradient(
+    circle at 50% 36%,
+    color-mix(in srgb, var(--accent) 45%, transparent),
+    transparent 27%
+  );
+  display: grid;
+  width: 100%;
+  min-height: 100%;
+  flex: 1;
+  place-content: center;
+  padding: var(--rada-space-7);
+  color: var(--ink);
+  text-align: center;
+  background:
+    var(--guest-light),
+    linear-gradient(180deg, var(--water-top), var(--water-bottom));
+}
+.screen-wrap:has([data-guest="true"]) {
+  max-width: none;
+}
+.screen[data-guest="true"] {
+  padding: 0;
+  height: 100%;
+}
+.guest-entry .rada-screen-header {
+  display: none;
+}
+.guest-entry .rada-screen-body {
+  display: grid;
+  gap: var(--guest-gap);
+  min-width: 0;
+  padding: 0;
+}
+.guest-entry .rada-screen-body > * {
+  margin: 0;
+}
+.guest-entry .rada-screen-title {
+  font: var(--guest-brand-weight) var(--rada-font-size-section) / 1
+    var(--rada-font-brand);
+  letter-spacing: var(--guest-brand-tracking);
+}
+/* The title takes focus on load only to announce the screen; it is not a control. */
+.guest-entry .rada-screen-title:focus {
+  outline: none;
+}
+.guest-entry p,
+.guest-copy-status {
+  color: var(--muted);
+  font-size: var(--rada-font-size-tab);
+  font-weight: var(--guest-weight);
+}
+.guest-entry .guest-orb {
+  display: grid;
+  width: var(--guest-orb-size);
+  height: var(--guest-orb-size);
+  margin: 0 auto var(--guest-orb-margin);
+  place-items: center;
+  border: var(--rada-border-width) solid var(--guest-orb-edge);
+  border-radius: 50%;
+  color: var(--accent-sun);
+  background: var(--guest-orb-fill);
+  box-shadow: var(--guest-orb-shadow);
+}
+.guest-entry .guest-telegram {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: var(--rada-space-12);
+  padding: var(--rada-space-3) var(--rada-space-5);
+  margin-top: var(--guest-button-margin);
+  border: var(--rada-border-width) solid var(--control-primary-border);
+  border-radius: var(--rada-space-4);
+  background: var(--control-primary-bg);
+  color: var(--control-primary-ink);
+  font: var(--guest-weight) var(--rada-font-size-field) var(--rada-font-body);
+  text-decoration: none;
+}
+.guest-entry .guest-copy {
+  min-height: var(--guest-control-height);
+  padding: var(--rada-space-2) var(--rada-space-4);
+  border: 0;
+  border-radius: var(--rada-space-4);
+  background: transparent;
+  color: var(--ink);
+  font: var(--rada-font-weight-body) var(--rada-font-size-body)
+    var(--rada-font-body);
+}
+.guest-copy-status:empty {
+  display: none;
+}
+.guest-entry details {
+  max-width: var(--guest-help-width);
+  justify-self: center;
+  font-size: var(--rada-font-size-tab);
+  color: var(--muted);
+}
+.guest-entry summary {
+  padding: var(--rada-space-3) 0;
+  min-height: var(--guest-control-height);
+  cursor: pointer;
+}
+.guest-entry .rada-field-control {
+  width: 100%;
+  user-select: text;
+}

@@ -1,31 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { createHmac } from "node:crypto";
+import { signedLaunch as signed } from "./telegram-fixture.ts";
 import pg from "pg";
 import { createHash } from "node:crypto";
 import { t } from "../../../packages/i18n/src/index.ts";
 import enLocale from "../../../packages/i18n/locales/en.json" with { type: "json" };
 import ukLocale from "../../../packages/i18n/locales/uk.json" with { type: "json" };
-function signed(age = 0) {
-  const data = new URLSearchParams({
-    auth_date: String(Math.floor(Date.now() / 1000) - age),
-    user: JSON.stringify({ id: 101 }),
-  });
-  const secret = createHmac("sha256", "WebAppData")
-    .update("synthetic-fixture-bot-token")
-    .digest();
-  data.set(
-    "hash",
-    createHmac("sha256", secret)
-      .update(
-        [...data.entries()]
-          .sort()
-          .map(([key, value]) => `${key}=${value}`)
-          .join("\n"),
-      )
-      .digest("hex"),
-  );
-  return data.toString();
-}
 async function host(page: Page, initData = "") {
   await page.addInitScript(
     ({ initData }) => {
@@ -242,7 +221,7 @@ test("opaque app cannot fetch, navigate externally or self-grant declared author
   await page.waitForTimeout(200);
   expect(networkHits).toBe(0);
   await expect(
-    page.getByRole("heading", { name: "Apps", exact: true }),
+    page.getByRole("heading", { name: "RADA OS", exact: true }),
   ).toBeVisible();
 });
 
@@ -461,17 +440,19 @@ test("a replaced artifact fetch cannot remove the current app", async ({
   ).toBeVisible();
 });
 
-test("guest navigation, settings focus, locale and native Back", async ({
+test("authenticated navigation, settings focus, locale and native Back", async ({
   page,
 }) => {
-  await host(page);
+  await host(page, signed());
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveCSS("--app-safe-top", "20px");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
-  await expect(page.getByText("Guest profile", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Profile", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.evaluate(() => {
@@ -758,7 +739,7 @@ test("expired authentication has a manual retry", async ({ page }) => {
 test("swipe and home page button share the launcher destination", async ({
   page,
 }) => {
-  await host(page);
+  await host(page, signed());
   await page.goto("/");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   const bounds = await page.locator(".screen").boundingBox();
@@ -824,7 +805,17 @@ test("unavailable response can recover with manual retry", async ({ page }) => {
 test("workspace dots expose three pages and community returns by swipe", async ({
   page,
 }) => {
-  await host(page);
+  // The e2e API does not provision the optional rankings service.
+  await page.route("**/v1/rankings/holders?*", (route) =>
+    route.fulfill({
+      json: {
+        token: new URL(route.request().url()).searchParams.get("token"),
+        entries: [],
+        nextCursor: null,
+      },
+    }),
+  );
+  await host(page, signed());
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Navigation" });
   await expect(nav.getByRole("button")).toHaveCount(3);
@@ -918,7 +909,7 @@ test("workspace dots expose three pages and community returns by swipe", async (
 test("workspace stays centered and focus never scrolls its page rail", async ({
   page,
 }) => {
-  await host(page);
+  await host(page, signed());
   await page.goto("/");
   const screen = page.locator(".screen");
   const nav = page.getByRole("navigation", { name: "Navigation", exact: true });

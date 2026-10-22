@@ -111,3 +111,10 @@ root; reset clears personal layout choices. CryptoNos is a separate-product
 shortcut using only Telegram's external-link API; no credential or history is
 sent to that product. Built-in secondary screens share a deferred chunk to keep
 the existing initial and lazy bundle budgets unchanged.
+
+Set `VITE_TELEGRAM_APP_LINK` at build time to the registered HTTPS `t.me` bot
+or Mini App URL. Browser guests see the RADA OS entry screen, with an ordinary
+Telegram link, clipboard confirmation and a cross-device disclosure containing
+selectable link text. Clipboard denial opens and selects that text for manual
+copying. Missing or invalid configuration shows a localized unavailable message
+without a dead action. Guests never mount the workspace or request its catalog.

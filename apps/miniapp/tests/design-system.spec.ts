@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { launch } from "./home-fixture.ts";
+import { signedLaunch } from "./telegram-fixture.ts";
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://telegram.org/js/telegram-web-app.js", (route) =>
@@ -9,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 test("shared spacing tokens update the screen, header and navigation", async ({
   page,
 }) => {
-  await page.goto("/");
+  await launch(page, signedLaunch());
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
@@ -148,7 +150,7 @@ test("collectible material tokens retain each frog's own palette", async ({
 test("screen changes focus headings and long screens keep navigation in view", async ({
   page,
 }) => {
-  await page.goto("/");
+  await launch(page, signedLaunch());
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeFocused();

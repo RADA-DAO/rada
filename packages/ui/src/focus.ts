@@ -10,7 +10,17 @@ export function observeScreenFocus(
   });
   const observer = new MutationObserver(() => {
     const next = host.querySelector<HTMLElement>(headingSelector);
-    if (next === heading) return;
+    if (next === heading) {
+      // Reparenting a live control can blur it without replacing the heading.
+      if (
+        focused?.isConnected &&
+        document.activeElement === document.body &&
+        !focused.closest("[inert]") &&
+        !document.querySelector("dialog[open]")
+      )
+        focused.focus({ preventScroll: true });
+      return;
+    }
     const changed =
       !next?.dataset.focusKey ||
       next.dataset.focusKey !== heading?.dataset.focusKey;

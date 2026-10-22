@@ -18,6 +18,7 @@ import * as payment from "./payment-copy.ts";
 import { mountLazyProfile, createCollectionScreen } from "./profile-loader.ts";
 import { mountLazyReview } from "./review-loader.ts";
 import { createHome } from "./home.ts";
+import { mountGuest } from "./guest-loader.ts";
 import "@rada/ui/design-system.css";
 import {
   DEFAULT_THEME_BACKGROUND,
@@ -138,7 +139,8 @@ const workspace = createWorkspace(screen, {
   route: () => route,
   navigation,
   text,
-  enabled: () => !payment.paymentBusy && !launcher.running,
+  enabled: () =>
+    platform.authenticatedLaunch && !payment.paymentBusy && !launcher.running,
   profile: () => {
     if (platform.authenticatedLaunch) void loadProfile();
   },
@@ -219,6 +221,7 @@ function render() {
   const running = route === "launcher" ? launcher.running : undefined;
   configureShellBack(screen, running ? "app" : route, navigation);
   screen.dataset.workspace = String(isWorkspace(route) && !running);
+  if (!platform.authenticatedLaunch) return void mountGuest(screen, locale);
   if (isWorkspace(route) && !running) workspace.render(renderPage);
   else renderPage(screen, route);
 }
@@ -268,12 +271,11 @@ function renderPage(screen: HTMLElement, route: Route) {
     return;
   }
   if (route === "holders") {
-    const actions = [settingsButton];
     holders.render(screen, {
       locale,
       title: text("holders.title"),
       brand: text("shell.brand"),
-      actions,
+      actions: [settingsButton],
       viewerFrogId: selectedFrog?.frog_id ?? null,
       read: (token, cursor, signal) =>
         platform.readHolders(token, cursor, signal),

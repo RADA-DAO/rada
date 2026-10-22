@@ -39,6 +39,7 @@ jobs:
         env:
           VITE_API_ORIGIN: ${{ vars.STAGING_API_ORIGIN }}
           VITE_TON_CONNECT_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
+          VITE_TELEGRAM_APP_LINK: ${{ vars.STAGING_TELEGRAM_APP_LINK }}
       - name: Install staging SSH identity
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
