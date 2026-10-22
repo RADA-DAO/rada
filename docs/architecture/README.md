@@ -19,7 +19,7 @@ RADA has a Telegram Mini App shell, a composed HTTP API and a shared PostgreSQL
 | [modules/jpegpe](../../modules/jpegpe/index.ts)                   | Frogs, ownership, usernames, public projections and Color Drop                                                   |
 | [modules/wallet](../../modules/wallet/index.ts)                   | Wallet proofs, balances, payment intents and reconciliation                                                      |
 | [modules/ops](../../modules/ops/index.ts)                         | Sanitized client errors and operator failure digests                                                             |
-| [modules/splash](../../modules/splash/index.ts)                   | Submissions, auctions, paid claims and built-in screens                                                          |
+| [modules/splash](../../modules/splash/index.ts)                   | Submissions, secret lowest-unique-bid rounds, paid claims and built-in screens                                   |
 | [packages/ui](../../packages/ui/README.md)                        | Shared controls, design tokens, theme compiler and component catalog                                             |
 | [packages/platform-sdk](../../packages/platform-sdk/src/index.ts) | Telegram adapter, navigation, API clients, app sandbox and payment window                                        |
 | [packages/i18n](../../packages/i18n/src/index.ts)                 | Typed English/Ukrainian translations and interpolation                                                           |

@@ -8,7 +8,7 @@ import { startRoundScheduler } from "./rounds.ts";
 const FROG = "11111111-1111-4111-8111-111111111111";
 const PUBLIC = {
   frogId: "33333333-3333-4333-8333-333333333333",
-  username: "Leader",
+  username: "Winner",
   backgroundColor: "#112233",
   accentColor: null,
 };
@@ -314,7 +314,7 @@ test("own bids require login; results are public for closed rounds only", async 
     await app.request("/v1/splash/rounds/2/results")
   ).json();
   assert.equal(results.frogs[0].outcome, "won");
-  assert.equal(results.frogs[0].winner.username, "Leader");
+  assert.equal(results.frogs[0].winner.username, "Winner");
   assert.equal(results.frogs[1].outcome, "archived");
   assert.equal(results.frogs[1].winner, null);
   assert.ok(!JSON.stringify(results).includes("subject"));

@@ -1,6 +1,7 @@
 # Mini app
 
-Vite and TypeScript shell with the home screen (app launcher) and guest or own profile.
+Vite and TypeScript shell for the RADA OS three-page workspace: Me (profile),
+Action (app launcher) and Us (community), with page dots and swipe navigation.
 The profile lists verified TON wallets and exact TON/JPEGPE balances. Connecting
 uses the official TON Connect UI with a server-issued proof challenge; removing a
 link records revocation. Set `VITE_TON_CONNECT_APP_ORIGIN` to the exact HTTPS shell
@@ -37,7 +38,7 @@ it cannot access identity, request personal-data consent, or perform privileged
 actions. Leaving the screen or changing language disposes its preview and ignores
 late responses. Reviewer authority comes from the API, independently of membership.
 
-SPLASH, the official auction app, is a built-in tile shown first for everyone;
+SPLASH, the official lowest-unique-bid game with secret bids, is a built-in tile shown first for everyone;
 its screens come from `modules/splash/ui` and open on the platform stack.
 The home screen shows the viewer's identity, then every published app as a tile in
 a four-column grid with its official or community mark. Signed-in launches read

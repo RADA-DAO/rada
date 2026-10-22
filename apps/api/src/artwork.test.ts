@@ -161,7 +161,7 @@ Deno.test(
     app.get("/v1/splash/pond", (c) =>
       c.json({
         frogs: [
-          { author: frog, leader: null },
+          { author: frog, bidder_count: 12 },
           {
             author: {
               ...frog,
@@ -173,7 +173,7 @@ Deno.test(
     );
     const body = await (await app.request("/v1/splash/pond")).json();
     assert(body.frogs[0].author.artwork_url === url);
-    assert(body.frogs[0].leader === null);
+    assert(body.frogs[0].bidder_count === 12);
     assert(body.frogs[1].author.artwork_url === null);
   },
 );

@@ -110,6 +110,11 @@ launch credentials stay in the SDK. Screens never import `api/` code.
 
 ## Rounds and bids
 
+Migration `0065_splash_lowest_unique.sql` defines the current game rules and
+public projections. Earlier migration definitions retain historical settlement
+and public bid fields for checksum integrity; they are superseded by `0065`.
+The API retains `not_on_auction` as the error code for a frog outside an active round.
+
 - A round is one UTC day (00:00 to 24:00). Its frogs are those in the pond, with
   an image, submitted before the round started; frogs submitted later wait for
   the next round. At most one round is unclosed at a time.
