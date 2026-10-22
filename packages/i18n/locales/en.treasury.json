@@ -1,14 +1,13 @@
 {
   "title": "Treasury",
-  "balances": "Balances",
-  "transactions": "Recent transactions",
-  "signers": "Multisig signers",
+  "transactions": "History",
+  "signers": "Signers",
   "anonymous": "Anonymous",
   "unknown": "Unavailable",
   "asOf": "As of {{time}}",
   "stale": "Out of date",
   "incomplete": "History may be incomplete",
-  "empty": "No transactions match these filters.",
+  "empty": "No matching transactions.",
   "unconfigured": "No treasury wallets configured yet.",
   "loading": "Loading treasury…",
   "error": "Treasury is unavailable.",
@@ -20,9 +19,13 @@
   "incoming": "Incoming",
   "outgoing": "Outgoing",
   "decision": "Decision: {{title}}",
-  "readOnly": "Read-only treasury. Execution links are recorded evidence.",
   "TON": "TON",
   "JPEGPE": "JPEGPE",
   "refresh": "Refresh",
-  "history": "History coverage through {{time}}"
+  "history": "Indexed through {{time}}",
+  "assets": "All assets",
+  "locations": "Where assets are",
+  "multisig": "Multisig",
+  "filters": "Filters",
+  "partial": "Partial balances"
 }
