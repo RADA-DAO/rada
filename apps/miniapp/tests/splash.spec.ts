@@ -88,15 +88,16 @@ test("browse the round, place a bid with a live name check, then lower it", asyn
     })
     .click();
   const sheet = page.getByRole("dialog", { name: en("splash.bidTitle") });
-  await expect(sheet.getByText(en("splash.bidRule"))).toBeVisible();
+  await expect(sheet.getByText(en("splash.bidIntro"))).toBeVisible();
   await expect(sheet.getByLabel(en("splash.bidAmountLabel"))).toHaveAttribute(
     "inputmode",
     "numeric",
   );
-  await expect(sheet.getByText(en("splash.promise"))).toBeVisible();
-  await expect(sheet.getByText(en("splash.burnRule"))).toBeVisible();
+  await expect(sheet.getByText(en("splash.bidPaymentNote"))).toBeVisible();
+  await expect(sheet.getByText(en("splash.nameTiming"))).toBeVisible();
+  await expect(sheet.getByLabel(en("splash.bidNameLabel"))).toBeFocused();
   await sheet.getByLabel(en("splash.bidAmountLabel")).fill("2");
-  const name = sheet.getByLabel(en("splash.nameLabel"));
+  const name = sheet.getByLabel(en("splash.bidNameLabel"));
   await name.fill("1frog");
   await sheet.getByRole("button", { name: en("splash.placeBid") }).click();
   await expect(sheet.getByRole("alert")).toHaveText(
@@ -111,16 +112,20 @@ test("browse the round, place a bid with a live name check, then lower it", asyn
   );
   await name.fill("Lily_1");
   await expect(sheet.getByText(en("splash.nameAvailable"))).toBeVisible();
-  await sheet.getByRole("button", { name: en("splash.placeBid") }).click();
+  await name.press("Enter");
   await expect(sheet).toHaveCount(0);
   expect(placed).toEqual([
     { submission_id: FROG, amount: "2000000000", name: "Lily_1" },
   ]);
   await expect(page.getByText(en("splash.bidPlaced"))).toBeVisible();
   await expect(
-    page.getByText(en("splash.yourBid"), { exact: true }),
+    page.getByText(en("splash.yourSplash"), { exact: true }),
   ).toBeVisible();
   await expect(page.getByText(en("splash.nameContested"))).toBeVisible();
+  await expect(
+    page.getByText(en("splash.ownNumber", { amount: "2 JPEGPE" })),
+  ).toBeVisible();
+  await expect(page.locator(".splash-lots .frog-card-username")).toHaveCount(0);
 
   // Escape closes without a replacement; then lower the bid.
   const raise = page.getByRole("button", {

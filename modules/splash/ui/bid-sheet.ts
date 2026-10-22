@@ -1,7 +1,6 @@
 import { parseUnits } from "../../../packages/i18n/src/index.ts";
 import {
   Button,
-  Facts,
   Field,
   LiveRegion,
   openSheet,
@@ -11,7 +10,7 @@ import {
 } from "../../../packages/ui/src/index.ts";
 import type { Lot, OwnBid } from "./api.ts";
 import { aborted, errorText, type SplashContext } from "./context.ts";
-import { jpegpe, JPEGPE_DECIMALS } from "./format.ts";
+import { JPEGPE_DECIMALS } from "./format.ts";
 import { nameField } from "./name-field.ts";
 
 export function wholeBidUnits(value: string): string | null {
@@ -36,7 +35,7 @@ export function openBidSheet(
     onPlaced(nameContested: boolean): void;
   },
 ): void {
-  const { text, locale } = context;
+  const { text } = context;
   const controller = new AbortController();
   const amount = Field({
     label: text("splash.bidAmountLabel"),
@@ -44,12 +43,16 @@ export function openBidSheet(
     value: own
       ? String(BigInt(own.amount) / 10n ** BigInt(JPEGPE_DECIMALS))
       : "",
-    hint: own
-      ? text("splash.bidEditHint", { amount: jpegpe(locale, own.amount) })
-      : text("splash.bidAmountHint"),
   });
   amount.control.setAttribute("autocomplete", "off");
-  const name = nameField(context, own?.name ?? "");
+  amount.element.classList.add("splash-bid-number");
+  amount.control.setAttribute("placeholder", text("splash.numberPlaceholder"));
+  const suffix = document.createElement("span");
+  suffix.className = "splash-number-suffix";
+  suffix.textContent = text("splash.tokenSymbol");
+  suffix.setAttribute("aria-hidden", "true");
+  amount.element.querySelector("label")?.append(suffix);
+  const name = nameField(context, own?.name ?? "", true);
   const status = LiveRegion();
   const place = Button(text(own ? "splash.editBid" : "splash.placeBid"), {
     variant: "primary",
@@ -92,6 +95,22 @@ export function openBidSheet(
       setButtonLoading(place, false);
     }
   }
+  for (const control of [name.control, amount.control])
+    control.addEventListener("keydown", (event) => {
+      if (
+        !(event instanceof KeyboardEvent) ||
+        event.key !== "Enter" ||
+        event.isComposing
+      )
+        return;
+      event.preventDefault();
+      if (!place.disabled) void submit();
+    });
+  const arrow = document.createElement("span");
+  arrow.className = "splash-bid-arrow";
+  arrow.textContent = text("splash.actionArrow");
+  arrow.setAttribute("aria-hidden", "true");
+  place.append(arrow);
   const dialog = openSheet({
     title: text(own ? "splash.editTitle" : "splash.bidTitle"),
     closeLabel: text("common.close"),
@@ -108,28 +127,29 @@ export function openBidSheet(
         fallback: text("splash.imageMissing"),
         size: "thumb",
       }),
-      Facts([
-        { label: text("splash.bidders"), value: String(lot.bidderCount) },
-        ...(own
-          ? [
-              {
-                label: text("splash.yourBid"),
-                value: jpegpe(locale, own.amount),
-              },
-            ]
-          : []),
-      ]),
-      Text(text("splash.bidRule")),
-      amount.element,
+      Text(text("splash.bidIntro")),
       name.element,
-      Text(text("splash.promise")),
-      Text(text("splash.burnRule")),
+      amount.element,
+      Text(text("splash.bidPaymentNote")),
       status,
       place,
     ],
   });
-  dialog.classList.add("splash-sheet", "splash-sheet--bid");
+  dialog.classList.add(
+    "splash-sheet",
+    "splash-sheet--bid",
+    "splash-sheet--entry",
+  );
   const artwork = dialog.querySelector("figure");
   if (artwork) dialog.prepend(artwork);
-  amount.control.focus();
+  const header = dialog.querySelector(".rada-sheet-header");
+  const eyebrow = Text(text("splash.bidEyebrow"));
+  eyebrow.classList.add("splash-bid-eyebrow");
+  header?.prepend(eyebrow);
+  const close = header?.querySelector("button");
+  if (close) {
+    close.textContent = text("splash.closeSymbol");
+    close.classList.add("splash-bid-close");
+  }
+  name.control.focus();
 }

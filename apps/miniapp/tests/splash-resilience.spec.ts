@@ -130,8 +130,8 @@ for (const artwork of ["opaque", "transparent", "missing"] as const) {
       const lot = grid.getByRole("listitem");
       const card = lot.locator(".jpegpe-card");
       await expect(card).toHaveCount(1);
-      await expect(lot).toHaveCSS("border-top-width", "0px");
-      await expect(lot).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(lot).toHaveCSS("border-top-width", "1px");
+      await expect(lot).toHaveCSS("border-radius", "24px");
       for (const layer of ["plane", "artwork", "overlay"])
         await expect(card.locator(`.frog-card-${layer}`)).toHaveCSS(
           "mask-image",
@@ -140,9 +140,7 @@ for (const artwork of ["opaque", "transparent", "missing"] as const) {
       if (artwork === "missing")
         await expect(card).toContainText(en("splash.imageMissing"));
       else await expect(card.locator("img")).toBeVisible();
-      await expect(lot).toContainText(
-        en("splash.byAuthor", { author: "Painter" }),
-      );
+      await expect(lot).toContainText(en("splash.chooseNumber"));
       await expect(
         lot.getByLabel(`${en("splash.bidders")}: 3`, { exact: true }),
       ).toBeVisible();
@@ -167,8 +165,9 @@ for (const artwork of ["opaque", "transparent", "missing"] as const) {
         throw new Error("missing_columns");
       expect(first).toBeCloseTo(second, 0);
       expect(geometry.gap).toBe("12px");
-      expect(geometry.card.x).toBeCloseTo(geometry.item.x, 0);
-      expect(geometry.card.width).toBeCloseTo(geometry.item.width, 0);
+      expect(geometry.card.x - geometry.item.x).toBeCloseTo(17, 0);
+      expect(geometry.item.width - geometry.card.width).toBeCloseTo(34, 0);
+      await expect(card.locator(".frog-card-username")).toHaveCount(0);
     });
   }
 }
