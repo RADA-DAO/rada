@@ -1,0 +1,397 @@
+/* SPLASH arena and collectible material, loaded with the screen. */
+.splash-screen,
+.splash-sheet {
+  --splash-gutter: 24px;
+  --splash-chip-radius: 11px;
+  --splash-white: #fff;
+  --splash-caption: rgb(0 0 0 / 0.62);
+  --splash-edge: rgb(255 255 255 / 0.22);
+  --splash-shine: rgb(255 255 255 / 0.14);
+  --splash-small: 10px;
+  --splash-label: 9px;
+  --splash-heading: 28px;
+  --splash-pattern:
+    linear-gradient(rgb(255 255 255 / 0.24), rgb(255 255 255 / 0.34)),
+    url("/splash/card-pattern.webp") center / cover;
+}
+.splash-screen > .rada-screen-header {
+  display: none;
+}
+.splash-screen > .rada-screen-body {
+  padding: 0;
+}
+.splash-screen .rada-screen-title {
+  margin: 0 0 12px;
+  font: 850 16px/32px var(--rada-font-heading);
+  letter-spacing: 0.16em;
+}
+.splash-screen .splash-content {
+  margin-top: 0;
+}
+.splash-banner {
+  position: relative;
+  height: 128px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgb(var(--shadow-rgb) / 0.14) url("/splash/banner.webp") center
+    top / cover;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.17),
+    0 13px 28px rgb(var(--shadow-rgb) / 0.16);
+}
+.splash-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.08),
+    transparent 46%,
+    rgb(0 0 0 / 0.18)
+  );
+}
+.splash-banner-live {
+  position: absolute;
+  z-index: 3;
+  top: 11px;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 31px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--splash-edge);
+  border-radius: var(--splash-chip-radius);
+  color: var(--splash-white);
+  background: var(--splash-caption);
+  box-shadow: inset 0 1px 0 var(--splash-shine);
+  font: 760 var(--splash-small)/1 var(--rada-font-heading);
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+.splash-banner-live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--splash-white);
+  box-shadow: 0 0 0 3px var(--splash-shine);
+}
+.splash-banner-clock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  padding: 8px 10px 7px;
+  border: 1px solid var(--splash-edge);
+  border-radius: 13px;
+  color: var(--splash-white);
+  background: var(--splash-caption);
+  backdrop-filter: blur(10px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 var(--splash-shine),
+    0 8px 24px rgb(0 0 0 / 0.16);
+}
+.splash-banner-clock .rada-text {
+  margin: 0;
+  color: inherit;
+  font: 720 var(--splash-label)/1 var(--rada-font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.splash-banner-clock .rada-countdown {
+  font: 830 14px/1 var(--rada-font-heading);
+  font-variant-numeric: tabular-nums;
+}
+.splash-tabs {
+  border-radius: 0;
+  gap: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--glass-edge) 48%, transparent);
+  background: transparent;
+}
+.splash-tabs .rada-button {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 39px;
+  padding: 0 6px;
+  color: var(--text-secondary);
+  font: 720 12px/1 var(--rada-font-heading);
+}
+.splash-tabs .rada-button[aria-selected="true"] {
+  color: var(--text-primary);
+}
+.splash-tabs .rada-button::after {
+  content: "";
+  position: absolute;
+  right: 15%;
+  bottom: -1px;
+  left: 15%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  opacity: 0;
+  transform: scaleX(0.6);
+  transition:
+    opacity var(--rada-duration-normal) ease,
+    transform var(--rada-duration-normal) ease;
+}
+.splash-tabs .rada-button[aria-selected="true"]::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+.splash-market {
+  margin: 20px calc(-1 * var(--rada-page-gutter)) 0;
+}
+.splash-market-heading {
+  position: relative;
+  margin: 0 var(--splash-gutter);
+}
+.splash-market-heading > .rada-text,
+.splash-queue > .rada-section > .rada-text {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+  font: 760 var(--splash-label)/1 var(--rada-font-heading);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.splash-market-heading .rada-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-right: var(--rada-space-12);
+  font: 800 var(--splash-heading)/1.06 var(--rada-font-body);
+  letter-spacing: -0.055em;
+}
+.splash-market-heading .rada-badge {
+  min-width: 25px;
+  height: 25px;
+  padding: 0 7px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--glass-edge);
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
+  font: 760 var(--splash-small)/1 var(--rada-font-heading);
+  letter-spacing: normal;
+}
+.splash-market-heading > .rada-button {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  min-height: var(--rada-space-8);
+  border: 0;
+  color: var(--text-secondary);
+  font: 680 var(--splash-small)/1 var(--rada-font-heading);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.splash-market .rada-empty-state,
+.splash-screen .rada-error-state {
+  padding: 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  font: 600 11px/1.4 var(--rada-font-body);
+}
+.splash-lots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 0 var(--splash-gutter) 18px;
+}
+.splash-lot {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: transform 170ms ease;
+}
+.splash-lot:has(.rada-button):active {
+  transform: scale(0.975);
+}
+.splash-lot.has-my-bid .frog-card-plane {
+  outline: var(--rada-focus-width) solid var(--accent-solid);
+  outline-offset: calc(-1 * var(--rada-focus-width));
+}
+.splash-lot .jpegpe-card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+}
+.splash-submission-card .frog-card-plane::before {
+  background: var(--splash-pattern);
+}
+.splash-lot .rada-list-item-main {
+  position: absolute;
+  z-index: 6;
+  right: 9px;
+  bottom: 9px;
+  left: 9px;
+  padding: 8px 9px;
+  border: 1px solid var(--splash-edge);
+  border-radius: 13px;
+  color: var(--splash-white);
+  background: var(--splash-caption);
+  text-align: left;
+  pointer-events: none;
+}
+.splash-lot .rada-list-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 720 11px/1.15 var(--rada-font-body);
+}
+.splash-lot .splash-lot-count {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 25px;
+  min-height: 25px;
+  border: 1px solid var(--splash-edge);
+  border-radius: 9px;
+  color: var(--splash-white);
+  background: var(--splash-caption);
+}
+.splash-lot > .splash-lot-surface {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+.splash-market .rada-empty-state {
+  margin: 0 var(--rada-page-gutter);
+}
+.splash-market .rada-error-state {
+  margin-inline: var(--splash-gutter);
+}
+.splash-screen .splash-inline-error {
+  margin-block: 12px;
+}
+.splash-inline-error .rada-button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: underline;
+}
+.splash-lot:focus-within {
+  outline: var(--rada-focus-width) solid var(--accent-ring);
+  outline-offset: var(--rada-focus-offset);
+}
+.splash-market > .rada-group > .rada-button {
+  margin-inline: var(--splash-gutter);
+}
+.splash-queue {
+  margin: 13px 6px 28px;
+  padding: 15px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  background: var(--rada-glass-fill);
+  box-shadow: var(--rada-shadow-glass);
+}
+.splash-queue .rada-section-title {
+  margin: 5px 0 0;
+  font-size: 18px;
+}
+.splash-queue-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.splash-queue-slots .rada-list-item {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+.splash-queue-slots .rada-picture {
+  margin: 0;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: var(--splash-pattern);
+}
+.splash-panel-content:not(.splash-market)
+  .rada-list:not(.splash-queue-slots)
+  > .rada-list-item,
+.splash-content
+  > .rada-group:not(.splash-queue)
+  .rada-list-item:not(.splash-lot) {
+  border: 1px solid var(--glass-edge);
+  border-radius: 18px;
+  padding: 14px;
+  background: var(--surface-soft);
+  margin-block: 12px;
+}
+.splash-sheet {
+  width: min(100%, 440px);
+  padding: 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  color: var(--text-primary);
+  background: linear-gradient(155deg, var(--water-top), var(--water-bottom));
+}
+.splash-sheet .rada-sheet-title {
+  font: 840 18px/1 var(--rada-font-body);
+  letter-spacing: -0.045em;
+}
+.splash-sheet .rada-field {
+  margin-block: 13px;
+}
+.splash-sheet--bid .rada-picture {
+  width: min(46vw, 176px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto 15px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 25px;
+  background: var(--splash-pattern);
+}
+.splash-sheet--bid .rada-field-control {
+  border-radius: 14px;
+}
+.splash-sheet .rada-sheet-body > .rada-button {
+  width: 100%;
+  border-radius: 14px;
+}
+@media (max-width: 350px) {
+  .splash-screen {
+    --splash-gutter: 19px;
+    --splash-heading: 26px;
+  }
+  .splash-lots {
+    gap: 9px;
+  }
+  .splash-banner-live {
+    max-width: 45%;
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen *,
+  .splash-sheet * {
+    transition: none;
+    animation: none;
+  }
+}

@@ -259,6 +259,23 @@ export function splashClient(api: ModuleApi) {
         }),
       };
     },
+    async mySubmissions(signal: AbortSignal) {
+      const body = await call("GET", "/v1/splash/submissions/mine", { signal });
+      return list(body.submissions).map((value) => {
+        const item = record(value);
+        return {
+          submissionId: id(item.submission_id),
+          state: oneOf(item.state, [
+            "in_pond",
+            "archived",
+            "won",
+            "claimed",
+            "burned",
+          ] as const),
+          imageUrl: image(item.image_path),
+        };
+      });
+    },
     async submit(png: Blob, signal: AbortSignal): Promise<Submitted> {
       const body = await call("POST", "/v1/splash/submissions", {
         body: { bytes: png, contentType: "image/png" },

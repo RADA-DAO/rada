@@ -4,6 +4,7 @@ import {
   Button,
   Countdown,
   EmptyState,
+  ErrorState,
   Facts,
   Group,
   List,
@@ -160,10 +161,21 @@ export function mountMine(
 
   async function render(): Promise<Node[]> {
     stopTimers();
-    const [bids, claims] = await Promise.all([
+    const [bidResult, claimResult] = await Promise.allSettled([
       context.client.myBids(context.signal),
       context.client.myClaims(context.signal),
     ]);
+    const bids = bidResult.status === "fulfilled" ? bidResult.value : [];
+    const claims = claimResult.status === "fulfilled" ? claimResult.value : [];
+    const failure = (key: "bids" | "claims") => {
+      const notice = ErrorState({
+        message: text(`splash.loadError.${key}`),
+        retryLabel: text("common.retry"),
+        onRetry: () => void load(),
+      });
+      notice.classList.add("splash-inline-error");
+      return notice;
+    };
     const claimed = new Set(claims.map((claim) => claim.submissionId));
     const open = bids.filter(
       (bid) => bid.status !== "won" || !claimed.has(bid.submissionId),
@@ -171,25 +183,31 @@ export function mountMine(
     return [
       Section({
         title: text("splash.winsTitle"),
-        children: claims.length
-          ? [
-              List({
-                label: text("splash.winsTitle"),
-                children: claims.map(claimItem),
-              }),
-            ]
-          : [EmptyState({ message: text("splash.noWins") })],
+        children:
+          claimResult.status === "rejected"
+            ? [failure("claims")]
+            : claims.length
+              ? [
+                  List({
+                    label: text("splash.winsTitle"),
+                    children: claims.map(claimItem),
+                  }),
+                ]
+              : [EmptyState({ message: text("splash.noWins") })],
       }),
       Section({
         title: text("splash.bidsTitle"),
-        children: open.length
-          ? [
-              List({
-                label: text("splash.bidsTitle"),
-                children: open.map(bidItem),
-              }),
-            ]
-          : [EmptyState({ message: text("splash.noBidsYet") })],
+        children:
+          bidResult.status === "rejected"
+            ? [failure("bids")]
+            : open.length
+              ? [
+                  List({
+                    label: text("splash.bidsTitle"),
+                    children: open.map(bidItem),
+                  }),
+                ]
+              : [EmptyState({ message: text("splash.noBidsYet") })],
       }),
     ];
   }

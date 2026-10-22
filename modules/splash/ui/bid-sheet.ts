@@ -41,6 +41,9 @@ export function openBidSheet(
   const amount = Field({
     label: text("splash.bidAmountLabel"),
     inputMode: "numeric",
+    value: own
+      ? String(BigInt(own.amount) / 10n ** BigInt(JPEGPE_DECIMALS))
+      : "",
     hint: own
       ? text("splash.bidEditHint", { amount: jpegpe(locale, own.amount) })
       : text("splash.bidAmountHint"),
@@ -125,5 +128,8 @@ export function openBidSheet(
       place,
     ],
   });
+  dialog.classList.add("splash-sheet", "splash-sheet--bid");
+  const artwork = dialog.querySelector("figure");
+  if (artwork) dialog.prepend(artwork);
   amount.control.focus();
 }

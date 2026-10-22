@@ -16,6 +16,9 @@ import {
 
 // Defaults; a test's own routes, registered later, take precedence.
 test.beforeEach(async ({ page }) => {
+  await page.route("**/v1/splash/claims/mine", (route) =>
+    route.fulfill({ json: { claims: [] } }),
+  );
   await page.route("**/v1/splash/round", (route) =>
     route.fulfill({ json: { round: null } }),
   );
@@ -66,7 +69,7 @@ test("browse the round, place a bid with a live name check, then lower it", asyn
   await launch(page);
   await openSplash(page);
   await expect(
-    page.getByText(en("splash.roundTitle", { round: "7" })),
+    page.getByRole("heading", { name: new RegExp(en("splash.frogsInPlay")) }),
   ).toBeVisible();
   await expect(page.getByRole("timer")).toHaveText(/^\d\d:\d\d:\d\d$/);
   await expect(
@@ -74,7 +77,10 @@ test("browse the round, place a bid with a live name check, then lower it", asyn
       name: en("splash.frogByAlt", { author: "Painter" }),
     }),
   ).toBeVisible();
-  await expect(page.getByText(en("splash.bidders"))).toBeVisible();
+  await expect(
+    page.getByLabel(`${en("splash.bidders")}: 0`, { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".splash-lots .jpegpe-card")).toHaveCount(1);
 
   await page
     .getByRole("button", {
@@ -191,6 +197,9 @@ test("submit a frog: preview, stored result and the rate limit", async ({
   await launch(page);
   await openSplash(page);
   await expect(page.getByText(en("splash.noRound"))).toBeVisible();
+  await page
+    .getByRole("tab", { name: en("splash.nextTab"), exact: true })
+    .click();
   await page.getByRole("button", { name: en("splash.submitTitle") }).click();
   await expect(
     page.getByRole("heading", { name: en("splash.submitTitle"), exact: true }),
