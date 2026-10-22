@@ -1,6 +1,8 @@
 import ts from "typescript";
 
 const publicStylesheet = "@rada/ui/design-system.css";
+/** Screen stylesheets are owned by @rada/ui too; the bundle budget keeps them out of the initial load. */
+const screenStylesheet = /^@rada\/ui\/screens\/[a-z0-9-]+\.css$/;
 const rawColor =
   /(?:^|[\s,(])(?:#(?:[\da-f]{8}|[\da-f]{6}|[\da-f]{4}|[\da-f]{3})(?![\da-f])|(?:rgb|hsl)a?\s*\()/i;
 const rawDimension = /(?:^|[\s,(])-?(?:\d*\.)?\d+(?:px|rem|em)\b/i;
@@ -111,9 +113,12 @@ export function designSystemViolations(path, source) {
     if (
       (/\.(?:css|scss|sass|less)(?:[?#]|$)/i.test(argument.text) ||
         /^data:text\/css/i.test(argument.text)) &&
-      argument.text !== publicStylesheet
+      argument.text !== publicStylesheet &&
+      !screenStylesheet.test(argument.text)
     )
-      report("CSS imports must use @rada/ui/design-system.css exactly");
+      report(
+        "CSS imports must use @rada/ui/design-system.css or @rada/ui/screens/<name>.css",
+      );
   }
   /** @param {import('typescript').Node} node */
   function styleObject(node) {

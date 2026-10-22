@@ -184,7 +184,11 @@ await test("SQL boundary rejects foreign table queries including quoted names an
 });
 
 await test("public UI entrypoints are exact and preserve module alias boundaries", () => {
-  for (const entry of ["@rada/ui", "@rada/ui/design-system.css"])
+  for (const entry of [
+    "@rada/ui",
+    "@rada/ui/design-system.css",
+    "@rada/ui/screens/splash.css",
+  ])
     assert.deepEqual(
       moduleImportViolations(
         "modules/profile/ui/view.ts",
@@ -196,6 +200,8 @@ await test("public UI entrypoints are exact and preserve module alias boundaries
     "@rada/ui/private",
     "@rada/ui/../secret",
     "@rada/ui/design-system.css?inline",
+    "@rada/ui/screens/../secret.css",
+    "@rada/ui/screens/splash.css?inline",
     "@rada/identity",
   ])
     assert.ok(
