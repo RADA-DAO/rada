@@ -1,29 +1,4 @@
-/* Home screen: launcher grid, app tiles, viewer identity and a running app's surface. */
-.rada-identity {
-  display: flex;
-  align-items: center;
-  gap: var(--rada-space-3);
-  margin-bottom: var(--rada-space-6);
-}
-.rada-identity-text {
-  min-width: 0;
-}
-.rada-identity-name,
-.rada-identity-caption {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rada-identity-name {
-  font-weight: var(--rada-font-weight-control);
-  line-height: var(--rada-line-height-control);
-}
-.rada-identity-caption {
-  font-size: var(--rada-font-size-small);
-  color: var(--text-muted);
-}
-
+/* Launcher grid, app tiles and running application surface. */
 .rada-app-grid {
   display: grid;
   grid-template-columns: repeat(var(--rada-app-grid-columns), minmax(0, 1fr));
@@ -37,22 +12,18 @@
   min-width: 0;
 }
 .rada-app-tile {
-  box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: var(--rada-control-height);
   display: grid;
   justify-items: center;
-  gap: var(--rada-space-1);
+  gap: var(--rada-os-tile-gap);
   padding: 0;
   border: 0;
-  border-radius: var(--rada-radius-small);
   font: inherit;
   text-align: center;
   color: var(--text-primary);
   background: transparent;
   cursor: pointer;
-  transition: translate var(--rada-duration-control) var(--rada-ease-standard);
 }
 .rada-app-tile:active {
   translate: 0 var(--rada-control-press-offset);
@@ -67,29 +38,24 @@
   cursor: default;
 }
 .rada-app-tile-art {
-  box-sizing: border-box;
   width: 100%;
   max-width: var(--rada-app-tile-art-size);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: var(--rada-rule);
-  border-radius: var(--rada-radius-tile);
   overflow: hidden;
-  background: var(--rada-glass-fill);
-  box-shadow: var(--rada-shadow-tile);
-  font-family: var(--rada-font-heading);
-  font-size: var(--rada-font-size-monogram);
-  font-weight: var(--rada-font-weight-heading);
-  line-height: var(--rada-line-height-heading);
-  transition: border-color var(--rada-duration-control)
-    var(--rada-ease-standard);
+  border: var(--rada-os-rule);
+  border-radius: var(--rada-radius-tile);
+  background: var(--surface-raised);
+  box-shadow: var(--rada-os-shadow);
+  font: var(--rada-font-weight-heading) var(--rada-font-size-monogram)/1
+    var(--rada-font-heading);
 }
 .rada-app-tile-icon {
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  object-fit: contain;
+  object-fit: cover;
 }
 .rada-app-tile-name,
 .rada-app-tile-tier {
@@ -99,17 +65,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--rada-font-size-small);
-  line-height: var(--rada-line-height-control);
+  line-height: var(--rada-os-label-leading);
 }
 .rada-app-tile-name {
-  font-weight: var(--rada-font-weight-body);
+  font-weight: var(--rada-os-label-weight);
 }
 .rada-app-tile-tier {
   color: var(--text-muted);
-}
-.rada-app-tile[data-tier="official"] .rada-app-tile-tier {
-  color: var(--text-primary);
-  font-weight: var(--rada-font-weight-control);
 }
 @media (hover: hover) {
   .rada-app-tile:hover .rada-app-tile-art {
@@ -135,27 +97,4 @@
   .rada-app-tile:active {
     translate: none;
   }
-}
-
-.rada-identity {
-  padding-block: var(--rada-space-3);
-}
-.rada-identity-name {
-  font-family: var(--rada-font-heading);
-  font-size: var(--rada-font-size-section);
-  letter-spacing: var(--rada-tracking-section);
-}
-.rada-identity .rada-avatar {
-  border: var(--rada-rule);
-  border-radius: var(--rada-radius-small);
-  box-shadow: var(--rada-shadow-tile);
-}
-
-.rada-launcher-filters {
-  display: flex;
-  overflow-x: auto;
-}
-.rada-launcher-filters .rada-button {
-  flex: 1 0 auto;
-  white-space: nowrap;
 }

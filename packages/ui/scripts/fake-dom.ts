@@ -99,10 +99,24 @@ export class FakeElement {
   click(): void {
     if (!this.disabled) this.dispatch("click");
   }
+  contains(node: FakeElement): boolean {
+    return node === this || this.children.some((child) => child.contains(node));
+  }
   get isConnected(): boolean {
     return this === fakeDocument.body || (this.parent?.isConnected ?? false);
   }
+  private withinInert(): boolean {
+    return (
+      this.attributes.has("inert") || (this.parent?.withinInert() ?? false)
+    );
+  }
   matches(selector: string): boolean {
+    if (
+      selector === "h1:not([inert] *)" ||
+      selector === "main h1:not([inert] *)"
+    ) {
+      return this.tagName === "h1" && !this.withinInert();
+    }
     if (selector === ":disabled") return this.disabled;
     if (selector === "[data-focus-key]") return !!this.dataset.focusKey;
     if (selector === "dialog[open]")
@@ -117,6 +131,11 @@ export class FakeElement {
   }
   querySelector(selector: string): FakeElement | null {
     return this.querySelectorAll(selector)[0] ?? null;
+  }
+  closest(selector: string): FakeElement | null {
+    return this.matches(selector)
+      ? this
+      : (this.parent?.closest(selector) ?? null);
   }
   focus(): void {
     fakeDocument.activeElement = this;

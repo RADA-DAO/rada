@@ -1,0 +1,52 @@
+@import "./folder.css";
+.rada-launcher-editor-body {
+  padding-inline: var(--rada-space-1);
+}
+.rada-launcher-editor-row {
+  padding: var(--rada-editor-row-padding);
+  border-top: var(--rada-rule);
+}
+.rada-launcher-editor-row .rada-actions {
+  gap: var(--rada-space-2);
+  margin-top: var(--rada-editor-label-gap);
+  align-items: center;
+}
+.rada-launcher-editor .rada-launcher-editor-label {
+  display: flex;
+  justify-content: start;
+  gap: var(--rada-editor-label-gap);
+  padding: 0;
+  border: 0;
+  text-align: start;
+  font-size: var(--rada-font-size-field);
+  background: transparent;
+  box-shadow: none;
+}
+.rada-launcher-editor-label .rada-app-tile-art {
+  width: var(--rada-editor-art-size);
+  flex: 0 0 var(--rada-editor-art-size);
+  border-radius: var(--rada-radius-control);
+  font-size: var(--rada-font-size-field);
+}
+.rada-launcher-editor-row > .rada-actions > .rada-button {
+  width: var(--rada-os-dot-target);
+  min-height: var(--rada-os-dot-target);
+  padding: var(--rada-space-2);
+  font-size: var(--rada-icon-size);
+}
+.rada-launcher-editor-row .rada-field {
+  margin-top: var(--rada-editor-label-gap);
+}
+.rada-launcher-editor-row .rada-field-control {
+  font-size: var(--rada-font-size-body);
+}
+.rada-launcher-editor-body > .rada-actions {
+  padding: var(--rada-space-4) 0;
+  border-top: var(--rada-rule);
+}
+.rada-launcher-editor-body > .rada-actions > .rada-button:last-child {
+  flex: 1;
+}
+.rada-launcher-editor-body .rada-text:empty {
+  display: none;
+}

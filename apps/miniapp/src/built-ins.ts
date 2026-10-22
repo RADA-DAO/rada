@@ -46,6 +46,7 @@ export function createBuiltIns(options: {
     tiles: () => [
       {
         id: "builtin:splash",
+        iconUrl: "/apps/splash.webp",
         name: t(options.locale(), "splash.title"),
         onOpen: () => {
           open("splash");
@@ -61,6 +62,7 @@ export function createBuiltIns(options: {
       },
       {
         id: "builtin:treasury",
+        iconUrl: "/apps/treasury.webp",
         name: t(options.locale(), "treasury.title"),
         tier: "platform" as const,
         onOpen: () => {

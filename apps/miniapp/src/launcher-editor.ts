@@ -1,5 +1,7 @@
+import "@rada/ui/screens/launcher-editor.css";
 import {
   Actions,
+  AppTile,
   Button,
   Field,
   Group,
@@ -22,7 +24,7 @@ export function editLauncher(options: {
   locale: Locale;
   navigation: Navigation;
   snapshot: LauncherSnapshot;
-  apps: { id: string; name: string }[];
+  apps: { id: string; name: string; iconUrl?: string }[];
   save(snapshot: LauncherSnapshot): Promise<LauncherSnapshot>;
   reload(): Promise<LauncherSnapshot>;
   updated(snapshot: LauncherSnapshot): void;
@@ -33,7 +35,9 @@ export function editLauncher(options: {
   const text = (key: MessageKey) => t(options.locale, key);
   const body = Group(),
     message = Text("", { live: "assertive" });
+  const opener = document.activeElement as HTMLElement | null;
   const dialog = openSheet({
+    opener,
     title: text("launcher.edit"),
     closeLabel: text("common.close"),
     navigation: options.navigation,
@@ -42,6 +46,8 @@ export function editLauncher(options: {
       if (saved) options.updated(saved);
     },
   });
+  dialog.classList.add("rada-launcher-editor");
+  body.classList.add("rada-launcher-editor-body");
   const draw = () => {
     const layout = snapshot.layout;
     const ids = [
@@ -89,7 +95,11 @@ export function editLauncher(options: {
               layout.folders.find((f) => f.id === value)?.apps.push(id);
             },
           });
-          const handle = Button(app.name);
+          const handle = Button(app.name, { variant: "ghost" });
+          handle.classList.add("rada-launcher-editor-label");
+          const tile = AppTile({ ...app, tier: "platform", onOpen() {} });
+          const art = tile.querySelector(".rada-app-tile-art");
+          if (art) handle.prepend(art);
           installLauncherDrag(
             handle,
             () => rows,
@@ -115,6 +125,12 @@ export function editLauncher(options: {
               reorder(id, index + direction);
             },
           });
+          row.classList.add("rada-launcher-editor-row");
+          const arrows = row.lastElementChild?.querySelectorAll("button");
+          for (const [index, arrow] of Array.from(arrows ?? []).entries())
+            arrow.textContent = text(
+              index === 0 ? "launcher.upSymbol" : "launcher.downSymbol",
+            );
           rows.push(row);
           return [row];
         })
@@ -163,6 +179,7 @@ export function editLauncher(options: {
           ]),
         ]),
       });
+      row.classList.add("rada-launcher-editor-row");
       folderRows.push(row);
       contents.push(row);
     }

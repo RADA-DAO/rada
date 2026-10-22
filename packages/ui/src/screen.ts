@@ -6,7 +6,7 @@ export function ScreenHost(root: HTMLElement): HTMLElement {
   root.className = "screen-wrap";
   const host = element("main", "screen");
   root.append(host);
-  observeScreenFocus(host);
+  observeScreenFocus(host, "h1:not([inert] *)");
   return host;
 }
 
@@ -47,6 +47,7 @@ export function Screen(options: ScreenOptions): HTMLElement {
     options.title,
   );
   heading.tabIndex = -1;
+  heading.dataset.focusKey = `screen:${options.title}`;
   body.append(heading, ...(options.children ?? []));
   view.append(header, body);
   if (options.footer) view.append(options.footer);

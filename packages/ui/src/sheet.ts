@@ -62,6 +62,9 @@ export function openSheet(
 ): HTMLDialogElement {
   const dialog = Sheet(options);
   const stopFocus = observeScreenFocus(dialog, "h2");
+  // The native dialog returns focus here on close; anything else focused by the
+  // time the queued close event runs was chosen by the person afterwards.
+  const previous = document.activeElement;
   active = dialog;
   dialog.addEventListener(
     "close",
@@ -73,7 +76,13 @@ export function openSheet(
         options.navigation?.drop(entry.key);
       }
       options.onClose?.();
-      if (!active?.open) restoreSheetFocus(options.opener);
+      const focused = document.activeElement;
+      const movedOn =
+        Boolean(focused?.isConnected) &&
+        focused !== document.body &&
+        focused !== previous &&
+        focused !== options.opener;
+      if (!active?.open && !movedOn) restoreSheetFocus(options.opener);
     },
     { once: true },
   );

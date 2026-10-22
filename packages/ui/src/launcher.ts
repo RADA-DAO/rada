@@ -28,6 +28,7 @@ const monogram = (name: string): string =>
 export function AppTile(options: AppTileOptions): HTMLButtonElement {
   const tile = element("button", "rada-app-tile");
   tile.type = "button";
+  tile.dataset.focusKey = `app:${options.name}`;
   tile.dataset.tier = options.tier;
   tile.disabled = options.disabled ?? false;
   const art = element("span", "rada-app-tile-art");
@@ -68,6 +69,19 @@ export function AppGrid(options: {
     item.append(tile);
     grid.append(item);
   }
+  // Safari may skip buttons in native Tab order unless full keyboard access is on.
+  grid.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey)
+      return;
+    const tiles = options.tiles.filter((tile) => !tile.matches(":disabled"));
+    const index = tiles.indexOf(document.activeElement as HTMLElement);
+    const next =
+      index < 0 ? undefined : tiles[index + (event.shiftKey ? -1 : 1)];
+    if (next) {
+      event.preventDefault();
+      next.focus();
+    }
+  });
   return grid;
 }
 

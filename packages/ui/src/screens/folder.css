@@ -1,0 +1,39 @@
+.rada-sheet.rada-launcher-folder,
+.rada-sheet.rada-launcher-editor {
+  width: 100%;
+  max-width: var(--rada-shell-width);
+  height: var(--app-visible-height, var(--rada-viewport-height));
+  max-height: var(--app-visible-height, var(--rada-viewport-height));
+  margin: 0 auto;
+  padding: calc(
+      var(--rada-space-4) + var(--app-safe-top, var(--rada-zero-length))
+    )
+    var(--rada-page-gutter)
+    calc(var(--rada-space-6) + var(--app-safe-bottom, var(--rada-zero-length)));
+  border: 0;
+  border-radius: 0;
+  background: var(--rada-environment-fill);
+  box-shadow: none;
+  overflow-y: auto;
+}
+.rada-launcher-folder::backdrop,
+.rada-launcher-editor::backdrop {
+  background: var(--rada-environment-fill);
+}
+.rada-launcher-folder .rada-sheet-header,
+.rada-launcher-editor .rada-sheet-header {
+  padding: var(--rada-space-4) var(--rada-space-1);
+}
+.rada-launcher-folder .rada-sheet-title,
+.rada-launcher-editor .rada-sheet-title {
+  font-size: var(--rada-editor-title-size);
+}
+.rada-launcher-folder .rada-sheet-body {
+  padding-top: var(--rada-space-4);
+}
+.rada-launcher-folder .rada-app-grid {
+  gap: var(--rada-os-row-gap) var(--rada-os-gap);
+}
+.rada-launcher-folder .rada-app-tile-tier {
+  display: none;
+}

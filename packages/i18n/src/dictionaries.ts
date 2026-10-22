@@ -14,6 +14,7 @@ import ukSplash from "../locales/uk.splash.json" with { type: "json" };
 export const en = {
   ...enBase,
   appReport: enApps,
+  launcher: enApps.launcher,
   treasury: enTreasury,
   collection: enCollection,
   splash: enSplash,
@@ -22,6 +23,7 @@ export const en = {
 export const uk = {
   ...ukBase,
   appReport: ukApps,
+  launcher: ukApps.launcher,
   treasury: ukTreasury,
   collection: ukCollection,
   splash: ukSplash,
