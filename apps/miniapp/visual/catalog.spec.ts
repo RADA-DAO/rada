@@ -55,7 +55,7 @@ for (const theme of themes) {
       // This fixture authors #2B6CB0; all solid accent controls must preserve it.
       for (const control of [
         page.getByRole("button", { name: "Primary", exact: true }),
-        page.getByText("Claimed", { exact: true }),
+        page.locator(".rada-badge--strong"),
         page.locator(".rada-avatar").nth(1),
       ])
         await expect(control).toHaveCSS(

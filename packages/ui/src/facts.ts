@@ -1,6 +1,6 @@
 import { element } from "./dom.ts";
 
-/** Labelled values, such as the top bid and time left, as a description list. */
+/** Labelled values, such as participant counts and time left, as a description list. */
 export function Facts(
   items: { label: string; value: string | Node }[],
 ): HTMLDListElement {

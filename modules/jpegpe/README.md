@@ -29,7 +29,7 @@ fallback. This self-only metadata does not change the public identity projection
 
 Frog usernames are one platform-wide namespace: 1 to 32 characters, a letter
 first, then letters, digits or `_`, unique ignoring case, and immutable.
-A hold keeps a name for a frog that does not exist yet (a SPLASH auction win
+A hold keeps a name for a frog that does not exist yet (a SPLASH round win
 before its paid claim). `jpegpe.hold_username(name, frog_id)` holds an available
 name, `jpegpe.held_username(frog_id)` reads it, `jpegpe.release_username(frog_id)`
 frees it again, and `jpegpe.issue_frog(...)` confirms it by issuing the frog

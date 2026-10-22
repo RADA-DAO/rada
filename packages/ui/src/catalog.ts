@@ -300,7 +300,7 @@ if (!root) throw new Error("Missing application root");
 ScreenHost(root).append(
   Screen({
     title: text("title"),
-    brand: text("brand"),
+    brand: t("en", "shell.brand"),
     actions: [Button(text("settings"), { variant: "ghost", icon: "settings" })],
     children: [
       buttons(),
@@ -363,14 +363,16 @@ ScreenHost(root).append(
       mediaSection(),
       gallery(),
     ],
-    footer: Tabs({
-      label: text("tabsLabel"),
-      selected: "profile",
-      tabs: [
-        { id: "apps", label: text("tabApps"), onSelect: noop },
-        { id: "profile", label: text("tabProfile"), onSelect: noop },
-      ],
-    }),
+  }),
+  Tabs({
+    label: t("en", "shell.navigation"),
+    selected: "launcher",
+    dots: true,
+    tabs: [
+      { id: "profile", label: t("en", "shell.me"), onSelect: noop },
+      { id: "launcher", label: t("en", "shell.action"), onSelect: noop },
+      { id: "community", label: t("en", "shell.us"), onSelect: noop },
+    ],
   }),
 );
 

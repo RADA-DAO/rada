@@ -21,12 +21,12 @@ export type ScreenOptions = {
   /** Header controls, such as Settings. */
   actions?: Node[];
   children?: Node[];
-  /** Bottom navigation, usually `Tabs`. */
+  /** Optional screen footer content. Workspace navigation belongs to the host. */
   footer?: Node;
 };
 
 /**
- * One screen: header, title, content and optional footer navigation. Back is
+ * One screen: header, title, content and optional footer content. Back is
  * never drawn here: the platform owns it (Telegram BackButton, browser Back,
  * Escape and the swipe), so screens cannot add a second one.
  */

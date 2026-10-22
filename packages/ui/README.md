@@ -96,9 +96,10 @@ exact authored colors and AA contrast across sampled themes, and
 ## Component catalog and visual tests
 
 `src/catalog.ts` renders every component in every variant and state (buttons with
-loading and disabled, fields with an error, selected tab, loading, empty and error
-states, avatars with a picture and with initials, launcher tiles of every tier with an identity, list, card, section, frog cards
-with and without artwork, and an open sheet) from fixed data and i18n keys. Open it
+loading and disabled, fields with an error, selected workspace page, loading, empty and error
+states, avatars with a picture and with initials, launcher tiles of every tier with an identity, list, glass card, section, frog cards
+with and without artwork, bidder counts, tier badges, three workspace page dots,
+and an open sheet) from fixed data and i18n keys. The header uses the RADA OS brand. Open it
 at `/catalog.html?theme=guest|light|dark|neutral|close` (add `&sheet=open` for the sheet) from
 `npm run dev:miniapp`. The page is a separate Vite entry that only exists when
 `CATALOG=true`; the production build never contains it (`tools/catalog.test.mjs`

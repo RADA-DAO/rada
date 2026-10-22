@@ -61,12 +61,12 @@ export function mediaSection(): Node {
         onSelect: noop,
       }).element,
       Facts([
-        { label: text("factTop"), value: text("factTopValue") },
+        { label: t("en", "splash.bidders"), value: "12" },
         { label: text("factTime"), value: timer.element },
       ]),
       Actions([
-        Badge(text("badge")),
-        Badge(text("badgeStrong"), { tone: "strong" }),
+        Badge(t("en", "home.tier.community")),
+        Badge(t("en", "home.tier.official"), { tone: "strong" }),
       ]),
       hinted.element,
       Tally({

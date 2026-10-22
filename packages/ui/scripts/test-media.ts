@@ -60,13 +60,13 @@ await test("FilePicker reports the chosen file and resets the input", () => {
 await test("Facts and Badge render labelled values", () => {
   const facts = fake(
     Facts([
-      { label: "Top bid", value: "12 JPEGPE" },
+      { label: "Participants", value: "12" },
       { label: "Note", value: Text("Body") },
     ]),
   );
   assert.equal(facts.tagName, "dl");
   assert.equal(facts.child(0).child(0).tagName, "dt");
-  assert.equal(facts.child(0).textContent, "Top bid12 JPEGPE");
+  assert.equal(facts.child(0).textContent, "Participants12");
   assert.equal(facts.child(1).child(1).child(0).tagName, "p");
   assert.equal(fake(Badge("Won")).className, "rada-badge");
   assert.match(fake(Badge("Burned", { tone: "strong" })).className, /strong/);
