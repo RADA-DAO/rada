@@ -1,0 +1,314 @@
+/* RADA OS treasury workspace proportions. */
+.rada-treasury-view {
+  --treasury-gap: 28px;
+  --treasury-inset: 2px;
+  --treasury-hero-padding: 23px 22px 9px;
+  --treasury-hero-radius: 32px 32px 20px 32px;
+  --treasury-hero-shadow:
+    inset 0 1px 0 var(--glass-edge), inset 0 -1px 0 var(--glass-edge-bottom),
+    0 8px 30px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  --treasury-total-padding: 19px 0 22px;
+  --treasury-total-size: clamp(28px, 8cqw, 40px);
+  --treasury-heading-size: 20px;
+  --treasury-name-size: 15px;
+  --treasury-value-size: 18px;
+  --treasury-detail-size: 11px;
+  --treasury-source-size: 60px;
+  --treasury-source-radius: 22px;
+  --treasury-source-height: 100px;
+  --treasury-source-padding: 18px 0;
+  --treasury-source-gap: 13px;
+  --treasury-icon-size: 32px;
+  --treasury-chevron-size: 12px;
+  --treasury-token-size: 20px;
+  --treasury-symbol-size: 29px;
+  --treasury-symbol-overlap: -5px;
+  --treasury-symbol-shadow: -2px 0 0 var(--surface-raised);
+  --treasury-movement-size: 42px;
+  --treasury-movement-height: 80px;
+  --treasury-movement-padding: 17px 0;
+  --treasury-day-padding: 12px 0 2px;
+  --treasury-track: -0.035em;
+  container-type: inline-size;
+}
+.rada-treasury-view > .rada-screen-header {
+  display: none;
+}
+.rada-treasury-view > .rada-screen-body {
+  padding-block: var(--rada-space-4) var(--rada-space-6);
+}
+.rada-treasury-view .rada-text {
+  margin: 0;
+}
+.rada-treasury-view .rada-screen-body > * + *,
+.rada-treasury-view .rada-section > * + * {
+  margin-top: 0;
+}
+.rada-treasury-overview {
+  display: grid;
+  gap: var(--treasury-gap);
+  padding-inline: var(--treasury-inset);
+}
+.rada-treasury-summary {
+  padding: var(--treasury-hero-padding);
+  border: var(--rada-border-width) solid var(--glass-edge);
+  border-radius: var(--treasury-hero-radius);
+  background: linear-gradient(
+    140deg,
+    var(--surface-raised),
+    var(--surface-soft)
+  );
+  box-shadow: var(--treasury-hero-shadow);
+}
+.rada-treasury-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rada-space-3);
+}
+.rada-treasury-eyebrow > .rada-text {
+  font-size: var(--treasury-name-size);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.rada-treasury-symbols,
+.rada-treasury-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--rada-space-1);
+}
+.rada-treasury-symbols {
+  gap: 0;
+}
+.rada-treasury-token {
+  flex-shrink: 0;
+  width: var(--treasury-token-size);
+  height: var(--treasury-token-size);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.rada-treasury-token img {
+  object-fit: contain;
+}
+.rada-treasury-symbols .rada-avatar {
+  width: var(--treasury-symbol-size);
+  height: var(--treasury-symbol-size);
+}
+.rada-treasury-symbols .rada-avatar + .rada-avatar {
+  margin-left: var(--treasury-symbol-overlap);
+  box-shadow: var(--treasury-symbol-shadow);
+}
+.rada-treasury-total {
+  padding: var(--treasury-total-padding);
+}
+.rada-treasury-total .rada-text {
+  font: 730 var(--treasury-total-size)/1.12 var(--rada-font-heading);
+  color: var(--text-primary);
+  letter-spacing: var(--treasury-track);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.rada-treasury-total .rada-text + .rada-text {
+  margin-top: var(--rada-space-2);
+  font-size: var(--treasury-heading-size);
+  color: var(--text-secondary);
+}
+.rada-treasury-view .rada-section-title {
+  margin: 0;
+  min-height: var(--rada-control-height);
+  display: flex;
+  align-items: center;
+  font: 730 var(--treasury-heading-size)/1.2 var(--rada-font-heading);
+  letter-spacing: var(--treasury-track);
+}
+.rada-treasury-wallets > .rada-list-item,
+.rada-treasury-wallets > .rada-list-item > .rada-list-item-main {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+.rada-treasury-wallets > .rada-list-item + .rada-list-item {
+  border-top: var(--rada-rule);
+}
+.rada-treasury-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: initial;
+  width: 100%;
+  min-height: var(--treasury-source-height);
+  gap: var(--treasury-source-gap);
+  padding: var(--treasury-source-padding);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  text-align: left;
+  font-weight: 500;
+}
+.rada-treasury-wallet:hover,
+.rada-treasury-wallet:active {
+  background: var(--surface-soft);
+}
+.rada-treasury-wallet-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--treasury-source-size);
+  height: var(--treasury-source-size);
+  border: var(--rada-border-width) solid var(--glass-edge);
+  border-radius: var(--treasury-source-radius);
+  background: var(--surface-soft);
+}
+.rada-treasury-wallet svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  width: var(--treasury-chevron-size);
+  height: var(--treasury-chevron-size);
+}
+.rada-treasury-wallet-icon svg {
+  width: var(--treasury-icon-size);
+  height: var(--treasury-icon-size);
+}
+.rada-treasury-copy {
+  min-width: 0;
+  flex: 1;
+}
+.rada-treasury-name,
+.rada-treasury-movement .rada-list-item-title {
+  font-size: var(--treasury-name-size);
+  font-weight: 720;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.rada-treasury-chips {
+  margin-top: var(--rada-space-1);
+  flex-wrap: wrap;
+}
+.rada-treasury-chips .rada-text {
+  color: var(--text-secondary);
+  font-size: var(--treasury-detail-size);
+}
+.rada-treasury-values {
+  max-width: 42%;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.rada-treasury-values .rada-text {
+  white-space: nowrap;
+  color: var(--text-primary);
+  font: 730 var(--treasury-value-size)/1.2 var(--rada-font-heading);
+  font-variant-numeric: tabular-nums;
+}
+.rada-treasury-values .rada-text + .rada-text {
+  margin-top: var(--rada-space-1);
+  color: var(--text-secondary);
+  font: 500 var(--treasury-detail-size)/1.45 var(--rada-font-body);
+}
+.rada-treasury-details {
+  padding-block: var(--rada-space-3) var(--rada-space-6);
+}
+.rada-treasury-details[hidden] {
+  display: none;
+}
+.rada-treasury-details > * + * {
+  margin-top: var(--rada-space-2);
+}
+.rada-treasury-details > .rada-text {
+  font-size: var(--rada-font-size-small);
+}
+.rada-treasury-view .rada-treasury-history {
+  position: relative;
+  margin-top: var(--treasury-gap);
+  padding-inline: var(--treasury-inset);
+}
+.rada-treasury-history > .rada-section-title {
+  padding-right: 42%;
+}
+.rada-treasury-filters > summary {
+  min-height: var(--rada-control-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--rada-font-size-small);
+}
+.rada-treasury-filters:not([open]) {
+  position: absolute;
+  inset: 0 0 auto auto;
+}
+.rada-treasury-filters[open] {
+  padding-bottom: var(--rada-space-4);
+}
+.rada-treasury-filters .rada-group > * + * {
+  margin-top: var(--rada-space-2);
+}
+.rada-treasury-date-group {
+  border-top: var(--rada-rule);
+}
+.rada-treasury-day {
+  padding: var(--treasury-day-padding);
+  color: var(--text-secondary);
+  font: 500 var(--treasury-detail-size)/1.4 var(--rada-font-body);
+}
+.rada-treasury-movement {
+  border-top: 0;
+  flex-wrap: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--rada-space-3);
+  min-height: var(--treasury-movement-height);
+  padding: var(--treasury-movement-padding);
+  border-bottom: var(--rada-rule);
+}
+.rada-treasury-movement:last-child {
+  border-bottom: 0;
+}
+.rada-treasury-movement > .rada-avatar {
+  flex-shrink: 0;
+  width: var(--treasury-movement-size);
+  height: var(--treasury-movement-size);
+}
+.rada-treasury-movement > .rada-list-item-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 44%);
+  gap: var(--rada-space-1) var(--rada-space-2);
+  align-items: start;
+}
+.rada-treasury-movement .rada-list-item-title {
+  grid-column: 1;
+  grid-row: 1;
+}
+.rada-treasury-movement .rada-list-item-text {
+  grid-column: 1;
+  grid-row: 2;
+  color: var(--text-secondary);
+  font-size: var(--treasury-detail-size);
+}
+.rada-treasury-quantity {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font: 730 var(--treasury-value-size)/1.2 var(--rada-font-heading);
+  color: var(--text-primary);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rada-treasury-movement .rada-actions {
+  grid-column: 1 / -1;
+}
+@media (max-width: 350px) {
+  .rada-treasury-view {
+    --treasury-hero-padding: 20px 16px 8px;
+    --treasury-source-size: 50px;
+    --treasury-source-gap: 9px;
+    --treasury-value-size: 17px;
+    --treasury-name-size: 14px;
+  }
+}
