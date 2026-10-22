@@ -1,4 +1,3 @@
-.rada-sheet.rada-launcher-folder,
 .rada-sheet.rada-launcher-editor {
   width: 100%;
   max-width: var(--rada-shell-width);
@@ -16,22 +15,42 @@
   box-shadow: none;
   overflow-y: auto;
 }
-.rada-launcher-folder::backdrop,
 .rada-launcher-editor::backdrop {
   background: var(--rada-environment-fill);
 }
-.rada-launcher-folder .rada-sheet-header,
 .rada-launcher-editor .rada-sheet-header {
   padding: var(--rada-space-4) var(--rada-space-1);
 }
-.rada-launcher-folder .rada-sheet-title,
 .rada-launcher-editor .rada-sheet-title {
   font-size: var(--rada-editor-title-size);
 }
-.rada-launcher-folder .rada-sheet-body {
-  padding-top: var(--rada-space-4);
+/* Folder geometry follows the desktop heading and back-link rhythm. */
+.rada-launcher-folder {
+  margin: 0;
+}
+.rada-launcher-folder > .rada-folder-title {
+  margin: 0;
+  padding: var(--rada-space-4) var(--rada-space-1);
+  font: var(--rada-font-weight-heading) var(--rada-editor-title-size) /
+    var(--rada-line-height-heading) var(--rada-font-heading);
+  letter-spacing: var(--rada-tracking-heading);
+}
+.rada-folder-back {
+  display: block;
+  min-height: var(--rada-os-dot-target);
+  margin: 0 var(--rada-space-1) var(--rada-space-3);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-primary);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--rada-font-size-body);
+  line-height: var(--rada-line-height-body);
+  text-align: start;
 }
 .rada-launcher-folder .rada-app-grid {
+  margin-top: var(--rada-space-4);
   gap: var(--rada-os-row-gap) var(--rada-os-gap);
 }
 .rada-launcher-folder .rada-app-tile-tier {

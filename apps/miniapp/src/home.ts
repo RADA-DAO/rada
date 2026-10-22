@@ -13,6 +13,19 @@ import type {
   PublishedApp,
 } from "../../../packages/platform-sdk/src/index.ts";
 
+/** Catalog category is independent of the registry trust tier. */
+export function launcherGroup(app: {
+  id?: string;
+  tier?: string;
+  manifest?: { category?: string };
+}): "rada" | "games" | "apps" {
+  if (app.id === "builtin:splash" || app.manifest?.category === "games")
+    return "games";
+  return app.id?.startsWith("builtin:") || app.tier === "official"
+    ? "rada"
+    : "apps";
+}
+
 type Status = "guest" | "loading" | "ready" | "expired" | "unavailable";
 /**
  * The launcher: published apps as tiles, plus the app the viewer opened from
@@ -132,7 +145,7 @@ export function createHome(options: {
       ...options.builtIn().map((app) => ({
         id: app.id,
         name: app.name,
-        group: "rada",
+        group: launcherGroup(app),
         ...(app.iconUrl ? { iconUrl: app.iconUrl } : {}),
         tier: app.tier ?? ("official" as const),
         tierLabel: text("home.tier.official"),
@@ -144,8 +157,7 @@ export function createHome(options: {
       ...(status === "ready" ? apps : []).map((app) => ({
         id: app.appId,
         name: app.manifest.name,
-        group:
-          app.tier === "official" ? "rada" : (app.manifest.category ?? "apps"),
+        group: launcherGroup(app),
         tier: app.tier,
         tierLabel: text(`home.tier.${app.tier}`),
         ...(app.iconUrl && icons.has(app.iconUrl)

@@ -23,7 +23,13 @@ export const release = (appId: string, name: string, tier: string) => ({
 });
 export const published = [
   release("fixture.governance", "Governance fixture", "official"),
-  release("fixture.game", "Game fixture", "community"),
+  {
+    ...release("fixture.game", "Game fixture", "community"),
+    manifest: {
+      ...release("fixture.game", "Game fixture", "community").manifest,
+      category: "games",
+    },
+  },
 ];
 
 /** Telegram stand-in; `initData` empty means a guest launch. */

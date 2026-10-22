@@ -13,6 +13,7 @@
   "boards": "Межі результатів: {{boards}}",
   "otherCategory": "Інше",
   "launcher": {
+    "back": "← Робочий стіл",
     "upSymbol": "↑",
     "downSymbol": "↓",
     "search": "Пошук",
