@@ -13,8 +13,8 @@ export const en = (
 ) => t("en", key, values);
 export const image = (id: string) => `/v1/splash/submissions/${id}/image`;
 
-/** A plain 96x96 RGB PNG, built here so no file or network is needed. */
-export function png(size = 96): Buffer {
+/** A plain RGB or transparent RGBA PNG, built here so no file or network is needed. */
+export function png(size = 96, transparent = false): Buffer {
   const chunk = (type: string, data: Buffer) => {
     const body = Buffer.concat([Buffer.from(type), data]);
     const out = Buffer.alloc(body.length + 8);
@@ -27,9 +27,16 @@ export function png(size = 96): Buffer {
   header.writeUInt32BE(size, 0);
   header.writeUInt32BE(size, 4);
   header[8] = 8;
-  header[9] = 2;
-  const rows = Buffer.alloc((size * 3 + 1) * size, 200);
-  for (let y = 0; y < size; y++) rows[y * (size * 3 + 1)] = 0;
+  header[9] = transparent ? 6 : 2;
+  const channels = transparent ? 4 : 3;
+  const stride = size * channels + 1;
+  const rows = Buffer.alloc(stride * size, 200);
+  for (let y = 0; y < size; y++) {
+    rows[y * stride] = 0;
+    if (transparent)
+      for (let x = 0; x < size; x++)
+        rows[y * stride + 1 + x * channels + 3] = 128;
+  }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", header),
@@ -81,6 +88,9 @@ export async function launch(page: Page, wallet = false) {
   );
   await page.route("**/v1/splash/submissions/*/image", (route) =>
     route.fulfill({ body: png(), contentType: "image/png" }),
+  );
+  await page.route("**/v1/splash/submissions/mine", (route) =>
+    route.fulfill({ json: { submissions: [] } }),
   );
   await page.goto("/");
 }

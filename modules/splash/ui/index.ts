@@ -7,7 +7,7 @@ import { splashClient } from "./api.ts";
 import { SPLASH_ROUTES, type PayResult, type SplashRoute } from "./context.ts";
 import { translator } from "./format.ts";
 import { mountMine } from "./mine.ts";
-import { mountPond } from "./pond.ts";
+import { mountArena } from "./arena.ts";
 import { mountResults } from "./results.ts";
 import { mountSubmit } from "./submit.ts";
 
@@ -23,7 +23,7 @@ const titles: Record<SplashRoute, MessageKey> = {
   "splash-results": "splash.resultsTitle",
 };
 const screens = {
-  splash: mountPond,
+  splash: mountArena,
   "splash-submit": mountSubmit,
   "splash-mine": mountMine,
   "splash-results": mountResults,
@@ -57,6 +57,7 @@ export function createSplash(options: {
     mount(container: HTMLElement, route: SplashRoute): () => void {
       const lifecycle = new AbortController();
       const locale = options.locale();
+      container.classList.add("splash-content");
       const stop = screens[route](container, {
         locale,
         text: translator(locale),

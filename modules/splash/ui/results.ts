@@ -118,7 +118,8 @@ export function mountResults(
       ...pager,
     ];
   }
-  const load = () => loadInto(context, body, render);
+  const load = () =>
+    loadInto(context, body, render, "splash.loadError.history");
   void load();
   return () => undefined;
 }

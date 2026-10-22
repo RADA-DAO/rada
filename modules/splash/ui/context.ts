@@ -84,6 +84,7 @@ export async function loadInto(
   context: SplashContext,
   container: HTMLElement,
   load: () => Promise<Node[]>,
+  failureKey?: MessageKey,
 ): Promise<void> {
   if (!container.childNodes.length)
     container.replaceChildren(
@@ -97,7 +98,17 @@ export async function loadInto(
         previous instanceof HTMLElement &&
         container.contains(previous) &&
         !previous.dataset.focusKey;
+      const focusKey =
+        previous instanceof HTMLElement && container.contains(previous)
+          ? previous.dataset.focusKey
+          : undefined;
       container.replaceChildren(...nodes);
+      if (focusKey) {
+        const replacement = [
+          ...container.querySelectorAll<HTMLElement>("[data-focus-key]"),
+        ].find((node) => node.dataset.focusKey === focusKey);
+        replacement?.focus();
+      }
       if (returnToHeading) {
         const heading = container.querySelector<HTMLElement>("h2");
         if (heading) {
@@ -110,9 +121,11 @@ export async function loadInto(
     if (aborted(context.signal, error)) return;
     container.replaceChildren(
       ErrorState({
-        message: errorText(context.text, error),
+        message: failureKey
+          ? context.text(failureKey)
+          : errorText(context.text, error),
         retryLabel: context.text("common.retry"),
-        onRetry: () => void loadInto(context, container, load),
+        onRetry: () => void loadInto(context, container, load, failureKey),
       }),
     );
   }

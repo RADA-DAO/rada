@@ -149,4 +149,5 @@ export function openClaimSheet(
       pay,
     ],
   });
+  dialog.classList.add("splash-sheet");
 }

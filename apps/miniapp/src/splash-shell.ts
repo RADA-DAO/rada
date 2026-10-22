@@ -1,3 +1,4 @@
+import "@rada/ui/screens/splash.css";
 import * as payment from "./payment-copy.ts";
 import { Group, Screen } from "../../../packages/ui/src/index.ts";
 import type { Locale } from "../../../packages/i18n/src/index.ts";
@@ -58,14 +59,15 @@ export function createSplashShell(options: {
       frame: { brand: string; actions: Node[] },
     ) {
       const content = Group();
-      host.replaceChildren(
-        Screen({
-          title: splash.title(route),
-          brand: frame.brand,
-          actions: frame.actions,
-          children: [content],
-        }),
-      );
+      const view = Screen({
+        title: splash.title(route),
+        brand: frame.brand,
+        actions: frame.actions,
+        children: [content],
+      });
+      view.classList.add("splash-screen");
+      if (route === "splash") view.classList.add("splash-screen--arena");
+      host.replaceChildren(view);
       dispose = splash.mount(content, route);
     },
     dispose() {

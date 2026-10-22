@@ -179,3 +179,26 @@ await test("past rounds expose only the winning amount and preserve unsold bidde
   assert.equal(bids[0]?.amount, "2000000000");
   assert.equal(bids[0].nameContested, true);
 });
+
+await test("the next-round bench reads only the authenticated viewer's submissions", async () => {
+  const { client, calls } = fakeApi({
+    "GET /v1/splash/submissions/mine": ok({
+      submissions: [
+        {
+          submission_id: FROG,
+          state: "in_pond",
+          image_path: `/v1/splash/submissions/${FROG}/image`,
+        },
+      ],
+    }),
+  });
+  assert.deepEqual(await client.mySubmissions(signal), [
+    {
+      submissionId: FROG,
+      state: "in_pond",
+      imageUrl: `https://api.example/v1/splash/submissions/${FROG}/image`,
+    },
+  ]);
+  assert.equal(calls[0]?.path, "/v1/splash/submissions/mine");
+  assert.notEqual(calls[0].auth, false);
+});
