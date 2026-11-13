@@ -32,8 +32,8 @@ BEGIN
  CASE WHEN p='all' THEN coalesce(ct.pending,0)-coalesce(b.future_pending,0)-coalesce(t.future_pending,0)
  ELSE coalesce(b.pending,0)+CASE WHEN p='previous_week' THEN 0 ELSE coalesce(t.pending,0) END END AS pending
  FROM unnest(ARRAY['work','content','help','participation']) c
- LEFT JOIN reputation.category_totals ct ON ct.subject_id=s AND ct.category=c
- LEFT JOIN bucket b ON b.category=c LEFT JOIN tail t ON t.category=c
+ LEFT JOIN reputation.category_totals ct ON (ct.subject_id=s AND ct.category=c)
+ LEFT JOIN bucket b ON (b.category=c) LEFT JOIN tail t ON (t.category=c)
  )
  SELECT jsonb_build_object('version',1,'revision',coalesce((SELECT revision::text FROM reputation.subjects WHERE subject_id=s),'0'),
  'period',p,'start',lo,'end',hi,'totalPoints',reputation.points(coalesce(sum(units),0)),

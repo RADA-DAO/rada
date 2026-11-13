@@ -50,8 +50,8 @@ BEGIN
  CASE WHEN p='all' THEN coalesce(ct.pending,0)-coalesce(b.future_pending,0)-coalesce(t.future_pending,0)
  ELSE coalesce(b.pending,0)+CASE WHEN p='previous_week' THEN 0 ELSE coalesce(t.pending,0) END END AS pending
  FROM unnest(ARRAY['work','content','help','participation']) c
- LEFT JOIN reputation.category_totals ct ON ct.subject_id=s AND ct.category=c
- LEFT JOIN bucket b ON b.category=c LEFT JOIN tail t ON t.category=c
+ LEFT JOIN reputation.category_totals ct ON (ct.subject_id=s AND ct.category=c)
+ LEFT JOIN bucket b ON (b.category=c) LEFT JOIN tail t ON (t.category=c)
  )
  SELECT jsonb_build_object('version',1,'revision',coalesce((SELECT revision::text FROM reputation.subjects WHERE subject_id=s),'0'),
  'period',p,'start',lo,'end',hi,'totalPoints',reputation.points(coalesce(sum(units),0)),
@@ -77,7 +77,7 @@ BEGIN
  RETURN jsonb_build_object('items',rows,'nextCursor',next_cursor);
 END $$;
 CREATE FUNCTION reputation.read_missions(cursor uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- WITH selected AS (SELECT m.*,i.status AS item_status FROM reputation.missions m LEFT JOIN reputation.items i ON i.mission_id=m.id AND i.subject_id=identity.current_subject()
+ WITH selected AS (SELECT m.*,i.status AS item_status FROM reputation.missions m LEFT JOIN reputation.items i ON (i.mission_id=m.id AND i.subject_id=identity.current_subject())
  WHERE m.enabled AND (cursor IS NULL OR m.id>cursor) ORDER BY m.id LIMIT 31), page AS (SELECT * FROM selected ORDER BY id LIMIT 30)
  SELECT jsonb_build_object('items',coalesce(jsonb_agg(jsonb_build_object('id',id,'version',version,'title',title,'description',description,
  'category',category,'points',reputation.points(units),'ruleHash',rule_hash,'verifier',verifier,

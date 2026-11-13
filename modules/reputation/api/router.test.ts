@@ -289,3 +289,43 @@ test("1000 streams fit bounded service capacity without per-second DB polling", 
   }
   assert.equal(subscribers, 0);
 });
+
+test("detail returns one own snapshot and hides absent/otheractor records", async () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const value = { summary: { revision: "3" }, item: { id }, appeals: [] };
+  let reads = 0;
+  const { app } = fixture({
+    detail: (actor, itemId, p) => {
+      assert.equal(actor, "12345");
+      assert.equal(p, "today");
+      reads++;
+      return Promise.resolve(itemId === id ? value : null) as ReturnType<
+        NonNullable<ReputationStore["detail"]>
+      >;
+    },
+  });
+  const res = await app.request(`/v1/reputation/detail/${id}?period=today`, {
+    headers,
+  });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), value);
+  assert.equal(reads, 1);
+  assert.equal(
+    (
+      await app.request(`/v1/reputation/detail/${id}?period=unknown`, {
+        headers,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await app.request(
+        "/v1/reputation/detail/00000000-0000-4000-8000-000000000002",
+        { headers },
+      )
+    ).status,
+    404,
+  );
+  assert.equal((await app.request(`/v1/reputation/detail/${id}`)).status, 401);
+});

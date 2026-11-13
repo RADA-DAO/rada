@@ -7,6 +7,7 @@ import type {
   AppealInput,
   Changes,
   CommandResult,
+  Detail,
   Mission,
   Overview,
   Page,
@@ -53,6 +54,14 @@ export class PostgresReputationStore implements ReputationStore {
     } finally {
       client.release();
     }
+  }
+  detail(actor: string, id: string, period: Period): Promise<Detail | null> {
+    return this.own(
+      actor,
+      "SELECT reputation.detail($1::uuid,$2) AS result",
+      [id, period],
+      true,
+    );
   }
   async overview(
     actor: string,

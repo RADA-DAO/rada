@@ -19,7 +19,7 @@ BEGIN
  result:=reputation.replay(s,request,fingerprint); IF result IS NOT NULL THEN RETURN result; END IF;
  SELECT * INTO m FROM reputation.missions WHERE id=mission AND enabled;
  IF NOT FOUND THEN RAISE EXCEPTION 'mission_not_found' USING ERRCODE='P0002'; END IF;
- IF requested_version IS DISTINCT FROM m.version THEN RAISE EXCEPTION 'mission_version_conflict' USING ERRCODE='23505'; END IF;
+ IF requested_version IS DISTINCT FROM (m.version) THEN RAISE EXCEPTION 'mission_version_conflict' USING ERRCODE='23505'; END IF;
  SELECT * INTO i FROM reputation.items WHERE subject_id=s AND mission_id=mission;
  IF NOT FOUND THEN
  INSERT INTO reputation.items(subject_id,title,description,category,units,status,reason,occurred_at,rule_hash,mission_id)
