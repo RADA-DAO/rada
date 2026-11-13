@@ -116,6 +116,22 @@ items share one snapshot; two unrelated reads can straddle another write.
 
 ## Full-roster offline shadow comparison
 
+`tools/reputation-raid-shadow.ts CAPTURE_DIR` provides an independent dated
+discussion-unit check against a disposable loopback PostgreSQL database. It
+verifies capture/normalization/excluded-actor provenance before extracting raw
+facts under the supplied frozen `observed-units-v1` rule. Trusted full-evidence
+ingress records pending facts; a dedicated `source_fact` worker lane commits
+SQL-derived points. Semantic workers retain their separate default lanes.
+Actual summary/items, evidence, zeros, actor isolation and receipt replay are
+compared against every served discussion-unit leaf. Other scoring lanes remain
+explicitly unsupported by this driver.
+
+Unknown raw authors remain coverage blockers. Known-fact SQL verification is
+allowed with such blockers only when the entire served leaf set, roster and
+context already match exactly; a leaf difference or context mismatch blocks it.
+The result distinguishes `sqlProjectionParity` from `sourceCoverageComplete`.
+This scoped check never certifies the whole source history or F4 completion.
+
 `tools/reputation/legacy-week-cli.ts PRIVATE_CONFIG.json` reads a caller-provided
 legacy projection, independent full roster, exact frozen-rule bytes, explicit
 category mapping and a private alias salt. It recomputes week totals from exact

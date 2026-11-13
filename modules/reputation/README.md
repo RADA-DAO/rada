@@ -64,6 +64,7 @@ Migrations are forward-only and run through the platform migration ledger.
 | 0072      | Durable jobs, leases, proposal audit, immutable completion receipts and operator requeue                    |
 | 0073–0074 | Immutable rule configuration, rule snapshots, semantic deduplication, active caps and atomic job completion |
 | 0075      | Identity-owned narrow verified Telegram lookup for external worker jobs                                     |
+| 0076      | Trusted full-proof dated source ingestion and an isolated deterministic job lane                            |
 
 0066–0074 live under this module's `db/migrations`; 0075 lives under
 `modules/identity/db/migrations`. Runtime logins inherit capability roles and
@@ -77,6 +78,13 @@ The migrations seed no missions, reward rules or providers. They create durable
 jobs for pending inputs, including existing pending items, without starting a
 consumer. API composition optionally uses `REPUTATION_SERVICE_DATABASE_URL`;
 there is no automatically started reputation coordinator or configured provider.
+
+`PostgresReputationSourceStore` is a server-only ingress capability. A stable
+source key identifies the attributed occurrence; actor, date and complete bounded
+proof set are immutable for its receipt. No point or policy argument is accepted.
+Source facts use `source_fact`; generic semantic/external workers do not claim
+that lane, and defensive coordinator handling never invokes a model for it.
+Explicit source workers still use frozen SQL rules to complete a leased fact.
 
 ## Worker and decision rules
 
