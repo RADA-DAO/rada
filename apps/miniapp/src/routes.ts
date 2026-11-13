@@ -224,7 +224,9 @@ export function createWorkspace(
                   ? "shell.me"
                   : "shell.myProfile"
                 : id === "launcher"
-                  ? "shell.action"
+                  ? options.developerSurface
+                    ? "shell.action"
+                    : "shell.apps"
                   : "shell.us",
             ),
             onSelect: () => {

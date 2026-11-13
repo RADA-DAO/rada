@@ -262,7 +262,7 @@ for (const unavailable of [false, true]) {
       .getByRole("button", { name: text("uk", "common.close"), exact: true })
       .click();
     await page
-      .getByRole("button", { name: text("uk", "shell.action"), exact: true })
+      .getByRole("button", { name: text("uk", "shell.apps"), exact: true })
       .click();
     await assertDesktop(page, "uk");
     await page.reload();
