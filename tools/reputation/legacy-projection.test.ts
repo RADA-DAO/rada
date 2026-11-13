@@ -325,3 +325,66 @@ await test("complete-history readiness rejects coverage warnings even when expli
     false,
   );
 });
+
+await test("PostgreSQL bigint exact limit is accepted and one unit overflow blocks strict readiness", () => {
+  assert.deepEqual(exactPoints("922337203685477.5807"), {
+    units: 9223372036854775807n,
+    decimal: "922337203685477.5807",
+  });
+  assert.throws(
+    () => exactPoints("922337203685477.5808"),
+    /points_out_of_range/,
+  );
+  const input = strict();
+  input.lifetimePoints = () => "922337203685477.5808";
+  const result = legacyProjectionToShadow(input);
+  assert.equal(result.ok, false);
+  assert.ok(
+    "blockers" in result && result.blockers.includes("points_out_of_range"),
+  );
+});
+function windowFixture(start: string, cutoff: string) {
+  const input = fixture();
+  input.projection.weekStart = start;
+  input.cutoff = cutoff;
+  input.projection.assessedThrough = cutoff;
+  input.projection.fullReviewThrough = start;
+  for (const value of Object.values(input.projection.sourceDispositions ?? {}))
+    value.reviewedAt = start;
+  return input;
+}
+await test("Kyiv week starts on Monday midnight and rejects the next week cutoff", () => {
+  assert.equal(
+    compareLegacyWeek(windowFixture("2026-11-08T22:00:00Z", at)).ok,
+    true,
+  );
+  for (const start of [
+    "2026-11-07T22:00:00Z",
+    "2026-11-08T23:00:00Z",
+    "2026-11-08T22:00:00.000000001Z",
+  ])
+    assert.equal(compareLegacyWeek(windowFixture(start, at)).ok, false);
+  assert.equal(
+    compareLegacyWeek(
+      windowFixture("2026-11-08T22:00:00Z", "2026-11-15T22:00:00Z"),
+    ).ok,
+    false,
+  );
+});
+await test("Kyiv spring and autumn DST weeks retain their exact calendar boundaries", () => {
+  for (const [start, last, next] of [
+    [
+      "2026-03-22T22:00:00Z",
+      "2026-03-29T20:59:59.999999999Z",
+      "2026-03-29T21:00:00Z",
+    ],
+    [
+      "2026-10-18T21:00:00Z",
+      "2026-10-25T21:59:59.999999999Z",
+      "2026-10-25T22:00:00Z",
+    ],
+  ] as const) {
+    assert.equal(compareLegacyWeek(windowFixture(start, last)).ok, true);
+    assert.equal(compareLegacyWeek(windowFixture(start, next)).ok, false);
+  }
+});

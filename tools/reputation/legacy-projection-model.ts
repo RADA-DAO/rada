@@ -111,6 +111,7 @@ export function exactPoints(value: string): { units: bigint; decimal: string } {
     "unrepresentable_points",
   );
   const units = (numerator * 10000n) / denominator;
+  requireValue(units <= 9223372036854775807n, "points_out_of_range");
   const fraction = (units % 10000n)
     .toString()
     .padStart(4, "0")
@@ -136,6 +137,42 @@ export function instant(value: string): bigint {
     BigInt(Date.parse(`${base}${match[3] ?? "Z"}`)) * 1000000n +
     BigInt((match[2] ?? "").padEnd(9, "0"))
   );
+}
+/** Compare Kyiv calendar dates so the DST week may contain 167 or 169 hours. */
+function validateWeek(start: string, cutoff: string) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = (value: string) => formatter.formatToParts(new Date(value));
+  const part = (
+    values: Intl.DateTimeFormatPart[],
+    name: Intl.DateTimeFormatPartTypes,
+  ) => values.find((value) => value.type === name)?.value;
+  const first = parts(start);
+  requireValue(
+    part(first, "weekday") === "Mon" &&
+      ["hour", "minute", "second"].every(
+        (name) => part(first, name as Intl.DateTimeFormatPartTypes) === "00",
+      ) &&
+      instant(start) % 1000000000n === 0n,
+    "invalid_kyiv_week_start",
+  );
+  const day = (values: Intl.DateTimeFormatPart[]) =>
+    Date.UTC(
+      Number(part(values, "year")),
+      Number(part(values, "month")) - 1,
+      Number(part(values, "day")),
+    );
+  const elapsedDays = (day(parts(cutoff)) - day(first)) / 86400000;
+  requireValue(elapsedDays >= 0 && elapsedDays < 7, "cutoff_outside_kyiv_week");
 }
 export function token(
   input: LegacyInput,
@@ -218,6 +255,7 @@ export function prepare(input: LegacyInput) {
       instant(input.cutoff) >= instant(p.weekStart),
     "cutoff_mismatch",
   );
+  validateWeek(p.weekStart, input.cutoff);
   requireValue(
     /^[a-f0-9]{64}$/.test(p.assessmentHash) &&
       (!input.expectedAssessmentHash ||
