@@ -1,163 +1,25 @@
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import pg from "pg";
-import type {
-  ReputationStore,
-  Mission,
-} from "../modules/reputation/contract.ts";
+import { randomUUID } from "node:crypto";
+import type pg from "pg";
+import type { ReputationItem } from "../modules/reputation/contract.ts";
 import { reputationContractTests } from "../modules/reputation/tests/store-contract.ts";
-import {
-  reputationCalendarTests,
-  type CalendarFixture,
-} from "../modules/reputation/tests/calendar-contract.ts";
-
-// This runner connects only to a caller-created disposable loopback database.
+import { reputationCalendarTests } from "../modules/reputation/tests/calendar-contract.ts";
+import { createPostgresFixtureRuntime } from "../modules/reputation/tests/postgres-fixture.ts";
 assert.ok(process.env.PG_TEST_URL, "PG_TEST_URL is required");
-const adminUrl = new URL(process.env.PG_TEST_URL);
-assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(adminUrl.hostname));
-assert.match(adminUrl.pathname, /^\/reputation_test_[a-z0-9_]+$/);
-const admin = new pg.Pool({ connectionString: adminUrl.href, max: 4 });
-const suffix = randomBytes(6).toString("hex");
-const createdRoles: string[] = [];
-const pools: pg.Pool[] = [];
-async function login(capability: string): Promise<pg.Pool> {
-  assert.match(
-    capability,
-    /^(identity_auth|reputation_service|reputation_operator|reputation_ingress)$/,
-  );
-  const name = `rep_test_${suffix}_${capability}`;
-  const password = randomBytes(24).toString("hex");
-  await admin.query(
-    `CREATE ROLE "${name}" LOGIN PASSWORD '${password}' INHERIT`,
-  );
-  createdRoles.push(name);
-  await admin.query(`GRANT ${capability} TO "${name}"`);
-  const url = new URL(adminUrl);
-  url.username = name;
-  url.password = password;
-  // Separate physical connections are required to exercise PostgreSQL row locks.
-  const pool = new pg.Pool({
-    connectionString: url.href,
-    max: 12,
-    options: "-c statement_timeout=5000",
-  });
-  pools.push(pool);
-  return pool;
-}
-after(async () => {
-  await Promise.all(pools.map((pool) => pool.end()));
-  for (const name of createdRoles.reverse())
-    await admin.query(`DROP ROLE "${name}"`);
-  await admin.end();
-});
-const auth = await login("identity_auth");
-const service = await login("reputation_service");
-const operator = await login("reputation_operator");
-const ingress = await login("reputation_ingress");
-const storePath =
-  process.env.REPUTATION_STORE_PATH ??
-  fileURLToPath(new URL("../modules/reputation/api/store.ts", import.meta.url));
-const { PostgresReputationStore } = (await import(
-  pathToFileURL(storePath).href
-)) as {
-  PostgresReputationStore: new (
-    auth: pg.Pool,
-    service: pg.Pool,
-  ) => ReputationStore;
-};
-const store = new PostgresReputationStore(auth, service);
-async function ownerQuery<T extends pg.QueryResultRow>(
-  sql: string,
-  values: unknown[] = [],
-): Promise<pg.QueryResult<T>> {
-  const client = await admin.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("SET LOCAL ROLE reputation_owner");
-    const result = await client.query<T>(sql, values);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-async function subject(actor: string): Promise<string> {
-  const result = await auth.query<{ id: string }>(
-    "SELECT identity.resolve_telegram($1::bigint) AS id",
-    [actor],
-  );
-  const row = result.rows[0];
-  assert.ok(row);
-  return row.id;
-}
-async function fixture(): Promise<CalendarFixture> {
-  const actor = String(
-    8000000000000n + BigInt(`0x${randomBytes(5).toString("hex")}`),
-  );
-  const otherActor = String(BigInt(actor) + 1n);
-  await subject(actor);
-  await subject(otherActor);
-  return {
-    store,
-    actor,
-    otherActor,
-    seedMission: async ({ points, verifier }) => {
-      const id = randomUUID();
-      await operator.query(
-        "SELECT reputation.configure_mission($1::uuid,1,$2,$3,'participation',$4,'synthetic-rule-v1',$5,NULL,true)",
-        [
-          id,
-          "Synthetic acknowledgement",
-          "Synthetic fixture only",
-          points,
-          verifier,
-        ],
-      );
-      return {
-        id,
-        version: 1,
-        title: "Synthetic acknowledgement",
-        description: "Synthetic fixture only",
-        category: "participation",
-        points,
-        ruleHash: "synthetic-rule-v1",
-        verifier,
-        status: "available",
-        actionUrl: null,
-      } satisfies Mission;
-    },
-    bounds: async (period, reference) => {
-      const result = await ownerQuery<{ start_at: Date | null; end_at: Date }>(
-        "SELECT * FROM reputation.bounds($1,$2::timestamptz)",
-        [period, reference],
-      );
-      const row = result.rows[0];
-      assert.ok(row);
-      return {
-        start: row.start_at?.toISOString() ?? null,
-        end: row.end_at.toISOString(),
-      };
-    },
-    seedAccepted: async (actor, occurredAt, points) => {
-      const id = await subject(actor);
-      const result = await ownerQuery<{ id: string }>(
-        "INSERT INTO reputation.items(subject_id,title,description,category,units,status,reason,occurred_at) VALUES($1::uuid,'Synthetic boundary','Fixture only','help',($2::numeric*10000)::bigint,'accepted','synthetic_boundary',$3::timestamptz) RETURNING id",
-        [id, points, occurredAt],
-      );
-      const row = result.rows[0];
-      assert.ok(row);
-      return row.id;
-    },
-    close: async () => {
-      /* The caller destroys the disposable database after this process exits. */
-    },
-  };
-}
+const runtime = await createPostgresFixtureRuntime(process.env.PG_TEST_URL);
+after(runtime.close);
+const {
+  admin,
+  auth,
+  service,
+  operator,
+  ingress,
+  store,
+  fixture,
+  subject,
+  ownerQuery,
+} = runtime;
 reputationContractTests(fixture);
 reputationCalendarTests(fixture);
 
@@ -241,4 +103,261 @@ void test("exact-point configuration rejects more than four decimal places", asy
   } finally {
     await f.close();
   }
+});
+async function finalize(
+  item: string,
+  sourceId: string,
+  url = "https://example.test/synthetic-evidence",
+): Promise<ReputationItem> {
+  const result = await ingress.query<{ item: ReputationItem }>(
+    "SELECT reputation.finalize_external($1::uuid,'synthetic-adapter',$2,$3) AS item",
+    [item, sourceId, url],
+  );
+  const row = result.rows[0];
+  assert.ok(row);
+  return row.item;
+}
+async function correct(
+  item: string,
+  sourceId: string,
+  points: string,
+  status = "accepted",
+  reason = "Synthetic authorized correction",
+): Promise<ReputationItem> {
+  const result = await operator.query<{ item: ReputationItem }>(
+    "SELECT reputation.correct($1::uuid,$2,$3,$4,$5) AS item",
+    [item, sourceId, points, status, reason],
+  );
+  const row = result.rows[0];
+  assert.ok(row);
+  return row.item;
+}
+void test("trusted source reuse across actors awards once and rejected writes leave no partial state", async () => {
+  const f = await fixture();
+  const mission = await f.seedMission({
+    points: "4.0001",
+    verifier: "external",
+  });
+  const left = await store.verify(f.actor, mission.id, {
+    requestId: randomUUID(),
+    missionVersion: 1,
+  });
+  const right = await store.verify(f.otherActor, mission.id, {
+    requestId: randomUUID(),
+    missionVersion: 1,
+  });
+  const sourceId = randomUUID();
+  const attempts = await Promise.allSettled([
+    finalize(left.item.id, sourceId),
+    finalize(right.item.id, sourceId),
+  ]);
+  assert.equal(
+    attempts.filter((result) => result.status === "fulfilled").length,
+    1,
+  );
+  assert.equal(
+    attempts.filter((result) => result.status === "rejected").length,
+    1,
+  );
+  const items = await Promise.all([
+    store.item(f.actor, left.item.id),
+    store.item(f.otherActor, right.item.id),
+  ]);
+  assert.equal(items.filter((item) => item?.status === "accepted").length, 1);
+  assert.equal(items.filter((item) => item?.status === "pending").length, 1);
+  const summaries = await Promise.all([
+    store.summary(f.actor, "all"),
+    store.summary(f.otherActor, "all"),
+  ]);
+  assert.deepEqual(summaries.map((summary) => summary.totalPoints).sort(), [
+    "0",
+    "4.0001",
+  ]);
+  assert.deepEqual(summaries.map((summary) => summary.revision).sort(), [
+    "1",
+    "2",
+  ]);
+  const decisions = await ownerQuery<{ count: string }>(
+    "SELECT count(*)::text AS count FROM reputation.decisions WHERE source='external:synthetic-adapter' AND source_id=$1",
+    [sourceId],
+  );
+  assert.equal(decisions.rows[0]?.count, "1");
+});
+void test("trusted retries preserve corrections and invalid verification never erases accepted points", async () => {
+  const f = await fixture();
+  const mission = await f.seedMission({
+    points: "3.125",
+    verifier: "external",
+  });
+  const pending = await store.verify(f.actor, mission.id, {
+    requestId: randomUUID(),
+    missionVersion: 1,
+  });
+  const sourceId = randomUUID();
+  const accepted = await finalize(pending.item.id, sourceId);
+  assert.equal(accepted.status, "accepted");
+  assert.equal(accepted.points, "3.125");
+  const before = await store.summary(f.actor, "all");
+  assert.deepEqual(await finalize(pending.item.id, sourceId), accepted);
+  await assert.rejects(
+    finalize(pending.item.id, sourceId, "https://example.test/changed"),
+  );
+  await assert.rejects(finalize(pending.item.id, randomUUID()));
+  await assert.rejects(
+    store.verify(f.actor, mission.id, {
+      requestId: randomUUID(),
+      missionVersion: 999,
+    }),
+  );
+  assert.equal((await store.summary(f.actor, "all")).revision, before.revision);
+  assert.equal((await store.summary(f.actor, "all")).totalPoints, "3.125");
+  const corrected = await correct(
+    pending.item.id,
+    randomUUID(),
+    "0",
+    "excluded",
+    "Synthetic exclusion",
+  );
+  assert.equal(corrected.status, "excluded");
+  const correctedRevision = (await store.summary(f.actor, "all")).revision;
+  // Re-delivery of evidence is harmless after an explicit later decision.
+  assert.equal((await finalize(pending.item.id, sourceId)).status, "excluded");
+  assert.equal(
+    (await store.summary(f.actor, "all")).revision,
+    correctedRevision,
+  );
+  assert.equal((await store.summary(f.actor, "all")).totalPoints, "0");
+});
+void test("authorized correction, exact totals, decision and durable change commit or roll back together", async () => {
+  const f = await fixture();
+  const mission = await f.seedMission({
+    points: "5",
+    verifier: "acknowledgement",
+  });
+  const award = await store.verify(f.actor, mission.id, {
+    requestId: randomUUID(),
+    missionVersion: 1,
+  });
+  const before = await store.summary(f.actor, "all");
+  const sourceId = randomUUID();
+  const client = await operator.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT reputation.correct($1::uuid,$2,'1.0001','accepted','Synthetic atomic correction')",
+      [award.item.id, sourceId],
+    );
+    // A different session must see the entire old state until commit.
+    assert.equal((await store.summary(f.actor, "all")).totalPoints, "5");
+    assert.deepEqual(
+      (await store.changes(f.actor, before.revision)).changes,
+      [],
+    );
+    await client.query("ROLLBACK");
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+  assert.equal((await store.item(f.actor, award.item.id))?.points, "5");
+  assert.equal((await store.summary(f.actor, "all")).revision, before.revision);
+  const absent = await ownerQuery<{ count: string }>(
+    "SELECT count(*)::text AS count FROM reputation.decisions WHERE source='correction' AND source_id=$1",
+    [sourceId],
+  );
+  assert.equal(absent.rows[0]?.count, "0");
+  await correct(
+    award.item.id,
+    sourceId,
+    "1.0001",
+    "accepted",
+    "Synthetic atomic correction",
+  );
+  const committed = await store.summary(f.actor, "all");
+  assert.equal(committed.totalPoints, "1.0001");
+  assert.equal(committed.lifetimePoints, "1.0001");
+  assert.equal(BigInt(committed.revision), BigInt(before.revision) + 1n);
+  const changes = await store.changes(f.actor, before.revision);
+  assert.equal(changes.changes.length, 1);
+  assert.equal(changes.changes[0]?.itemId, award.item.id);
+  await correct(
+    award.item.id,
+    sourceId,
+    "1.0001",
+    "accepted",
+    "Synthetic atomic correction",
+  );
+  await assert.rejects(
+    correct(
+      award.item.id,
+      sourceId,
+      "2",
+      "accepted",
+      "Synthetic atomic correction",
+    ),
+  );
+  const other = await store.verify(f.otherActor, mission.id, {
+    requestId: randomUUID(),
+    missionVersion: 1,
+  });
+  await assert.rejects(
+    correct(
+      other.item.id,
+      sourceId,
+      "1.0001",
+      "accepted",
+      "Synthetic atomic correction",
+    ),
+  );
+  assert.equal(
+    (await store.summary(f.actor, "all")).revision,
+    committed.revision,
+  );
+  assert.equal((await store.summary(f.otherActor, "all")).totalPoints, "5");
+});
+void test("future accepted and pending events are consistently excluded from present summaries and pages", async () => {
+  const f = await fixture();
+  const now = Date.now();
+  const currentFuture = await f.seedAccepted(
+    f.actor,
+    new Date(now + 120000).toISOString(),
+    "7",
+  );
+  const tomorrow = await f.seedAccepted(
+    f.actor,
+    new Date(now + 86400000).toISOString(),
+    "11",
+  );
+  const pending = await store.report(f.actor, {
+    requestId: randomUUID(),
+    title: "Scheduled synthetic work",
+    description: "Future-dated synthetic result",
+    occurredAt: new Date(now + 120000).toISOString(),
+  });
+  assert.equal(pending.summary.pendingCount, 0);
+  for (const period of ["all", "today", "week", "previous_week"] as const) {
+    const summary = await store.summary(f.actor, period);
+    assert.equal(summary.totalPoints, "0");
+    assert.equal(summary.lifetimePoints, "0");
+    assert.equal(summary.pendingCount, 0);
+    const ids = (await store.items(f.actor, period, null)).items.map(
+      (item) => item.id,
+    );
+    assert.ok(
+      !ids.includes(currentFuture) &&
+        !ids.includes(tomorrow) &&
+        !ids.includes(pending.item.id),
+    );
+  }
+  const requestId = randomUUID();
+  const before = (await store.summary(f.actor, "all")).revision;
+  await assert.rejects(
+    store.report(f.actor, {
+      requestId,
+      title: "Too far ahead",
+      description: "Invalid synthetic timestamp",
+      occurredAt: new Date(now + 600000).toISOString(),
+    }),
+  );
+  assert.equal(await store.command(f.actor, requestId), null);
+  assert.equal((await store.summary(f.actor, "all")).revision, before);
 });

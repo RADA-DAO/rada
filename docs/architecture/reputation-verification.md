@@ -25,6 +25,7 @@ Run sustained local checks through the shared `rada-heavy-check` launcher.
 The reusable factory suites cover:
 
 - Immutable command recovery after a lost response and later writes.
+- The mutation receipt already including its committed score/pending projection.
 - Conflicting payloads and operation reuse under one request ID.
 - Eight concurrent physical-connection requests for one semantic award.
 - External checking and attachment-free reports remaining pending.
@@ -33,6 +34,12 @@ The reusable factory suites cover:
 - More than one durable change page and reconnect without missing item IDs.
 - Actual SQL calendar bounds across Kyiv spring/autumn DST (167/169-hour weeks).
 - Inclusive period start, exclusive end and independent lifetime points.
+
+The runner also races one trusted evidence source across two actors, tests
+correction rollback/commit and outbox atomicity through separate sessions, checks
+source reuse/conflicts and verifies future results do not enter present totals.
+Accepted points survive failed verification and a later explicit exclusion
+survives redelivery of earlier evidence.
 
 The runner also denies direct table access and unauthorized worker/operator
 functions through real login roles, holds one subject lock while another actor
@@ -80,3 +87,25 @@ because they identify projection delivery state rather than scoring parity.
 Exit codes: 0 equals, 1 differences, 2 invalid/incomparable input. Paginated or
 incomplete inputs cannot prove parity. Completeness and sanitization remain
 caller attestations; no real production shadow import is provided.
+
+## Bounded synthetic load driver
+
+`tools/reputation-load.ts` uses the same disposable-database guard and actual
+login roles. It has no server lifecycle logic: the caller must run the entire
+cluster/check/cleanup harness through the shared heavy-check queue.
+
+Defaults are 1000 synthetic actors, four commands per actor, eight concurrent
+workers and a 120-second command-plus-verification budget. Setup time is excluded.
+`REPUTATION_LOAD_ACTORS` (1–1000), `REPUTATION_LOAD_COMMANDS` (2–20),
+`REPUTATION_LOAD_CONCURRENCY` (1–32) and `REPUTATION_LOAD_SECONDS` (1–900)
+control the run. Each actor sends two independent requests for one semantic
+acknowledgement, then zero or more attachment-free synthetic reports.
+
+The JSON result contains command/verification counts, SQL error counts,
+command latency p50/p95/p99, whole-actor verification latency percentiles,
+event-loop delay, RSS and measured command throughput. Every actor is checked
+for exact score, pending count, item count, revision, durable changes and receipt
+replay. Cross-actor reads are checked separately. A timeout, SQL error or failed
+invariant exits unsuccessfully. This is a PostgreSQL store/driver workload;
+it does not measure HTTP, SSE fan-out, browser rendering or model interpretation.
+No performance results are claimed until a recorded run completes.

@@ -42,6 +42,9 @@ export function reputationContractTests(factory: StoreFixtureFactory): void {
       });
       const request = input(mission);
       const committed = await store.verify(actor, mission.id, request);
+      assert.equal(committed.summary.totalPoints, "1.2345");
+      assert.equal(committed.summary.lifetimePoints, "1.2345");
+      assert.equal(committed.item.points, "1.2345");
       // Simulate a connection dropping after commit: caller recovers through command lookup.
       assert.deepEqual(
         await store.command(actor, request.requestId),
@@ -126,6 +129,7 @@ export function reputationContractTests(factory: StoreFixtureFactory): void {
       const checking = await store.verify(actor, external.id, input(external));
       assert.equal(checking.state, "checking");
       assert.equal(checking.item.status, "pending");
+      assert.equal(checking.summary.pendingCount, 1);
       const report = await store.report(actor, {
         requestId: randomUUID(),
         title: "Draft produced",
