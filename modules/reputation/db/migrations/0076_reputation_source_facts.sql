@@ -30,7 +30,7 @@ BEGIN
  IF (SELECT count(DISTINCT value->>'id') FROM jsonb_array_elements(evidence))<>jsonb_array_length(evidence)
  OR (SELECT count(DISTINCT value->>'url') FROM jsonb_array_elements(evidence))<>jsonb_array_length(evidence)
  THEN RAISE EXCEPTION 'duplicate_source_evidence' USING ERRCODE='22023'; END IF;
- fingerprint:=jsonb_build_object('subject',subject,'title',title,'description',description,'occurredAt',occurred_at,'evidence',evidence);
+ fingerprint:=jsonb_build_object('subject',subject,'title',title,'description',description,'occurredAtMicros',extract(epoch FROM occurred_at)*1000000,'evidence',evidence);
  PERFORM reputation.lock_subject(subject);
  SELECT * INTO previous FROM reputation.source_receipts r WHERE r.source=ingest_fact.source AND r.source_key=ingest_fact.source_key;
  IF FOUND THEN
