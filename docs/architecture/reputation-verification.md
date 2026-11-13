@@ -110,8 +110,9 @@ These workloads call no real provider or Telegram endpoint.
 and bounded `Page<ReputationItem>` used by other clients. It displays supplied
 exact totals, period bounds, Kyiv timezone, freshness, pending count and at most
 three escaped result snippets. It performs no scoring or delivery. A live bot
-route/consumer is still separate integration work; the caller must fetch both
-projections for the same authenticated subject and period.
+route/consumer is still separate integration work. Use the atomic history
+`overview` for the same authenticated subject and period, so the summary and
+items share one snapshot; two unrelated reads can straddle another write.
 
 ## Full-roster offline shadow comparison
 

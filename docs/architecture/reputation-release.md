@@ -69,7 +69,8 @@ cutoff and one authoritative writer. Define the observation duration, failure
 thresholds and rollback decision owner before activation; a local p95 result is
 not an adopted production SLO.
 
-Observe authenticated own-member flows, pending versus accepted projections,
+Observe for the existing F5 minimum of three days before wider rollout.
+Track authenticated own-member flows, pending versus accepted projections,
 command/appeal recovery after reload, SSE reconnect/catch-up, exact categories,
 identity isolation, worker lease/retry/blocked counts, provider budgets and
 trusted external authority. Verify actual deployed state and absence of dual

@@ -69,6 +69,12 @@ are not silently evicted because eviction would reset budgets/occupied slots.
 External jobs alone receive a verified Telegram ID through the narrow
 identity-owned 0075 interface; interpretation jobs do not expose it.
 
+The runtime owner must configure finite pool acquisition, connection and SQL
+statement timeouts. Coordinator preparation deadlines do not cancel an already
+running database statement. Provider budgets are reserved per coordinator
+instance; production process counts and provider-account ceilings must enforce
+the aggregate budget before activation.
+
 ## Telegram membership adapter
 
 `membershipVerifier(null, client)` is unconfigured. Trusted configuration pins a
