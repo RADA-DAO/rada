@@ -169,3 +169,123 @@ test("SSE multiplexes same actor, recovers durable changes and releases on abort
     await Promise.all(readers.map((reader) => reader.cancel()));
   }
 });
+
+test("overview uses the atomic store operation and appeals recover exact receipts", async () => {
+  const summary = {
+    version: 1,
+    revision: "7",
+    period: "today",
+    start: "2026-01-01T00:00:00Z",
+    end: "2026-01-01T12:00:00Z",
+    totalPoints: "1",
+    lifetimePoints: "2",
+    pendingCount: 0,
+    categories: [],
+    updatedAt: "2026-01-01T12:00:00Z",
+  } as const;
+  const appeal = {
+    id: "00000000-0000-4000-8000-000000000002",
+    itemId: "00000000-0000-4000-8000-000000000001",
+    message: "Review",
+    status: "open",
+    resolution: null,
+    createdAt: "2026-01-01T12:00:00Z",
+  } as const;
+  let reads = 0;
+  const { app } = fixture({
+    overview: (actor, view, p, cursor) => {
+      assert.equal(actor, "12345");
+      assert.equal(view, "history");
+      assert.equal(p, "today");
+      assert.equal(cursor, null);
+      reads++;
+      return Promise.resolve({
+        summary: { ...summary, categories: [] },
+        page: { items: [], nextCursor: null },
+      });
+    },
+    summary: () => {
+      throw new Error("must not stitch independent reads");
+    },
+    items: () => {
+      throw new Error("must not stitch independent reads");
+    },
+    appealCommand: (actor, requestId) => {
+      assert.equal(actor, "12345");
+      return Promise.resolve(requestId === "lost-appeal" ? appeal : null);
+    },
+  });
+  const overview = await app.request(
+    "/v1/reputation/overview?view=history&period=today",
+    { headers },
+  );
+  assert.equal(overview.status, 200);
+  assert.equal(reads, 1);
+  assert.equal(
+    (await app.request("/v1/reputation/overview?view=public", { headers }))
+      .status,
+    400,
+  );
+  const receipt = await app.request(
+    "/v1/reputation/appeals/commands/lost-appeal",
+    { headers },
+  );
+  assert.equal(receipt.status, 200);
+  assert.deepEqual(await receipt.json(), { appeal });
+  assert.equal(
+    (await app.request("/v1/reputation/appeals/commands/unknown", { headers }))
+      .status,
+    404,
+  );
+});
+
+test("1000 streams fit bounded service capacity without per-second DB polling", async () => {
+  const app = new Hono();
+  let reads = 0;
+  let subscribers = 0;
+  const wake = new Map<string, () => void>();
+  const store = {
+    changes: (_actor: string, after: string) => {
+      reads++;
+      return Promise.resolve({
+        version: 1 as const,
+        changes: [],
+        nextCursor: after,
+        hasMore: false,
+        resetRequired: false,
+      });
+    },
+    onChange: (actor: string, listener: () => void) => {
+      subscribers++;
+      wake.set(actor, listener);
+      return () => {
+        subscribers--;
+        wake.delete(actor);
+      };
+    },
+  } as ReputationStore;
+  registerReputationRoutes(app, store, (c) =>
+    Promise.resolve(c.req.header("x-synthetic-actor") ?? null),
+  );
+  const aborts = Array.from({ length: 1000 }, () => new AbortController());
+  try {
+    const responses = await Promise.all(
+      aborts.map((abort, i) =>
+        app.request("/v1/reputation/stream", {
+          headers: { "x-synthetic-actor": String(i + 1) },
+          signal: abort.signal,
+        }),
+      ),
+    );
+    assert.ok(responses.every((res) => res.status === 200));
+    assert.equal(subscribers, 1000);
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert.equal(reads, 1000);
+    wake.get("1")!();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(reads, 1001);
+  } finally {
+    aborts.forEach((abort) => abort.abort());
+  }
+  assert.equal(subscribers, 0);
+});

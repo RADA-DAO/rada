@@ -1,4 +1,5 @@
 import type pg from "pg";
+import { ReputationHints } from "./hints.ts";
 import { decodeItemCursor, encodeItemCursor } from "./cursor.ts";
 import { resolveTelegramSubject } from "../../identity/index.ts";
 import type {
@@ -7,6 +8,7 @@ import type {
   Changes,
   CommandResult,
   Mission,
+  Overview,
   Page,
   Period,
   ReportInput,
@@ -20,19 +22,25 @@ import type {
 export class PostgresReputationStore implements ReputationStore {
   private auth: pg.Pool;
   private pool: pg.Pool;
+  private hints: ReputationHints;
+  private disposed = false;
   constructor(auth: pg.Pool, pool: pg.Pool) {
     this.auth = auth;
     this.pool = pool;
+    this.hints = new ReputationHints(pool);
   }
   private async own<T>(
     actor: string,
     sql: string,
     values: unknown[] = [],
+    snapshot = false,
   ): Promise<T> {
     const subject = await resolveTelegramSubject(this.auth, actor);
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await client.query(
+        snapshot ? "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" : "BEGIN",
+      );
       await client.query("SELECT set_config('rada.subject_id',$1,true)", [
         subject,
       ]);
@@ -45,6 +53,53 @@ export class PostgresReputationStore implements ReputationStore {
     } finally {
       client.release();
     }
+  }
+  async overview(
+    actor: string,
+    view: "tasks" | "history",
+    period: Period,
+    cursor: string | null,
+  ): Promise<Overview> {
+    const result = await this.own<Overview>(
+      actor,
+      "SELECT reputation.overview($1,$2,$3) AS result",
+      [
+        view,
+        period,
+        view === "history" && cursor !== null
+          ? decodeItemCursor(cursor)
+          : cursor,
+      ],
+      true,
+    );
+    if (view === "history" && result.page.nextCursor !== null)
+      result.page.nextCursor = encodeItemCursor(result.page.nextCursor);
+    return result;
+  }
+  appealCommand(actor: string, requestId: string): Promise<Appeal | null> {
+    return this.own(actor, "SELECT reputation.appeal_command($1) AS result", [
+      requestId,
+    ]);
+  }
+  onChange(actor: string, listener: () => void): () => void {
+    let detached = false;
+    let detach = () => {};
+    void resolveTelegramSubject(this.auth, actor)
+      .then((subject) => {
+        if (!detached && !this.disposed)
+          detach = this.hints.subscribe(subject, listener);
+      })
+      .catch(() => {
+        /* Periodic durable catch-up still runs during auth trouble. */
+      });
+    return () => {
+      detached = true;
+      detach();
+    };
+  }
+  async dispose(): Promise<void> {
+    this.disposed = true;
+    await this.hints.dispose();
   }
   summary(actor: string, period: Period): Promise<Summary> {
     return this.own(actor, "SELECT reputation.summary($1) AS result", [period]);

@@ -102,35 +102,59 @@ type Subscriber = {
   deliver(delta: Changes): void;
   fail(): void;
 };
-/** One short database read per actor/tick, including clients at different cursors. */
+export type ReputationRouteOptions = {
+  maxClients?: number;
+  catchupMs?: number;
+};
+/** Dirty hints share a LISTEN-backed store subscription per active actor.
+ * Periodic durable catch-up recovers dropped hints and disconnected listeners.
+ */
 class FeedHub {
   private groups = new Map<
     string,
     {
       listeners: Set<Subscriber>;
       timer: ReturnType<typeof setInterval>;
+      unsubscribe(): void;
       running: boolean;
+      scheduled: boolean;
+      dirty: boolean;
+      readingAfter: string;
       poll(): void;
     }
   >();
   private clients = 0;
   private store: ReputationStore;
-  constructor(store: ReputationStore) {
+  private maxClients: number;
+  private catchupMs: number;
+  constructor(store: ReputationStore, options: ReputationRouteOptions) {
     this.store = store;
+    this.maxClients = options.maxClients ?? 2048;
+    this.catchupMs = options.catchupMs ?? 30000;
+    if (
+      !Number.isSafeInteger(this.maxClients) ||
+      this.maxClients < 1 ||
+      this.maxClients > 2048 ||
+      !Number.isSafeInteger(this.catchupMs) ||
+      this.catchupMs < 1000 ||
+      this.catchupMs > 55000
+    )
+      throw new Error("invalid_reputation_stream_options");
   }
   attach(actor: string, listener: Subscriber): (() => void) | null {
     let group = this.groups.get(actor);
-    if (this.clients >= 200 || (group?.listeners.size ?? 0) >= 4) return null;
+    if (this.clients >= this.maxClients || (group?.listeners.size ?? 0) >= 4)
+      return null;
     if (!group) {
       const listeners = new Set<Subscriber>();
       const tick = async () => {
         if (group!.running || !listeners.size) return;
+        group!.dirty = false;
         group!.running = true;
-        // Slow subscribers catch up in bounded batches; faster subscribers wait
-        // for the shared cursor to reach theirs, without allocating DB sessions.
         const after = [...listeners]
           .map((l) => l.after())
           .reduce((a, b) => (BigInt(a) < BigInt(b) ? a : b));
+        group!.readingAfter = after;
         try {
           const delta = await this.store.changes(actor, after);
           for (const l of listeners) {
@@ -149,31 +173,46 @@ class FeedHub {
               resetRequired: reset || delta.resetRequired,
             });
           }
+          if (delta.hasMore) group!.dirty = true;
         } catch {
           for (const l of [...listeners]) l.fail();
         } finally {
           group!.running = false;
+          if (group!.dirty && listeners.size) group!.poll();
         }
       };
       const poll = () => {
-        void tick();
+        group!.dirty = true;
+        if (group!.running || group!.scheduled || !listeners.size) return;
+        group!.scheduled = true;
+        queueMicrotask(() => {
+          group!.scheduled = false;
+          void tick();
+        });
       };
       group = {
         listeners,
-        timer: setInterval(poll, 1000),
+        timer: setInterval(poll, this.catchupMs),
+        unsubscribe: () => {},
         running: false,
+        scheduled: false,
+        dirty: false,
+        readingAfter: "0",
         poll,
       };
       this.groups.set(actor, group);
+      group.unsubscribe = this.store.onChange?.(actor, poll) ?? (() => {});
     }
     group.listeners.add(listener);
     this.clients++;
-    queueMicrotask(group.poll);
+    if (!group.running || BigInt(listener.after()) < BigInt(group.readingAfter))
+      group.poll();
     return () => {
       if (!group!.listeners.delete(listener)) return;
       this.clients--;
       if (!group!.listeners.size) {
         clearInterval(group!.timer);
+        group!.unsubscribe();
         this.groups.delete(actor);
       }
     };
@@ -184,8 +223,9 @@ export function registerReputationRoutes(
   app: Hono,
   store: ReputationStore,
   authenticated: Auth,
+  options: ReputationRouteOptions = {},
 ) {
-  const hub = new FeedHub(store);
+  const hub = new FeedHub(store, options);
   app.get("/v1/reputation/*", async (c, next) => {
     const actor = await authenticated(c, false);
     if (!actor) return c.json({ error: "unauthorized" }, 401);
@@ -226,6 +266,31 @@ export function registerReputationRoutes(
     handler: (c: Context) => Response | Promise<Response>,
   ) => app.post(path, guarded(handler));
   const actor = (c: Context) => c.get("reputationActor" as never) as string;
+  get("/v1/reputation/overview", async (c) => {
+    const view = c.req.query("view") ?? "tasks";
+    const p = c.req.query("period") ?? "today";
+    const cursor = c.req.query("cursor") ?? null;
+    if (view !== "tasks" && view !== "history")
+      return c.json({ error: "invalid_view" }, 400);
+    if (!period(p)) return c.json({ error: "invalid_period" }, 400);
+    if (cursor !== null) {
+      try {
+        if (view === "history") decodeItemCursor(cursor);
+        else if (!uuid(cursor)) throw new Error("invalid_cursor");
+      } catch {
+        return c.json({ error: "invalid_cursor" }, 400);
+      }
+    }
+    if (!store.overview) return c.json({ error: "unavailable" }, 503);
+    return c.json(await store.overview(actor(c), view, p, cursor));
+  });
+  get("/v1/reputation/appeals/commands/:requestId", async (c) => {
+    const id = c.req.param("requestId");
+    if (!requestId(id)) return c.json({ error: "invalid_request" }, 400);
+    if (!store.appealCommand) return c.json({ error: "unavailable" }, 503);
+    const appeal = await store.appealCommand(actor(c), id);
+    return appeal ? c.json({ appeal }) : c.json({ error: "not_found" }, 404);
+  });
   get("/v1/reputation/summary", async (c) => {
     const p = c.req.query("period") ?? "all";
     if (!period(p)) return c.json({ error: "invalid_period" }, 400);
@@ -292,10 +357,16 @@ export function registerReputationRoutes(
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         const timeout = setTimeout(() => finish(), 55000);
+        const heartbeat = setInterval(() => {
+          if (!stopped && (controller.desiredSize ?? 0) < -100) finish();
+          else if (!stopped)
+            controller.enqueue(encoder.encode(": keepalive\n\n"));
+        }, 15000);
         finish = () => {
           if (stopped) return;
           stopped = true;
           clearTimeout(timeout);
+          clearInterval(heartbeat);
           detach();
           c.req.raw.signal.removeEventListener("abort", finish);
           try {
