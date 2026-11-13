@@ -1,7 +1,9 @@
 #!/bin/sh
 # Disposable local containers only; no proxy listeners or ACME requests.
 set -eu
+export COMPOSE_PARALLEL_LIMIT=1
 export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password OPS_PASSWORD=synthetic-ops-password SPLASH_PASSWORD=synthetic-splash-password GOVERNANCE_PASSWORD=synthetic-governance-password RANKINGS_PASSWORD=synthetic-rankings-password RANKINGS_WORKER_PASSWORD=synthetic-rankings-worker-password
+export APPS_PASSWORD=synthetic-apps-password APP_ARTIFACT_ORIGIN=https://artifacts.staging.example.invalid
 export NOTIFICATIONS_PASSWORD=synthetic-notifications-password NOTIFICATIONS_ENABLED=false
 export RANKINGS_WORKER_ENABLED=false
 export TREASURY_PASSWORD=synthetic-treasury-password TREASURY_WORKER_ENABLED=false
@@ -10,8 +12,19 @@ export STAGING_AUTH_MODE=synthetic STAGING_SYNTHETIC_ONLY=true STAGING_API_HOSTN
 unset STAGING_ALLOWED_TELEGRAM_IDS
 export API_ALLOWED_ORIGINS=https://staging.example.invalid
 export WALLET_APP_ORIGIN=https://staging.example.invalid
-compose() { docker compose -p rada-staging-smoke -f infra/compose/staging.yaml "$@"; }
-trap 'compose down --volumes --remove-orphans >/dev/null' EXIT
+run_dir=$(mktemp -d "${TMPDIR:-/tmp}/rada-staging-smoke.XXXXXXXX")
+project=$(basename "$run_dir" | tr '[:upper:].' '[:lower:]-')
+compose() { docker compose -p "$project" -f infra/compose/staging.yaml "$@"; }
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+  if ! compose down --volumes --remove-orphans >/dev/null; then status=1; fi
+  rmdir "$run_dir"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 compose config --quiet
 compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 compose build api migrate
@@ -39,6 +52,11 @@ for (const id of [101, 102, 103]) {
   }
 }
 assert((await fetch("http://127.0.0.1:8000/me")).status === 401);
+const registryHeaders = { authorization: `tma ${await signed({ user: JSON.stringify({ id: 101 }) })}` };
+const published = await fetch("http://127.0.0.1:8000/apps/published", { headers: registryHeaders });
+assert(published.status === 200 && (await published.json()).apps.length === 0);
+assert((await fetch("http://127.0.0.1:8000/apps/published")).status === 401);
+assert((await fetch("http://127.0.0.1:8000/apps/review-queue", { headers: registryHeaders })).status === 403);
 const holders = await fetch("http://127.0.0.1:8000/v1/rankings/holders?token=TON", {
   headers: { authorization: `tma ${await signed({ user: JSON.stringify({ id: 101 }) })}` },
 });
@@ -58,9 +76,22 @@ const treasury = await fetch("http://127.0.0.1:8000/v1/treasury/overview", { hea
 assert(treasury.status === 200 && (await treasury.json()).wallets.length === 0);
 assert((await fetch("http://127.0.0.1:8000/v1/treasury/overview")).status === 401);
 assert((await fetch("http://127.0.0.1:8000/v1/treasury/config", { method: "POST", headers: notificationsHeaders, body: JSON.stringify({ address: "0:" + "1".repeat(64), enabled: true, reason: "Fixture" }) })).status === 403);
-console.log("Container health, signed identity, notifications, rankings and rejection passed.");
+console.log("Container health, registry, signed identity, notifications, rankings and rejection passed.");
 '
 compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 < modules/identity/db/identity.test.sql
+compose exec -T postgres psql -X -U postgres -d rada_staging -v ON_ERROR_STOP=1 <<'SQL'
+DO $$ BEGIN
+  IF NOT pg_has_role('staging_apps', 'apps_service', 'MEMBER')
+    OR pg_has_role('staging_apps', 'identity_service', 'MEMBER')
+    OR pg_has_role('staging_apps', 'wallet_service', 'MEMBER')
+    OR has_table_privilege('staging_apps', 'apps.registry', 'SELECT')
+    OR has_table_privilege('staging_apps', 'apps.registry', 'INSERT')
+    OR EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_apps'
+      AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls))
+  THEN RAISE EXCEPTION 'Staging app registry login is overprivileged'; END IF;
+END $$;
+SQL
+compose exec -T -e PGPASSWORD="$APPS_PASSWORD" postgres psql -X -h 127.0.0.1 -U staging_apps -d rada_staging -v ON_ERROR_STOP=1 -c 'SELECT apps.published();'
 compose run --rm migrate
 # Model a tester's persisted state, then rerun real-mode migrations twice.
 # The API remains in synthetic mode; no external provider or real identity is used.

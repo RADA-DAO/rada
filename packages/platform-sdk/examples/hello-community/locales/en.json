@@ -1,0 +1,9 @@
+{
+  "title": "Hello, community",
+  "description": "A small app running inside the RADA sandbox.",
+  "revision": "Release {revision}",
+  "count": "Local count: {count}",
+  "increment": "Add one",
+  "back": "Back to apps",
+  "unavailable": "Open this app from the RADA launcher."
+}

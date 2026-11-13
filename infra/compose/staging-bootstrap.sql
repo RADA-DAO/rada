@@ -3,6 +3,7 @@
 \getenv rankings_worker_password RANKINGS_WORKER_PASSWORD
 \getenv auth_password AUTH_PASSWORD
 \getenv service_password SERVICE_PASSWORD
+\getenv apps_password APPS_PASSWORD
 \getenv wallet_password WALLET_PASSWORD
 \getenv ops_password OPS_PASSWORD
 \getenv splash_password SPLASH_PASSWORD
@@ -29,6 +30,10 @@ ALTER ROLE staging_service PASSWORD :'service_password';
 GRANT CONNECT ON DATABASE rada_staging TO staging_auth, staging_service, staging_wallet, staging_ops, staging_splash, staging_governance;
 GRANT identity_auth TO staging_auth;
 GRANT identity_service TO staging_service;
+SELECT 'CREATE ROLE staging_apps LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_apps') \gexec
+ALTER ROLE staging_apps PASSWORD :'apps_password';
+GRANT apps_service TO staging_apps;
+GRANT CONNECT ON DATABASE rada_staging TO staging_apps;
 SELECT 'CREATE ROLE staging_rankings LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_rankings') \gexec
 SELECT 'CREATE ROLE staging_rankings_worker LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'staging_rankings_worker') \gexec
 ALTER ROLE staging_rankings PASSWORD :'rankings_password';

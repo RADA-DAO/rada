@@ -5,7 +5,8 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/RADA-DAO/rada/badge)](https://scorecard.dev/viewer/?uri=github.com/RADA-DAO/rada)
 
 RADA is an open platform for community applications and participation.
-The project is in early development; nothing is deployable yet.
+The project is in early development. Local synthetic development and isolated
+staging rehearsals are supported; this is not a production migration.
 
 ## Development
 
@@ -13,6 +14,20 @@ Requirements: Node.js 24 (see `.node-version`), npm, Deno 2.9.7, Docker Compose 
 
 ```sh
 npm ci
+npm run dev:local
+```
+
+The local launcher provisions its own disposable database, restricted API roles,
+synthetic identities, HTTPS artifacts and the mini app. It uses no production
+credentials. Follow the printed certificate instruction for that session, then
+open the loopback URL. Ctrl-C removes only that run's services and data. See the
+[local guide](docs/contributing/local-development.md) and
+[SDK example](docs/contributing/community-apps.md) for the complete
+create, review, publish, update and rollback rehearsal.
+
+Run the repository quality gates separately:
+
+```sh
 npm run check
 ```
 
