@@ -55,18 +55,23 @@ export function reputationClient(api: ModuleApi, signal: AbortSignal) {
       };
     },
     detail: async (id: string, period: Period) => {
-      const [value, data, history] = await Promise.all([
-        read(`/summary?period=${period}`),
-        read(`/items/${encodeURIComponent(id)}`),
-        read(`/items/${encodeURIComponent(id)}/appeals`),
-      ]);
-      const list = envelope(history, "appeals");
+      const value = await read(
+        `/detail/${encodeURIComponent(id)}?period=${period}`,
+      );
+      const list = envelope(value, "appeals");
       if (!Array.isArray(list)) throw new ReputationError();
-      return {
+      const result = {
         summary: summary(envelope(value, "summary")),
-        data: item(envelope(data, "item")),
+        data: item(envelope(value, "item")),
         appeals: list.map(appeal),
       };
+      if (
+        result.summary.period !== period ||
+        result.data.id !== id ||
+        result.appeals.some((entry) => entry.itemId !== id)
+      )
+        throw new ReputationError();
+      return result;
     },
     appealCommand: async (requestId: string) =>
       appeal(
