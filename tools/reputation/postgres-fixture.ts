@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
 import {
   PostgresReputationStore,
+  PostgresReputationWorkerStore,
   type Mission,
 } from "../../modules/reputation/index.ts";
 import type { CalendarFixture } from "./calendar-contract.ts";
@@ -11,6 +12,7 @@ import type { CalendarFixture } from "./calendar-contract.ts";
 export async function createPostgresFixtureRuntime(
   databaseUrl: string,
   maxConnections = 12,
+  includeWorker = false,
 ) {
   // This runner connects only to a caller-created disposable loopback database.
   const adminUrl = new URL(databaseUrl);
@@ -24,7 +26,7 @@ export async function createPostgresFixtureRuntime(
   async function login(capability: string): Promise<pg.Pool> {
     assert.match(
       capability,
-      /^(identity_auth|reputation_service|reputation_operator|reputation_ingress)$/,
+      /^(identity_auth|reputation_service|reputation_operator|reputation_ingress|reputation_worker)$/,
     );
     const name = `rep_test_${suffix}_${capability}`;
     const password = randomBytes(24).toString("hex");
@@ -57,6 +59,10 @@ export async function createPostgresFixtureRuntime(
     const service = await login("reputation_service");
     const operator = await login("reputation_operator");
     const ingress = await login("reputation_ingress");
+    const worker = includeWorker ? await login("reputation_worker") : null;
+    const workerStore = worker
+      ? new PostgresReputationWorkerStore(worker)
+      : null;
     const implementation = new PostgresReputationStore(auth, service);
     store = implementation;
     async function ownerQuery<T extends pg.QueryResultRow>(
@@ -158,6 +164,8 @@ export async function createPostgresFixtureRuntime(
       service,
       operator,
       ingress,
+      worker,
+      workerStore,
       store: implementation,
       fixture,
       subject,
