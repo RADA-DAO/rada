@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
+  // Node unit tests run in test:unit, not Playwright's module loader.
+  testMatch: "**/*.spec.ts",
   // These suites own separate disposable-platform launchers and CI steps.
   testIgnore: [
     "sdk-example.spec.ts",
