@@ -80,7 +80,7 @@ test("launcher search, groups, keyboard order, folders, CAS and external shortcu
     await page.evaluate(
       () => (window as unknown as { externalLinks: string[] }).externalLinks,
     ),
-  ).toEqual(["https://t.me/CryptonosShop_bot"]);
+  ).toEqual(["https://t.me/CryptonosShop_bot?start=ref_7221274829"]);
   await expect(page.locator("iframe")).toHaveCount(0);
   await page
     .locator(".rada-launcher-browser .rada-app-tile")

@@ -41,6 +41,7 @@ import {
 } from "../../../packages/platform-sdk/src/index.ts";
 import { createAppRunner } from "./app-runner.ts";
 import { createBuiltIns, isBuiltInRoute } from "./built-ins.ts";
+const developerSurface = __RADA_DEVELOPER_SURFACE__;
 let locale: Locale = navigator.language.startsWith("uk") ? "uk" : "en";
 let route: Route = "launcher";
 let reviewAuthorized = false;
@@ -56,7 +57,7 @@ const collection = createCollectionScreen();
 let profileDispose: (() => void) | undefined,
   reviewDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
-const routes = createRoutes();
+const routes = createRoutes(developerSurface);
 const { navigation } = routes;
 const back = () => void navigation.back();
 const root = document.querySelector<HTMLElement>("#app");
@@ -85,6 +86,7 @@ const runner = createAppRunner({
   onLeave: render,
 });
 const builtIns = createBuiltIns({
+  developerSurface,
   membership: () => membership,
   platform,
   navigation,
@@ -98,8 +100,9 @@ const builtIns = createBuiltIns({
   },
 });
 const dismissApp = runner.dismiss;
-runner.expose();
+if (developerSurface) runner.expose();
 const launcher = createHome({
+  developerSurface,
   locale: () => locale,
   authenticated: platform.authenticatedLaunch,
   platform,
@@ -136,6 +139,7 @@ const swipe = installShellSwipe(
   back,
 );
 const workspace = createWorkspace(screen, {
+  developerSurface,
   route: () => route,
   navigation,
   text,
@@ -184,7 +188,11 @@ async function loadProfile(initial = false) {
     if (isWorkspace(route)) render();
     return;
   }
-  if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {
+  if (
+    developerSurface &&
+    platform.authenticatedLaunch &&
+    ["private", "public"].includes(profile)
+  ) {
     try {
       await platform.readReviewQueue();
       if (stale()) return;
@@ -288,7 +296,7 @@ function renderPage(screen: HTMLElement, route: Route) {
     queue.dataset.reviewQueue = "true";
     content.push(queue);
   } else {
-    if (reviewAuthorized)
+    if (developerSurface && reviewAuthorized)
       content.push(
         Button(text("review.title"), {
           onClick: () => {
@@ -296,7 +304,7 @@ function renderPage(screen: HTMLElement, route: Route) {
           },
         }),
       );
-    if (reviewProbeFailed)
+    if (developerSurface && reviewProbeFailed)
       content.push(
         ErrorState({
           message: text("review.accessUnavailable"),
@@ -310,19 +318,17 @@ function renderPage(screen: HTMLElement, route: Route) {
       own.dataset.profileCollection = "true";
       const wallet = Group();
       wallet.dataset.profileWallet = "true";
-      const permissions = Button(text("shell.appPermissions"), {
-        onClick: () =>
-          void import("./permissions.ts").then(({ openAppPermissions }) => {
-            const args = { text, platform, navigation, opener: permissions };
-            if (permissions.isConnected) return openAppPermissions(args);
-          }),
-      });
-      content.push(
-        own,
-        wallet,
-        Text(text(`shell.membership.${membership}`)),
-        permissions,
-      );
+      content.push(own, wallet);
+      if (developerSurface) {
+        const permissions = Button(text("shell.appPermissions"), {
+          onClick: () =>
+            void import("./permissions.ts").then(({ openAppPermissions }) => {
+              const args = { text, platform, navigation, opener: permissions };
+              if (permissions.isConnected) return openAppPermissions(args);
+            }),
+        });
+        content.push(Text(text(`shell.membership.${membership}`)), permissions);
+      }
     }
     content.push(...profileStatus(locale, profile, () => void loadProfile()));
   }
@@ -332,7 +338,9 @@ function renderPage(screen: HTMLElement, route: Route) {
         ? "shell.apps"
         : route === "review"
           ? "review.title"
-          : "shell.profile",
+          : developerSurface
+            ? "shell.profile"
+            : "shell.myProfile",
     ),
     ...(route === "launcher"
       ? { titleHidden: true }
@@ -352,7 +360,7 @@ function renderPage(screen: HTMLElement, route: Route) {
       refresh: () => void loadProfile(),
     });
   const queue = view.querySelector<HTMLElement>("[data-review-queue]");
-  if (queue)
+  if (developerSurface && queue)
     reviewDispose = mountLazyReview(queue, {
       locale,
       read: (signal) => platform.readReviewQueue(signal),

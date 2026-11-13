@@ -66,6 +66,9 @@ export async function localWebServer() {
   const server = await createViteServer({
     configFile: "apps/miniapp/vite.config.ts",
     envDir: false,
+    // This owned synthetic SDK runner rehearses the internal shell explicitly.
+    // The fixture environment remains sanitized; this changes UI reachability only.
+    define: { __RADA_DEVELOPER_SURFACE__: "true" },
     server: {
       host: "127.0.0.1",
       port: 4173,

@@ -20,6 +20,7 @@ export default defineConfig(
     ignores: [
       "node_modules/**",
       "apps/miniapp/dist/**",
+      "apps/miniapp/dist-product-surface/**",
       "apps/api/src/**",
       "modules/*/api/**",
       "modules/*/index.ts",

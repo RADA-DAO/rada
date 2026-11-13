@@ -1,6 +1,7 @@
 # Development guide
 
 - [Local development and test suites](local-development.md)
+- [Product and developer surfaces](product-surface.md)
 - [Add a platform module](modules.md)
 - [Build a community app](community-apps.md)
 - [Review and update visual baselines](visual-tests.md)

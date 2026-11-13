@@ -19,7 +19,12 @@ const catalog = process.env.CATALOG === "true";
 
 export default defineConfig({
   root: "apps/miniapp",
-  define: { __RADA_BUILD__: JSON.stringify(buildVersion()) },
+  define: {
+    __RADA_BUILD__: JSON.stringify(buildVersion()),
+    __RADA_DEVELOPER_SURFACE__: JSON.stringify(
+      process.env.RADA_DEVELOPER_SURFACE === "true",
+    ),
+  },
   build: {
     assetsInlineLimit: (path) => (path.endsWith(".woff2") ? false : undefined),
     ...(catalog

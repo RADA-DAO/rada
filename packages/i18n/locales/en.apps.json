@@ -42,6 +42,7 @@
     "count": "Apps: {{count}}",
     "pin": "Pin",
     "favourite": "Favourite",
-    "root": "Desktop"
+    "root": "Desktop",
+    "tasks": "Tasks"
   }
 }

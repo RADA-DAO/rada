@@ -184,6 +184,13 @@ body::before {
   font-weight: var(--rada-font-weight-heading);
   letter-spacing: normal;
 }
+.screen > .rada-workspace-nav {
+  margin: 0 var(--rada-space-3) var(--app-safe-bottom, var(--rada-zero-length));
+}
+.rada-workspace-nav .rada-button {
+  white-space: normal;
+  flex-direction: column;
+}
 .screen > .rada-page-dots {
   position: relative;
   flex-shrink: 0;
