@@ -2,3 +2,5 @@
 # a generated lease variable and fixture rule/occurrence labels, not a credential.
 # Keep this exact commit/path/rule/line scope; current source remains scanned.
 01f209c6d7bb8acbeaa35261a9e6cce6b052dddb:modules/reputation/db/jobs.test.sql:generic-api-key:37
+# Same unchanged fixture commit after rebasing the candidate onto current main.
+a0fa33bf54786ea827af8a15009e97b503744c95:modules/reputation/db/jobs.test.sql:generic-api-key:37
