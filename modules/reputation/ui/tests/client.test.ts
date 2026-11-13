@@ -3,15 +3,15 @@ import assert from "node:assert/strict";
 import type {
   ModuleApi,
   ModuleResponse,
-} from "../../../packages/platform-sdk/src/index.ts";
-import type { CommandResult, Mission, Summary } from "../contract.ts";
-import { reputationClient } from "./client.ts";
-import { createAppealActions } from "./appeals.ts";
-import { commandActions, type Pending } from "./commands.ts";
-import { ReadGuard, ReputationError, command, summary } from "./model.ts";
-import { recoveryStore } from "./recovery.ts";
-import { Button } from "../../../packages/ui/src/index.ts";
-import "../../../packages/ui/scripts/fake-dom.ts";
+} from "../../../../packages/platform-sdk/src/index.ts";
+import type { CommandResult, Mission, Summary } from "../../contract.ts";
+import { reputationClient } from "../client.ts";
+import { createAppealActions } from "../appeals.ts";
+import { commandActions, type Pending } from "../commands.ts";
+import { ReadGuard, ReputationError, command, summary } from "../model.ts";
+import { recoveryStore } from "../recovery.ts";
+import { Button } from "../../../../packages/ui/src/index.ts";
+import "../../../../packages/ui/scripts/fake-dom.ts";
 const stamp = "2026-11-13T12:00:00.000Z";
 const requestId = "00000000-0000-4000-8000-000000000001";
 const baseSummary: Summary = {

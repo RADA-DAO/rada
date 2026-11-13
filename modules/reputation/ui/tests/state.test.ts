@@ -4,15 +4,15 @@ import {
   fake,
   fakeDocument,
   FakeElement,
-} from "../../../packages/ui/scripts/fake-dom.ts";
-import { Button, Group, Screen } from "../../../packages/ui/src/index.ts";
-import type { ModuleApi } from "../../../packages/platform-sdk/src/index.ts";
-import { reputationClient } from "./client.ts";
-import { subscribeChanges } from "./updates.ts";
-import { historyView, itemView, replaceContent, taskView } from "./views.ts";
-import { share, shareText } from "./share.ts";
-import { receiptIsCurrent } from "./model.ts";
-import type { ReputationItem, Summary } from "../contract.ts";
+} from "../../../../packages/ui/scripts/fake-dom.ts";
+import { Button, Group, Screen } from "../../../../packages/ui/src/index.ts";
+import type { ModuleApi } from "../../../../packages/platform-sdk/src/index.ts";
+import { reputationClient } from "../client.ts";
+import { subscribeChanges } from "../updates.ts";
+import { historyView, itemView, replaceContent, taskView } from "../views.ts";
+import { share, shareText } from "../share.ts";
+import { receiptIsCurrent } from "../model.ts";
+import type { ReputationItem, Summary } from "../../contract.ts";
 Object.defineProperty(globalThis, "HTMLButtonElement", {
   configurable: true,
   value: FakeElement,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
-import { createPostgresFixtureRuntime } from "../modules/reputation/tests/postgres-fixture.ts";
+import { createPostgresFixtureRuntime } from "./reputation/postgres-fixture.ts";
 
 /** Synthetic bounded load only. Caller owns queued execution and cluster cleanup. */
 const integer = (name: string, fallback: number, min: number, max: number) => {

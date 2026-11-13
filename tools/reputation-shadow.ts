@@ -5,7 +5,7 @@ import type {
   Category,
   ItemStatus,
   Summary,
-} from "../modules/reputation/contract.ts";
+} from "../modules/reputation/index.ts";
 
 /** Explicit offline envelope, not a new API response or production import format. */
 export type ShadowSnapshot = {

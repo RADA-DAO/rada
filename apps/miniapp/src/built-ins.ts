@@ -137,7 +137,7 @@ export function createBuiltIns(options: {
             reputation ??= (await loadReputationScreen()).createReputation({
               api: options.platform.moduleApi("reputation"),
               navigation: options.navigation,
-              locale: options.locale,
+              locale: () => options.locale(),
               authenticated: options.platform.authenticatedLaunch,
               actorKey: options.platform.ownSubject,
             });

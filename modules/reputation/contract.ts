@@ -74,6 +74,11 @@ export type Appeal = {
   resolution: string | null;
   createdAt: string;
 };
+export type Detail = {
+  summary: Summary;
+  item: ReputationItem;
+  appeals: Appeal[];
+};
 export type VerifyInput = { requestId: string; missionVersion: number };
 export type ReportInput = {
   requestId: string;
@@ -86,6 +91,7 @@ export type AppealInput = { requestId: string; message: string };
 
 /** All reads are scoped to the authenticated actor; actor is never request JSON. */
 export interface ReputationStore {
+  detail?(actor: string, id: string, period: Period): Promise<Detail | null>;
   overview?(
     actor: string,
     view: "tasks" | "history",

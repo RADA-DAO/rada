@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { Period } from "../contract.ts";
+import type { Period } from "../../modules/reputation/index.ts";
 import type { StoreFixture } from "./store-contract.ts";
 export interface CalendarFixture extends StoreFixture {
   /** Call the production SQL bounds helper with an explicit reference instant. */

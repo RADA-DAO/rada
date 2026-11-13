@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
-import type { ReputationStore, Mission } from "../contract.ts";
+import {
+  PostgresReputationStore,
+  type Mission,
+} from "../../modules/reputation/index.ts";
 import type { CalendarFixture } from "./calendar-contract.ts";
 
 /** Isolated, synthetic test runtime shared by correctness and load drivers. */
@@ -18,6 +20,7 @@ export async function createPostgresFixtureRuntime(
   const suffix = randomBytes(6).toString("hex");
   const createdRoles: string[] = [];
   const pools: pg.Pool[] = [];
+  let store: PostgresReputationStore | undefined;
   async function login(capability: string): Promise<pg.Pool> {
     assert.match(
       capability,
@@ -43,6 +46,7 @@ export async function createPostgresFixtureRuntime(
     return pool;
   }
   const close = async () => {
+    await store?.dispose();
     await Promise.all(pools.map((pool) => pool.end()));
     for (const name of [...createdRoles].reverse())
       await admin.query(`DROP ROLE "${name}"`);
@@ -53,18 +57,8 @@ export async function createPostgresFixtureRuntime(
     const service = await login("reputation_service");
     const operator = await login("reputation_operator");
     const ingress = await login("reputation_ingress");
-    const storePath =
-      process.env.REPUTATION_STORE_PATH ??
-      fileURLToPath(new URL("../api/store.ts", import.meta.url));
-    const { PostgresReputationStore } = (await import(
-      pathToFileURL(storePath).href
-    )) as {
-      PostgresReputationStore: new (
-        auth: pg.Pool,
-        service: pg.Pool,
-      ) => ReputationStore;
-    };
-    const store = new PostgresReputationStore(auth, service);
+    const implementation = new PostgresReputationStore(auth, service);
+    store = implementation;
     async function ownerQuery<T extends pg.QueryResultRow>(
       sql: string,
       values: unknown[] = [],
@@ -100,7 +94,7 @@ export async function createPostgresFixtureRuntime(
       await subject(actor);
       await subject(otherActor);
       return {
-        store,
+        store: implementation,
         actor,
         otherActor,
         seedMission: async ({ points, verifier }) => {
@@ -164,7 +158,7 @@ export async function createPostgresFixtureRuntime(
       service,
       operator,
       ingress,
-      store,
+      store: implementation,
       fixture,
       subject,
       ownerQuery,

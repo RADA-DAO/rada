@@ -141,9 +141,10 @@ await test("stream auth stays in headers and is limited to reputation stream", a
       Authorization: "tma synthetic",
     })).moduleApi("reputation");
     const options = { onEvent() {} };
-    await api.stream?.("/v1/reputation/stream?after=0", options);
+    assert.ok(api.stream);
+    await api.stream("/v1/reputation/stream?after=0", options);
     await assert.rejects(
-      api.stream!("/v1/reputation/items", options),
+      api.stream("/v1/reputation/items", options),
       /invalid_request/,
     );
     assert.equal(calls, 1);

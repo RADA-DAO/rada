@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderMe } from "../bot/me.ts";
+import { locales } from "../bot/locales/index.ts";
 import type { ReputationItem, Summary } from "../contract.ts";
 const summary: Summary = {
   version: 1,
@@ -34,9 +35,10 @@ void test("/me renders supplied exact totals, processing, bounds and freshness i
   assert.match(en, /Awaiting processing: 2/);
   assert.match(en, /Period bounds: .*Europe\/Kyiv/);
   assert.match(en, /Updated: 25\/10\/2026, 04:30/);
-  assert.match(
-    renderMe(summary, { items: [], nextCursor: null }),
-    /Очікують опрацювання: 2/,
+  assert.ok(
+    renderMe(summary, { items: [], nextCursor: null }).includes(
+      `${locales.uk.pending}: 2`,
+    ),
   );
 });
 void test("/me escapes untrusted result text and limits supplied items without scoring", () => {

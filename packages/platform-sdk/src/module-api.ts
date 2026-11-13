@@ -36,7 +36,7 @@ export type ModuleApi = {
     path: string,
     options?: { body?: ModuleBody; auth?: boolean; signal?: AbortSignal },
   ): Promise<ModuleResponse>;
-  stream?(path: string, options: ModuleStreamOptions): Promise<void>;
+  stream?: (path: string, options: ModuleStreamOptions) => Promise<void>;
 };
 
 function reputationQuery(path: string, query: string): boolean {
@@ -44,7 +44,8 @@ function reputationQuery(path: string, query: string): boolean {
   const allowed =
     path === "/v1/reputation/overview"
       ? ["view", "period", "cursor"]
-      : path === "/v1/reputation/summary"
+      : path === "/v1/reputation/summary" ||
+          /^\/v1\/reputation\/detail\/[0-9a-f-]{36}$/i.test(path)
         ? ["period"]
         : path === "/v1/reputation/items"
           ? ["period", "cursor"]

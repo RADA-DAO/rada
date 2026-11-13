@@ -1,5 +1,5 @@
 import type { Page, ReputationItem, Summary } from "../contract.ts";
-import { locales, type ReputationLocale } from "./locales.ts";
+import { locales, type ReputationLocale } from "./locales/index.ts";
 
 /** Pure HTML presentation. The caller fetches both projections for the same actor/period. */
 export function renderMe(

@@ -1,3 +1,4 @@
+/** Localized bot presentation, shared by renderer and language assertions. */
 export const locales = {
   en: {
     title: "My reputation",

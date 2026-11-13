@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import type { Mission, ReputationStore } from "../contract.ts";
+import type {
+  Mission,
+  ReputationStore,
+} from "../../modules/reputation/index.ts";
 
 /** Adapter-only fixture: tests never substitute an in-memory implementation for the store. */
 export interface StoreFixture {
