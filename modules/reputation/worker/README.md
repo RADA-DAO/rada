@@ -1,74 +1,98 @@
-# Reputation worker adapters
+# Reputation worker and pure adapters
 
-These are off-request-path building blocks. They install no jobs, missions,
-providers, rewards or production configuration and cannot persist an award.
+The pure policy/evaluator/membership adapters prepare proposals or verification
+results. `ReputationCoordinator` can persist audited proposals and complete
+awards through `PostgresReputationWorkerStore`. Neither construction nor module
+import starts a worker. No provider, rule selector, trusted fact source, mission
+mapping or production reward configuration is installed automatically.
 
 ## Frozen policy and interpretation
 
-`freezeRules` validates and deeply freezes a server-owned ruleset hash and rules.
-Each rule has a key, canonical exact decimal points, category and an explicit
-cap unit/limit. Decimal strings are validated as integer units at scale 10000;
-no floating-point scoring or historical-weight inference occurs.
+`freezeRules` validates/deeply freezes server-owned ruleset hashes and rules.
+Each rule has a key, canonical exact decimal points, category and cap unit/limit.
+Integer units at scale 10000 preserve exact arithmetic. No adapter infers
+historical weights or financial entitlements.
 
-`AttributedEvidence` must come from authenticated persisted attribution. Its
-subject, source and occurrence key cannot come from the provider. A completed
-self-report under Trust needs a concrete completed classification mapped to a
-known rule; attachments are not required. The only contradictory facts are the
-explicit server-supplied `contradictions` records. A model cannot manufacture a
-dispute or revoke a previous award.
+`AttributedEvidence` comes from authenticated persisted attribution. Subject,
+source and occurrence keys are trusted server inputs. A completed self-report
+under Trust can map to a known rule without a mandatory attachment. Only
+explicit server-supplied contradictory facts can prevent that path; the model
+cannot invent a contradiction, create a dispute or revoke accepted points.
 
-`propose` maps classification to policy-owned score/category and emits a proposal.
-Its stable semantic key excludes provider choice, rule key and ruleset version,
-so reclassification of one subject/source occurrence cannot award it twice.
-The durable consumer must atomically enforce that key, the frozen rules hash,
-fresh cap usage, item/decision mutation and its durable change event. Carrying a
-cap in a proposal does not establish that historical cap usage is available.
+`BoundedEvaluator` sends only content, known rule keys and execution limits to a
+provider. The output must contain exactly `classification`, `ruleKey` and
+`reason`; identity, money, score and contradiction overrides invalidate it.
+Unknown/unclear/malformed classification needs interpretation. Provider errors,
+limits, timeouts and capacity require retry. Deterministic acknowledgement and
+membership paths have no model dependency.
 
-`BoundedEvaluator` only exposes content and available rule keys to a provider.
-The provider returns exactly `classification`, `ruleKey` and `reason`; additional
-identity, money, score or contradiction fields invalidate the output. An unknown
-rule, unclear completion or malformed output needs interpretation. Technical
-failures, capacity, deadlines and provider limits request a retry. These states
-never imply community dispute, score removal or rejection of a person's work.
-Deterministic acknowledgement/membership paths call their trusted adapters and
-policy mapping directly; they have no model dependency.
+The evaluator reserves worst-case cost units before calls and bounds concurrency,
+tokens, total cost units and deadlines. Failed/aborted attempts do not refund a
+reservation. A non-cooperative timed-out provider occupies its slot until it
+settles; no unbounded waiting queue is created. A concrete provider adapter must
+honor billing/token ceilings itself. No live provider implementation is enabled.
 
-The caller supplies maximum concurrency, token limit per call, worst-case cost
-units per call, total cost-unit budget and deadline. Before a provider call the
-worker reserves its full worst-case cost; aborted/failed attempts do not refund
-it. No unbounded waiting queue is created. A timed-out non-cooperative provider
-continues occupying its slot until it settles, preventing repeated timeouts from
-creating unbounded hidden work. The concrete provider adapter must actually
-apply the token/cost ceilings to its billing API; this interface has no live
-provider and makes no claim to measure provider billing.
+`propose` derives score/category from frozen policy and hashes subject/source
+occurrence independently of rule key/version. The proposal itself does not write
+an award. The database re-reads the frozen rule instead of trusting proposed
+points/category, enforces source attribution and semantic uniqueness, and commits
+the item, decision, exact projection, revision, durable change and receipt
+atomically. A later ruleset hash cannot bypass the same rule's Kyiv day/week cap.
+Caps count currently accepted awards; operator exclusion frees active capacity,
+while the immutable semantic journal still prevents rewarding the old occurrence.
 
-## Telegram membership
+## Durable jobs and coordinator
 
-`membershipVerifier(null, client)` remains unconfigured. A trusted configuration
-pins one mission occurrence, a numeric channel ID and a public Telegram proof
-URL. Inputs contain the already verified platform subject/Telegram identity and
-mission ID; channel overrides are rejected. Callers supply an AbortSignal with
-a deadline, and durable workers supply their own bounded job concurrency.
+`PostgresReputationWorkerStore` uses a login inheriting `reputation_worker` only.
+`claim` uses bounded leases and `SKIP LOCKED`; expired work can be reclaimed, and
+stale tokens cannot complete new work. `rules`, `saveProposal`, `retry`,
+`commitReport` and `finalizeExternal` are narrow database interfaces. Completion
+receipts replay after a lost response without overwriting later corrections.
+Exhausted attempt budgets block operational work without disputing the result;
+only an operator can requeue a pending blocked item with an audited reason.
 
-The adapter checks bot identity with `getMe`, confirms `getChat` resolves the
-expected numeric channel, checks that bot's administrator status there, and only
-then calls `getChatMember` for the attributed user. Telegram documents reliable
-other-user membership lookup when the bot is an administrator. Member,
-administrator and owner statuses establish membership at check time; left or
-banned users remain checking. Restricted status belongs to supergroups and does
-not establish channel membership. See the official [getChatMember guarantee](https://core.telegram.org/bots/api#getchatmember)
-and [ChatMember variants](https://core.telegram.org/bots/api#chatmember).
+`ReputationCoordinator` requires explicit dependencies:
 
-Failure or missing authority remains checking and cannot revoke an accepted
-award. The proof URL is trusted configuration metadata, not independent proof of
-membership. The adapter observes membership at request time; it proves neither
-long-term subscription nor reading, political participation or a future status.
+- `rulesHash(job, signal)` selects an authorized server-owned policy snapshot.
+- `facts(job, signal)` supplies stable occurrence identity, completed claim and
+  actual contradictory facts from trusted persisted sources.
+- `evaluatorFactory(rules)` provides the bounded classification adapter.
+- `externalVerifiers` maps configured mission IDs to trusted verifiers.
+- Runtime limits bound concurrency, deadlines, retry delay, policy cache and batches.
 
-`telegramReadClient` uses a fixed HTTPS endpoint, three read methods, POST JSON,
-redirect rejection, abort propagation and a 64-KiB response limit. Runtime
-credentials stay in its closure. It never reads updates or sends messages.
-Tests inject fake fetch and synthetic fixtures; no real network is required.
+Callers explicitly invoke `runNext` or `runBoundedBatch`; there is no startup
+scheduler or API timer for reputation jobs. Preparation/model/network work occurs
+outside database transactions. Before commit the coordinator checks attribution,
+semantic key and policy identity. An unclear proposal is audited and retried;
+lease loss or storage failure does not erase an accepted result. Cached evaluators
+are not silently evicted because eviction would reset budgets/occupied slots.
+External jobs alone receive a verified Telegram ID through the narrow
+identity-owned 0075 interface; interpretation jobs do not expose it.
 
-```sh
-node --experimental-strip-types --test modules/reputation/tests/worker.test.ts
-```
+## Telegram membership adapter
+
+`membershipVerifier(null, client)` is unconfigured. Trusted configuration pins a
+mission occurrence, numeric channel ID and public Telegram proof URL. Inputs use
+already verified subject/Telegram identity; channel overrides are rejected.
+The caller supplies a deadline AbortSignal and bounded job concurrency.
+
+The adapter calls `getMe`, checks `getChat` matches the configured channel,
+confirms bot administrator authority there, then calls `getChatMember` for the
+attributed user. Telegram documents reliable other-user lookup when the bot is
+an administrator. Member/administrator/owner status establishes membership at
+check time; left/banned or unavailable checks remain checking. Restricted status
+belongs to supergroups and does not establish channel membership. See official
+[getChatMember](https://core.telegram.org/bots/api#getchatmember) and
+[ChatMember variants](https://core.telegram.org/bots/api#chatmember).
+
+The proof URL is trusted metadata, not separate proof of membership. This proves
+neither continued subscription nor reading or political participation. Failures
+cannot revoke earlier awards. `telegramReadClient` uses a fixed HTTPS endpoint,
+three read methods, POST JSON, redirect rejection, abort propagation and a
+64-KiB response bound. Credentials remain in its closure. It never reads updates
+or sends messages. Subscription missions/rewards remain unconfigured.
+
+Fake-provider/fake-fetch unit tests require no network. Actual worker database
+and release evidence are tracked in
+[verification](../../../docs/architecture/reputation-verification.md) and
+[release gates](../../../docs/architecture/reputation-release.md).
