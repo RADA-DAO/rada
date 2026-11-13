@@ -34,3 +34,5 @@ export type {
   BatchLimits,
   ExternalVerifier,
 } from "./worker/coordinator.ts";
+export { PostgresReputationSourceStore } from "./api/source-store.ts";
+export type { SourceFactInput, SourceFactReceipt } from "./api/source-store.ts";
