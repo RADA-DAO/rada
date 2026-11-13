@@ -10,3 +10,9 @@ export type ReputationOptions = {
   authenticated: boolean;
   actorKey?(): string | null;
 };
+
+export const titleKeys = {
+  tasks: "tasks",
+  reputation: "title",
+  "reputation-item": "item.title",
+};

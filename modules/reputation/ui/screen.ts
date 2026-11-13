@@ -10,7 +10,7 @@ import {
   Text,
 } from "../../../packages/ui/src/index.ts";
 import { t, type MessageKey } from "../../../packages/i18n/src/index.ts";
-import type { ReputationOptions } from "./context.ts";
+import { titleKeys, type ReputationOptions } from "./context.ts";
 import type {
   Appeal,
   AppealInput,
@@ -108,15 +108,10 @@ export function createReputation(options: ReputationOptions) {
       const main = Group();
       content.classList.add("rada-reputation-workspace");
       content.append(notice, summaryHost, main);
+      if (route === "reputation-item") summaryHost.remove();
       const view = Screen({
         ...frame,
-        title: text(
-          route === "tasks"
-            ? "tasks"
-            : route === "reputation"
-              ? "title"
-              : "item.title",
-        ),
+        title: text(titleKeys[route]),
         children: [content],
       });
       view.classList.add("rada-reputation-view");
@@ -195,6 +190,7 @@ export function createReputation(options: ReputationOptions) {
         if (current && BigInt(value.revision) < BigInt(current.revision))
           return;
         current = value;
+        if (route === "reputation-item") return;
         replace(summaryHost, [
           summaryView({ text, locale, points }, value),
           shareButton(text, value, ctx.notice),

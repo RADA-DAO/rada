@@ -104,5 +104,9 @@
     "shared": "Summary shared.",
     "copied": "Summary copied.",
     "error": "Could not share. Please retry."
+  },
+  "award": {
+    "future": "On confirmation: {{points}}",
+    "earned": "Earned: {{points}}"
   }
 }

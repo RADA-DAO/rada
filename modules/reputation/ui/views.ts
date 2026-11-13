@@ -89,7 +89,14 @@ export function taskView(
                         title: mission.title,
                         children: [
                           Text(mission.description),
-                          Text(ctx.points(mission.points)),
+                          Text(
+                            ctx.text(
+                              mission.status === "completed"
+                                ? "award.earned"
+                                : "award.future",
+                              { points: ctx.points(mission.points) },
+                            ),
+                          ),
                           ...(mission.verifier === "acknowledgement"
                             ? [Text(ctx.text("acknowledgementHint"))]
                             : []),
@@ -163,11 +170,7 @@ export function historyView(
                 children: [
                   button,
                   Badge(ctx.text(`status.${entry.status}`)),
-                  Text(
-                    new Date(entry.occurredAt).toLocaleString(ctx.locale, {
-                      timeZone: "Europe/Kyiv",
-                    }),
-                  ),
+                  dateTime(ctx.locale, entry.occurredAt),
                 ],
               });
             }),
@@ -210,15 +213,11 @@ export function itemView(
           },
           {
             label: ctx.text("item.occurred"),
-            value: new Date(detail.occurredAt).toLocaleString(ctx.locale, {
-              timeZone: "Europe/Kyiv",
-            }),
+            value: dateTime(ctx.locale, detail.occurredAt),
           },
           {
             label: ctx.text("item.recorded"),
-            value: new Date(detail.recordedAt).toLocaleString(ctx.locale, {
-              timeZone: "Europe/Kyiv",
-            }),
+            value: dateTime(ctx.locale, detail.recordedAt),
           },
         ]),
         Text(ctx.text("item.timezone")),
@@ -271,4 +270,18 @@ export function replaceContent(
           !(node instanceof HTMLButtonElement && node.disabled),
       ) ?? fallback.querySelector<HTMLElement>("h1")
     )?.focus({ preventScroll: true });
+}
+
+/** Short Kyiv time with the exact UTC instant available as metadata. */
+export function dateTime(locale: Locale, instant: string) {
+  const value = new Date(instant);
+  const stamp = Text(
+    new Intl.DateTimeFormat(locale, {
+      timeZone: "Europe/Kyiv",
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(value),
+  );
+  stamp.title = value.toISOString();
+  return stamp;
 }
