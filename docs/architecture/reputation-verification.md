@@ -116,6 +116,21 @@ items share one snapshot; two unrelated reads can straddle another write.
 
 ## Full-roster offline shadow comparison
 
+`tools/reputation/legacy-week-cli.ts PRIVATE_CONFIG.json` reads a caller-provided
+legacy projection, independent full roster, exact frozen-rule bytes, explicit
+category mapping and a private alias salt. It recomputes week totals from exact
+leaf units and emits sanitized counts/hashes. Fraction conversion rejects rounding
+and PostgreSQL bigint overflow; Kyiv calendar-week validation includes DST.
+The private source runner captures inputs and dependencies before replaying the
+legacy builder; separate coverage checks must still audit the underlying events.
+
+This path reports `week_projection_only`, `independentCandidate: false` and
+`independentScoring: false`. Reusing the legacy evaluator and mapping its results
+does not demonstrate independent candidate scoring. Legacy records without event
+times, lifetime provenance or exclusion ownership remain full-history blockers.
+An equal week total cannot close F4 or authorize migration. Metadata drift and
+source backlog remain visible separately from item/score parity.
+
 For release evidence use the independent expected-roster manifest as the third
 argument:
 
