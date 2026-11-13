@@ -1,6 +1,7 @@
 /* Application host: viewport, safe areas and the scrolling screen surface. */
 html,
 body {
+  isolation: isolate;
   margin: 0;
   overflow: hidden;
 }
@@ -17,6 +18,16 @@ body {
   font-synthesis: none;
   color: var(--text-primary);
   background: var(--rada-environment-fill);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--rada-environment-highlight);
+  opacity: var(--rada-environment-highlight-opacity);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
 }
 .screen-wrap {
   height: var(--app-visible-height, var(--rada-viewport-height));
@@ -112,7 +123,7 @@ body {
   display: flex;
   flex-direction: column;
 }
-.rada-screen-header .rada-os-wordmark {
+:is(.rada-screen-header, .rada-shell-header) .rada-os-wordmark {
   gap: var(--rada-os-wordmark-gap);
   padding: 0 var(--rada-space-1);
   min-height: var(--rada-os-header-height);
@@ -121,6 +132,37 @@ body {
   background: transparent;
   box-shadow: none;
   font-family: var(--rada-font-body);
+}
+.rada-shell-header {
+  position: fixed;
+  z-index: var(--rada-z-header);
+  top: var(--rada-shell-header-top);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100% - var(--rada-shell-native-lanes));
+  min-height: var(--rada-os-header-height);
+}
+:root[data-rada-shell-chrome="true"] {
+  --rada-shell-header-top: calc(
+    var(--app-content-safe-top, var(--rada-zero-length)) + var(--rada-space-3)
+  );
+  --rada-shell-content-top: max(
+    var(--app-workspace-safe-top, var(--rada-zero-length)),
+    calc(var(--rada-shell-header-top) + var(--rada-os-header-height))
+  );
+}
+:root[data-rada-shell-chrome="true"][data-telegram-fullscreen="true"] {
+  --rada-shell-header-top: var(--app-content-safe-top, var(--rada-zero-length));
+}
+[data-rada-shell-chrome="true"] .rada-screen-header {
+  display: none;
+}
+[data-rada-shell-chrome="true"]
+  :is(.screen:not([data-workspace="true"]), .rada-workspace-page) {
+  padding-top: calc(var(--rada-shell-content-top) + var(--rada-space-3));
 }
 .rada-os-wordmark b {
   font-family: var(--rada-font-brand);

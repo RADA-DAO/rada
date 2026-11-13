@@ -1,3 +1,4 @@
+import { syncHostViewport, type HostInsets } from "./host-viewport.ts";
 import { launcherAdapter } from "./launcher-layout.ts";
 import type { appCapabilitiesAdapter } from "./app-capabilities.ts";
 import { frogAdapter } from "./frog-details.ts";
@@ -42,11 +43,12 @@ export { installSwipeBack } from "./swipe-back.ts";
 export { createNavigation } from "./navigation.ts";
 export type { Navigation, NavEntry } from "./navigation.ts";
 
-type Insets = { top?: number; right?: number; bottom?: number; left?: number };
+type Insets = HostInsets;
 type TelegramHost = {
   openTelegramLink?(url: string): void;
   initData?: string;
   viewportHeight?: number;
+  isFullscreen?: boolean;
   safeAreaInset?: Insets;
   contentSafeAreaInset?: Insets;
   ready(): void;
@@ -94,19 +96,7 @@ export function initializePlatform(options: {
   const authHeaders = () =>
     host?.initData ? { Authorization: `tma ${host.initData}` } : null;
   const sync = () => {
-    for (const side of ["top", "right", "bottom", "left"] as const) {
-      const inset =
-        Math.max(0, host?.safeAreaInset?.[side] ?? 0) +
-        Math.max(0, host?.contentSafeAreaInset?.[side] ?? 0);
-      document.documentElement.style.setProperty(
-        `--app-safe-${side}`,
-        `${String(inset)}px`,
-      );
-    }
-    document.documentElement.style.setProperty(
-      "--app-workspace-safe-top",
-      document.documentElement.style.getPropertyValue("--app-safe-top"),
-    );
+    syncHostViewport(document.documentElement, host);
     keyboard.refresh();
   };
   const keyboard = installAppKeyboard({
@@ -119,6 +109,7 @@ export function initializePlatform(options: {
     "safeAreaChanged",
     "contentSafeAreaChanged",
     "themeChanged",
+    "fullscreenChanged",
   ];
   host?.ready();
   host?.expand();

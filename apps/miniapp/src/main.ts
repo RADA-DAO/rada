@@ -1,3 +1,4 @@
+import { createShellChrome } from "./shell-chrome.ts";
 import {
   onPageHide,
   createRoutes,
@@ -5,7 +6,6 @@ import {
   type Route,
   createWorkspace,
   isWorkspace,
-  createSettingsAction,
   configureShellBack,
 } from "./routes.ts";
 import {
@@ -56,7 +56,6 @@ const collection = createCollectionScreen();
 let profileDispose: (() => void) | undefined,
   reviewDispose: (() => void) | undefined;
 let membership: "member" | "not_member" | "unavailable" = "unavailable";
-let activeSettingsButton: HTMLElement | null = null;
 const routes = createRoutes();
 const { navigation } = routes;
 const back = () => void navigation.back();
@@ -65,6 +64,7 @@ if (!root) throw new Error("Missing application root");
 const screen = ScreenHost(root);
 const text = (key: MessageKey, values?: Record<string, string>) =>
   t(locale, key, values);
+const chrome = createShellChrome(root, text, showSettings);
 const platform = initializePlatform({
   doneLabel: () => text("shell.done"),
   dismissLabel: () => text("shell.dismissKeyboard"),
@@ -147,13 +147,7 @@ const workspace = createWorkspace(screen, {
 });
 const notes = platform.moduleApi("notifications");
 function showSettings() {
-  showShellSettings(
-    locale,
-    navigation,
-    activeSettingsButton,
-    changeLocale,
-    notes,
-  );
+  showShellSettings(locale, navigation, chrome.button, changeLocale, notes);
 }
 function changeLocale(value: Locale) {
   locale = value;
@@ -216,6 +210,7 @@ function render() {
   holders.dispose();
   community.dispose();
   collection.dispose();
+  chrome.refresh();
   document.documentElement.lang = locale;
   document.title = text("shell.brand");
   const running = route === "launcher" ? launcher.running : undefined;
@@ -227,12 +222,6 @@ function render() {
 }
 function renderPage(screen: HTMLElement, route: Route) {
   const running = route === "launcher" ? launcher.running : undefined;
-  const settingsButton = createSettingsAction(
-    route === "launcher",
-    text,
-    showSettings,
-  );
-  if (route === routes.current()) activeSettingsButton = settingsButton;
   screen.dataset.workspace = String(isWorkspace(route) && !running);
   screen.dataset.home = String(route === "launcher" && !running);
   if (route === "community") {
@@ -241,7 +230,7 @@ function renderPage(screen: HTMLElement, route: Route) {
       active: routes.current() === "community",
       title: text("shell.community"),
       brand: text("shell.brand"),
-      actions: [settingsButton],
+      actions: [],
       viewerFrogId: selectedFrog?.frog_id ?? null,
       read: (token, cursor, signal) =>
         platform.readHolders(token, cursor, signal),
@@ -251,7 +240,7 @@ function renderPage(screen: HTMLElement, route: Route) {
   if (isBuiltInRoute(route)) {
     builtIns.render(screen, route, {
       brand: text("shell.brand"),
-      actions: [settingsButton],
+      actions: [],
     });
     return;
   }
@@ -262,7 +251,7 @@ function renderPage(screen: HTMLElement, route: Route) {
       navigation,
       selected: selectedFrog?.frog_id ?? null,
       frogId: route === "frog" ? routes.frogId() : null,
-      actions: [settingsButton],
+      actions: [],
       openFrog: (id) => {
         routes.openFrog(id);
       },
@@ -275,7 +264,7 @@ function renderPage(screen: HTMLElement, route: Route) {
       locale,
       title: text("holders.title"),
       brand: text("shell.brand"),
-      actions: [settingsButton],
+      actions: [],
       viewerFrogId: selectedFrog?.frog_id ?? null,
       read: (token, cursor, signal) =>
         platform.readHolders(token, cursor, signal),
@@ -348,7 +337,7 @@ function renderPage(screen: HTMLElement, route: Route) {
     ...(route === "launcher"
       ? { titleHidden: true }
       : { brand: text("shell.brand") }),
-    actions: [settingsButton],
+    actions: [],
     children: content,
   });
   screen.replaceChildren(view);
@@ -395,6 +384,7 @@ onPageHide(() => {
   dismissApp();
   swipe.dispose();
   workspace.dispose();
+  chrome.dispose();
   platform.dispose();
   navigation.dispose();
 });

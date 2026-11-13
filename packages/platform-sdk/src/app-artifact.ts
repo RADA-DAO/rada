@@ -1,3 +1,5 @@
+import { childBridge } from "./app-child-bridge.ts";
+import type { AppContext } from "./app-ui-context.ts";
 const maxArtifactBytes = 1024 * 1024;
 export async function verifyAppArtifact(
   response: Response,
@@ -45,26 +47,9 @@ export function childDocument(
   hostOrigin: string,
   channel: string,
   artifact: string,
+  context?: AppContext,
 ): string {
-  const state = JSON.stringify({ hostOrigin, channel }).replace(
-    /</g,
-    "\\u003c",
-  );
-  const bridge = `(() => { const state = ${state}; let seq = 0; const pending = new Map();
-    const send = (message) => parent.postMessage({ ...message, bridgeVersion: 1, channel: state.channel }, state.hostOrigin);
-    window.rada = Object.freeze({ member: Object.freeze({
-      request(type, payload = {}) { if (typeof type !== 'string' || !type.startsWith('rada.member.')) return Promise.reject(Error('invalid_request'));
-    const requestId = 'r' + (++seq); return new Promise((resolve, reject) => { const timeout = setTimeout(() => { pending.delete(requestId); reject(Error('timeout')); }, ['rada.member.payment.request','rada.member.report','rada.member.permission.request'].includes(type) ? 300000 : 10000); pending.set(requestId, { resolve, reject, timeout }); send({ type, requestId, payload }); }); },
-      back() { send({ type: 'rada.member.navigation.back' }); }
-    }) });
-    addEventListener('message', event => { if (event.source !== parent || event.origin !== state.hostOrigin) return;
-      const message = event.data; if (!message || message.bridgeVersion !== 1 || message.channel !== state.channel) return;
-      const request = pending.get(message.requestId); if (!request) return;
-      clearTimeout(request.timeout); pending.delete(message.requestId);
-      if (message.type === 'rada.member.result') request.resolve(message.result);
-      else if (message.type === 'rada.member.error') request.reject(Error(message.error));
-    }); send({ type: 'rada.member.boot' });
-  })();`;
+  const bridge = childBridge(hostOrigin, channel, context);
   // The opaque iframe has no same-origin storage. This policy blocks fetch, frames,
   // forms and remote assets even when the artifact contains another CSP declaration.
   return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'"><meta name="referrer" content="no-referrer"><script>${bridge.replace(/<\/script/gi, "<\\/script")}</script></head><body>${artifact}</body></html>`;

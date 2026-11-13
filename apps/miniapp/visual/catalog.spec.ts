@@ -115,7 +115,14 @@ test("workspace geometry and bundled fonts", async ({ page }) => {
     for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
       await open(page, `theme=${theme}`);
-      const layout = await page.evaluate(() => {
+      const layout = await page.evaluate(async () => {
+        // Native shell typography no longer requests every retained card face.
+        // fonts.ready waits for requested faces only; load the inventory explicitly.
+        const sample = "RADA \u0416\u0430\u0431\u043a\u0430";
+        const fonts = ["Onest", "Sora", "Unbounded"];
+        const loadedFonts = await Promise.all(
+          fonts.map((font) => document.fonts.load(`700 16px ${font}`, sample)),
+        );
         const screen = document.querySelector<HTMLElement>(".screen");
         if (!screen) throw new Error("Missing screen");
         const buttons = [...document.querySelectorAll<HTMLElement>("button")];
@@ -127,9 +134,11 @@ test("workspace geometry and bundled fonts", async ({ page }) => {
               rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44
             );
           }),
-          fonts: ["Onest", "Outfit", "Sora", "Unbounded"].every((font) =>
-            document.fonts.check(`700 16px ${font}`),
-          ),
+          fonts:
+            loadedFonts.every((faces) => faces.length > 0) &&
+            fonts.every((font) =>
+              document.fonts.check(`700 16px ${font}`, sample),
+            ),
         };
       });
       expect(layout, `${theme} at ${String(width)}px`).toEqual({

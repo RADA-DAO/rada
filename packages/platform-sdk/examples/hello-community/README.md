@@ -49,3 +49,13 @@ The API records the reviewed manifest and hash; submission does not fetch or
 validate the HTML bytes. Integrity is independently enforced by the SDK host
 when the person opens the app. This example is a local authoring route, not a
 public artifact upload service or the production App Studio pipeline.
+
+## Shared UI and inputs
+
+The example now embeds the common UI primitives and uses the host's live theme,
+font, viewport and residual safe-area context. Its note field keeps the same DOM
+node, value, caret and focus during passive updates. Details opens one native
+dialog through `openDialog`; native Back/Escape closes it before exiting the
+app. The numeric field uses the same shared keyboard controller as the shell,
+including Done and IME behavior. Notes and counts remain frame-local; this adds
+no data, payment or wallet permission.

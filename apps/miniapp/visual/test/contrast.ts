@@ -1,4 +1,6 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
+
+import { decodePng } from "../../../../modules/splash/png.ts";
 
 /** Sample the painted pixels with glyphs removed, preserving layout, gradients,
  * glass layers, images and shadows. Computed ancestor colours alone cannot do this. */
@@ -176,61 +178,64 @@ async function measure(
   fullPage: boolean,
 ) {
   await settle(backgroundPage);
-  const background = (await backgroundPage.screenshot({ fullPage })).toString(
-    "base64",
-  );
-  // WebKit can suspend image decoding in the background measurement tab.
+  const background = await test.step("Capture masked contrast background", () =>
+    backgroundPage.screenshot({ fullPage }));
   await page.bringToFront();
-  return await page.evaluate(
-    async ({ background, samples }) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${background}`;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Canvas unavailable");
-      context.drawImage(image, 0, 0);
-      const luminance = (rgb: number[]) =>
-        rgb.slice(0, 3).reduce((sum, value, i) => {
-          const c = value / 255;
-          return (
-            sum +
-            (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4) *
-              ([0.2126, 0.7152, 0.0722][i] ?? 0)
+  // Decode screenshot bytes in Node: background WebKit tabs can suspend Image.decode.
+  // Keep the painted bitmap and sample coordinates unchanged without a second browser copy.
+  return await test.step("Decode PNG and sample painted pixels in Node", () => {
+    const { width, height, rgba } = decodePng(background);
+    const luminance = (rgb: number[]) =>
+      rgb.slice(0, 3).reduce((sum, value, i) => {
+        const c = value / 255;
+        return (
+          sum +
+          (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4) *
+            ([0.2126, 0.7152, 0.0722][i] ?? 0)
+        );
+      }, 0);
+    return samples.map(({ text, color, points }) => {
+      const ratios = points.map(([x = 0, y = 0]) => {
+        if (
+          !Number.isInteger(x) ||
+          !Number.isInteger(y) ||
+          x < 0 ||
+          y < 0 ||
+          x >= width ||
+          y >= height
+        )
+          throw new Error(
+            `Contrast sample outside ${String(width)}x${String(height)}: ${String(x)},${String(y)}`,
           );
-        }, 0);
-      return samples.map(({ text, color, points }) => {
-        const ratios = points.map(([x, y]) => {
-          const bg = [...context.getImageData(x ?? 0, y ?? 0, 1, 1).data];
-          const fg = color
-            .slice(0, 3)
-            .map(
-              (c, i) =>
-                c * (color[3] ?? 1) + (bg[i] ?? 0) * (1 - (color[3] ?? 1)),
-            );
-          const a = luminance(bg),
-            b = luminance(fg);
-          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-        });
-        return { text, ratio: Math.min(...ratios) };
+        const offset = (y * width + x) * 4;
+        const bg = [...rgba.subarray(offset, offset + 4)];
+        const fg = color
+          .slice(0, 3)
+          .map(
+            (c, i) =>
+              c * (color[3] ?? 1) + (bg[i] ?? 0) * (1 - (color[3] ?? 1)),
+          );
+        const a = luminance(bg),
+          b = luminance(fg);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
       });
-    },
-    { background, samples },
-  );
+      return { text, ratio: Math.min(...ratios) };
+    });
+  });
 }
 
 async function settle(page: Page) {
-  await page.bringToFront();
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            resolve();
-          }),
+  await test.step("Settle foreground contrast paint across two animation frames", async () => {
+    await page.bringToFront();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              resolve();
+            }),
+          ),
         ),
-      ),
-  );
+    );
+  });
 }

@@ -448,7 +448,8 @@ test("authenticated navigation, settings focus, locale and native Back", async (
   await expect(
     page.getByRole("heading", { name: "Apps", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("html")).toHaveCSS("--app-safe-top", "20px");
+  // Host safe/content insets overlap: 12px clearance plus the 12px header gap.
+  await expect(page.locator(".rada-shell-header")).toHaveCSS("top", "24px");
   await page.getByRole("button", { name: "Profile", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Profile", exact: true }),
@@ -915,7 +916,7 @@ test("workspace stays centered and focus never scrolls its page rail", async ({
   const nav = page.getByRole("navigation", { name: "Navigation", exact: true });
   const viewport = page.viewportSize();
   if (!viewport) throw new Error("Viewport unavailable");
-  const width = Math.min(viewport.width, 430);
+  const width = Math.min(viewport.width, 900);
   const bounds = await screen.boundingBox();
   if (!bounds) throw new Error("Screen bounds unavailable");
   expect(bounds.width).toBe(width);

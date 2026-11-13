@@ -23,8 +23,10 @@ For an intentional visual change:
    [update script](../../tools/visual-update.sh) copies the checkout into the same
    pinned image as CI, installs locked dependencies and copies PNGs back.
 2. Inspect every changed baseline and compare expected, actual and diff images.
-   The script tolerates the internal Playwright exit status, so its completion
-   message alone does not establish that the test run passed.
+   The script propagates a failed suite and removes only its owned container
+   on exit or interruption. Failed diagnostics remain in ignored
+   `test-results/visual-update/`; failed suites never replace the baselines.
+   Review both the test result and the PNG changes.
 3. Run the visual suite in the same Linux image without `--update-snapshots`
    (the CI visual job shows the exact command/environment). Commit reviewed PNGs
    with the change that requires them; do not raise diff tolerance.

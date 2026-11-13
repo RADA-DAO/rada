@@ -1,0 +1,67 @@
+<main class="rada-community-workspace" data-keyboard-viewport>
+  <p data-copy="description" class="rada-muted"></p>
+  <section class="rada-community-content" data-keyboard-scroll>
+    <p id="release" class="rada-muted"></p>
+    <div class="rada-field">
+      <label class="rada-field-label" for="draft" data-copy="draftLabel"></label
+      ><input
+        class="rada-field-control"
+        id="draft"
+        name="draft"
+        type="text"
+        enterkeyhint="done"
+        autocomplete="off"
+        maxlength="160"
+      />
+    </div>
+    <output id="count" aria-live="polite"></output>
+    <div class="rada-actions">
+      <button
+        class="rada-button rada-button--primary"
+        id="increment"
+        data-copy="increment"
+      ></button
+      ><button
+        class="rada-button rada-button--secondary"
+        id="open-details"
+        data-copy="details"
+      ></button>
+    </div>
+  </section>
+  <footer class="rada-community-footer">
+    <button
+      class="rada-button rada-button--ghost"
+      id="back"
+      data-copy="back"
+    ></button>
+  </footer>
+</main>
+<dialog id="details" class="rada-sheet" aria-labelledby="details-title">
+  <div class="rada-sheet-header">
+    <h2 class="rada-sheet-title" id="details-title" data-copy="details"></h2>
+    <button
+      class="rada-button rada-button--ghost"
+      id="close-details"
+      data-copy="close"
+    ></button>
+  </div>
+  <div class="rada-sheet-body" data-keyboard-scroll>
+    <p data-copy="detailsText"></p>
+    <div class="rada-field">
+      <label
+        class="rada-field-label"
+        for="quantity"
+        data-copy="quantityLabel"
+      ></label
+      ><input
+        class="rada-field-control"
+        id="quantity"
+        name="quantity"
+        type="text"
+        inputmode="numeric"
+        enterkeyhint="done"
+        autocomplete="off"
+      />
+    </div>
+  </div>
+</dialog>

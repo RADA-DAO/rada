@@ -98,6 +98,7 @@
   width: 100%;
   font: inherit;
   font-size: var(--rada-font-size-field);
+  font-weight: var(--rada-font-weight-control);
   padding: var(--rada-field-padding);
   min-height: var(--rada-field-height);
   color: var(--text-primary);

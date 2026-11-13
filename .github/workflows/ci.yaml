@@ -163,6 +163,8 @@ jobs:
           E2E_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
       - name: Rehearse local SDK app publication and rollback
         run: npm run test:local-platform
+      - name: Verify shared UI and SDK on phone, tablet and desktop
+        run: npm run test:ui-sdk
   visual:
     runs-on: ubuntu-24.04
     # The same image tools/visual-update.sh uses, so baselines match byte for byte.

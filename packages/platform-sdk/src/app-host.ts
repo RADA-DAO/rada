@@ -1,67 +1,26 @@
+import { appHostLayer } from "./app-host-layers.ts";
 import { childDocument, verifyAppArtifact } from "./app-artifact.ts";
 export { verifyAppArtifact } from "./app-artifact.ts";
 import { runAppCapability } from "./app-capabilities.ts";
-import { reportWindow, type ReportCopy } from "./app-report.ts";
-import type { SheetNavigation } from "../../ui/src/index.ts";
+import { reportWindow } from "./app-report.ts";
 import { consentWindow } from "./app-host-consent.ts";
 import {
   APP_PERMISSIONS,
   CONSENT_PERMISSIONS,
   parseAppManifest,
-  type AppManifest,
   type AppPermission,
 } from "./app-manifest.ts";
-
-export type AppRelease = {
-  appId: string;
-  versionId?: string;
-  manifest: AppManifest;
-  artifactUrl: string;
-  artifactSha256: string;
-  // Derived by the trusted release registry, never by rada.app.json or a child message.
-  grantedPermissions: readonly AppPermission[];
-};
-export type ConsentCopy = {
-  title: string;
-  description: string;
-  allow: string;
-  deny: string;
-};
-export type AppHostOptions = {
-  signal?: AbortSignal;
-  release: AppRelease;
-  container: HTMLElement;
-  artifactOrigin: string;
-  locale: "en" | "uk";
-  consentCopy(permission: string, appName: string): ConsentCopy;
-  readConsent(appId: string, permission: string): Promise<boolean>;
-  writeConsent(
-    appId: string,
-    permission: string,
-    granted: boolean,
-  ): Promise<boolean>;
-  reportCopy?: ReportCopy;
-  appCapability?(
-    appId: string,
-    hash: string,
-    operation: string,
-    payload: unknown,
-    signal: AbortSignal,
-  ): Promise<unknown>;
-  ownSubject(): Promise<string | null>;
-  readWalletAddress?(appId: string, signal: AbortSignal): Promise<unknown>;
-  readWalletBalances?(appId: string, signal: AbortSignal): Promise<unknown>;
-  requestPayment?(
-    appId: string,
-    payload: unknown,
-    signal: AbortSignal,
-  ): Promise<unknown>;
-  paymentStatus?(appId: string, intentId: string): Promise<unknown>;
-  onNavigateBack?(): void;
-  /** Platform stack, so permission prompts close with Back, Escape and swipe. */
-  navigation?: SheetNavigation;
-  onError?(code: string): void;
-};
+import type { AppHostOptions } from "./app-host-contract.ts";
+export type {
+  AppRelease,
+  AppHostOptions,
+  ConsentCopy,
+} from "./app-host-contract.ts";
+import {
+  createAppUiContextReader,
+  contextPublisher,
+  observeAppUiContext,
+} from "./app-ui-context.ts";
 const allowedRequestId = (value: unknown): value is string =>
   typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);
 const isAppPermission = (value: unknown): value is AppPermission =>
@@ -134,7 +93,12 @@ export async function mountAppHost(
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("referrerpolicy", "no-referrer");
   frame.setAttribute("allow", "");
-  frame.srcdoc = childDocument(location.origin, channel, artifact);
+  const ui = createAppUiContextReader(options.container);
+  const context = () => ({
+    locale: options.locale,
+    ui: ui.read(),
+  });
+  frame.srcdoc = childDocument(location.origin, channel, artifact, context());
   frame.title = manifest.name;
   const granted = new Set(release.grantedPermissions);
   const pending = new Set<string>();
@@ -145,6 +109,17 @@ export async function mountAppHost(
   const isDisposed = () => disposed;
   const isActive = () => active;
   let promptOwner: string | null = null;
+  const layer = appHostLayer({
+    ...(options.navigation ? { navigation: options.navigation } : {}),
+    key: `community-layer:${channel}`,
+    dismiss: () => {
+      if (!disposed && active)
+        frame.contentWindow?.postMessage(
+          { type: "rada.member.layer.dismiss", channel, bridgeVersion: 1 },
+          "*",
+        );
+    },
+  });
   const reply = (
     requestId: string,
     type: string,
@@ -157,7 +132,10 @@ export async function mountAppHost(
       );
   };
   const onLoad = () => {
-    if (frame.dataset.loaded === "true") active = false;
+    if (frame.dataset.loaded === "true") {
+      active = false;
+      layer.close();
+    }
     frame.dataset.loaded = "true";
   };
   frame.addEventListener("load", onLoad);
@@ -178,7 +156,10 @@ export async function mountAppHost(
       typeof message.type !== "string"
     )
       return;
-    if (message.type === "rada.member.boot") return;
+    if (message.type === "rada.member.boot") {
+      publishContext();
+      return;
+    }
     if (message.type === "rada.member.navigation.back") {
       if (granted.has("navigation")) options.onNavigateBack?.();
       return;
@@ -209,8 +190,17 @@ export async function mountAppHost(
         : 10000,
     );
     const run = async () => {
-      if (message.type === "rada.member.context.get")
-        return { locale: options.locale };
+      if (
+        message.type === "rada.member.layer.open" &&
+        granted.has("navigation")
+      )
+        return layer.open();
+      if (
+        message.type === "rada.member.layer.close" &&
+        granted.has("navigation")
+      )
+        return layer.close();
+      if (message.type === "rada.member.context.get") return context();
       if (
         message.type === "rada.member.identity.self" &&
         granted.has("identity.self.read")
@@ -342,7 +332,6 @@ export async function mountAppHost(
           if (promptOwner === id) promptOwner = null;
         }
       }
-      // Financial, signature and governance actions have no implementation in v1.
       throw new Error("capability_denied");
     };
     const aborted = new Promise<never>((_, reject) => {
@@ -381,10 +370,26 @@ export async function mountAppHost(
         controllers.delete(id);
       });
   };
+  const publishContext = contextPublisher(context, (value) => {
+    if (disposed || !active) return;
+    frame.contentWindow?.postMessage(
+      {
+        type: "rada.member.context.changed",
+        context: value,
+        channel,
+        bridgeVersion: 1,
+      },
+      "*",
+    );
+  });
   window.addEventListener("message", onMessage);
   options.container.replaceChildren(frame);
+  const stopContext = observeAppUiContext(options.container, publishContext);
   return () => {
     disposed = true;
+    stopContext();
+    ui.dispose();
+    layer.close();
     active = false;
     for (const controller of controllers.values()) controller.abort();
     window.removeEventListener("message", onMessage);

@@ -1,0 +1,60 @@
+/* Embed after primitives.css and components.css in an immutable community app.
+   The trusted host supplies bounded, live semantic and foundation properties. */
+html {
+  font-size: 100%;
+  color: var(--text-primary);
+  background: transparent;
+  font-synthesis: none;
+}
+body {
+  box-sizing: border-box;
+  margin: 0;
+  min-width: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: var(--rada-font-weight-body) var(--rada-font-size-body) /
+    var(--rada-line-height-body) var(--rada-font-body);
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+.rada-community-workspace {
+  width: min(100%, var(--rada-reading-width));
+  min-width: 0;
+  margin-inline: auto;
+  padding: var(--rada-space-4) var(--rada-page-gutter) var(--rada-space-6);
+  overflow-wrap: anywhere;
+}
+.rada-community-workspace :is(h1, h2, p) {
+  margin-block: 0 var(--rada-space-4);
+}
+.rada-community-workspace h1 {
+  font: var(--rada-font-weight-heading) var(--rada-font-size-title) /
+    var(--rada-line-height-heading) var(--rada-font-heading);
+  letter-spacing: var(--rada-tracking-heading);
+}
+.rada-community-workspace h2 {
+  font: var(--rada-font-weight-section) var(--rada-font-size-section) /
+    var(--rada-line-height-section) var(--rada-font-heading);
+}
+.rada-community-workspace output {
+  display: block;
+  margin-block: var(--rada-space-5);
+  font-variant-numeric: tabular-nums;
+}
+.rada-community-workspace .rada-field-label {
+  margin-block: var(--rada-space-4);
+}
+.rada-community-workspace :is(input, textarea, select, button) {
+  font-family: var(--rada-font-body);
+}
+.rada-community-workspace .rada-actions {
+  align-items: center;
+}
+@media (max-width: 359px) {
+  .rada-community-workspace .rada-actions > .rada-button {
+    flex: 1 1 100%;
+  }
+}

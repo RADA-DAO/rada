@@ -25,11 +25,13 @@ test("shared spacing tokens update the screen, header and navigation", async ({
     "rgb(255, 255, 255) 0px 0px 0px 2px",
   );
   const screen = page.locator('.rada-workspace-page[data-home="true"]');
-  const header = screen.locator(".rada-screen-header");
+  const header = page.locator(".rada-shell-header");
+  await expect(header).toHaveCount(1);
   const navigation = page.getByRole("navigation");
-  await expect(screen).toHaveCSS("padding-top", "12px");
+  await expect(screen).toHaveCSS("padding-top", "70px");
   await expect(screen).toHaveCSS("padding-left", "18px");
-  await expect(header).toHaveCSS("gap", "16px");
+  await expect(header).toHaveCSS("top", "12px");
+  await expect(screen).toHaveCSS("padding-bottom", "16px");
   await expect(navigation.getByRole("button").first()).toHaveCSS(
     "width",
     "44px",
@@ -40,9 +42,10 @@ test("shared spacing tokens update the screen, header and navigation", async ({
     document.documentElement.style.setProperty("--rada-page-gutter", "22px");
     document.documentElement.style.setProperty("--rada-os-dot-target", "48px");
   });
-  await expect(screen).toHaveCSS("padding-top", "20px");
+  await expect(screen).toHaveCSS("padding-top", "86px");
   await expect(screen).toHaveCSS("padding-left", "22px");
-  await expect(header).toHaveCSS("gap", "24px");
+  await expect(header).toHaveCSS("top", "20px");
+  await expect(screen).toHaveCSS("padding-bottom", "24px");
   await expect(navigation.getByRole("button").first()).toHaveCSS(
     "width",
     "48px",

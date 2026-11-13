@@ -29,11 +29,13 @@ async function bundle(catalog) {
 await test("the production bundle has no component catalog", async () => {
   const files = await bundle("false");
   assert.ok(files.some((file) => file.name === "index.html"));
-  const fontNames = (await readdir("packages/ui/src/fonts")).filter((name) =>
-    name.endsWith(".woff2"),
+  const fontNames = (await readdir("packages/ui/src/fonts")).filter(
+    (name) => name.endsWith(".woff2") && !name.startsWith("outfit-"),
   );
   const fonts = files.filter((file) => file.name.endsWith(".woff2"));
+  // Outfit is retained as an archived source asset; native UI no longer ships it.
   assert.equal(fonts.length, fontNames.length);
+  assert.ok(fonts.every((file) => !file.name.includes("outfit-")));
   const css = files.filter((file) => file.name.endsWith(".css"));
   assert.ok(css.length > 0);
   for (const file of css)

@@ -41,7 +41,7 @@ test("SDK example: real API publication, host integrity, update, rollback and wi
         stage === "updated" ? "2" : "1",
       );
       await expect(
-        frame.getByRole("heading", { name: "Hello, community" }),
+        frame.getByRole("textbox", { name: "Your note", exact: true }),
       ).toBeVisible();
       await frame.getByRole("button", { name: "Add one", exact: true }).click();
       await expect(frame.locator("#count")).toHaveText("Local count: 1");
@@ -66,7 +66,7 @@ test("SDK example: real API publication, host integrity, update, rollback and wi
         origin: "null",
         telegram: false,
         parentReadable: false,
-        bridge: ["back", "request"],
+        bridge: ["back", "openDialog", "request", "subscribeContext"],
       });
       await page.screenshot({
         path: info.outputPath(`sdk-example-${stage}.png`),

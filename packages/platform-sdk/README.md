@@ -118,3 +118,30 @@ aggregate popular apps, and `recordOpen` records a platform or published app.
 `openCryptoNos` passes only the fixed Telegram product URL to the host.
 `installLauncherDrag` owns pointer capture on explicit drag handles; callers
 provide native keyboard alternatives and never attach their own gesture handlers.
+
+## Live community UI context
+
+`rada.member.context.get` retains `locale` and adds `ui.version: 1`. The host
+supplies only public semantic/foundation CSS roles, a bounded frame-local
+`viewport` (`width`, `height`, `visibleHeight`, `keyboardInset`), residual
+`safeArea` insets, `rootFontSize` (resolved pixels, bounded 12–32) and
+`reducedMotion`. Root font scaling is applied once, so rem-based type respects
+the shell's large-text setting without multiplying browser defaults. Insets already consumed by the shell are
+not added twice. No profile document, saved material configuration, identity,
+wallet data, credentials or URLs enter this projection.
+
+The trusted child bootstrap applies these variables before artifact scripts.
+`rada.member.subscribeContext(listener)` immediately supplies the current
+context and returns an unsubscribe function; later theme, viewport and motion
+updates do not remount the app or replace inputs. The document also emits
+`rada:context`. Listeners and host observers are disposed on departure. Only
+messages from the current parent/frame, channel and protocol are accepted.
+
+A navigation-granted app can call `await rada.member.openDialog(dialog, opener)` for one
+native dialog. The host owns a generated, app-scoped navigation entry: native
+Back closes this dialog before leaving the app, while explicit close removes
+only that entry. Escape in the child follows the same order. The child cannot
+choose or remove host route keys. Use the shared keyboard controller inside
+this separate document; the parent controller cannot observe iframe inputs.
+The SDK example bundles that existing controller and the shared UI styles into
+its immutable artifact, without remote fonts, styles or network access.
