@@ -21,7 +21,7 @@ UPDATE reputation.jobs SET retry_at=clock_timestamp()-interval '1 day' FROM repu
  WHERE reputation.jobs.item_id=i.id AND i.subject_id='a0720000-0000-4000-8000-000000000011';
 SET LOCAL ROLE reputation_worker;
 DO $$
-DECLARE j jsonb; first_item uuid; first_token uuid; result jsonb; snapshot jsonb; n integer:=0;
+DECLARE j jsonb; first_item uuid; first_lease uuid; result jsonb; snapshot jsonb; n integer:=0;
 BEGIN
  LOOP
  j:=reputation.claim_job(ARRAY['interpretation'],60); EXIT WHEN j IS NULL;
@@ -32,9 +32,9 @@ BEGIN
  PERFORM reputation.save_proposal((j->>'itemId')::uuid,(j->>'leaseToken')::uuid,'{"state":"proposed","classification":"concrete_completed","points":"999999"}');
  result:=reputation.complete_report((j->>'itemId')::uuid,(j->>'leaseToken')::uuid,'synthetic-frozen-v1','synthetic-help',CASE WHEN n<=2 THEN 'same-synthetic-occurrence' ELSE 'different-synthetic-occurrence' END,j->>'sourceId');
  IF n=1 THEN
- first_item:=(j->>'itemId')::uuid; first_token:=(j->>'leaseToken')::uuid;
+ first_item:=(j->>'itemId')::uuid; first_lease:=(j->>'leaseToken')::uuid;
  IF result->'item'->>'points'<>'1.2345' OR result->'item'->>'category'<>'help' OR result->'item'->>'status'<>'accepted' THEN RAISE EXCEPTION 'worker controlled score/category'; END IF;
- IF reputation.complete_report(first_item,first_token,'synthetic-frozen-v1','synthetic-help','same-synthetic-occurrence',j->>'sourceId')<>result THEN RAISE EXCEPTION 'job receipt not immutable replay'; END IF;
+ IF reputation.complete_report(first_item,first_lease,'synthetic-frozen-v1','synthetic-help','same-synthetic-occurrence',j->>'sourceId')<>result THEN RAISE EXCEPTION 'job receipt not immutable replay'; END IF;
  ELSIF n=2 THEN
  IF result->'item'->>'status'<>'excluded' OR result->'item'->>'reason'<>'duplicate_occurrence' THEN RAISE EXCEPTION 'semantic duplicate awarded'; END IF;
  ELSIF n=3 THEN
