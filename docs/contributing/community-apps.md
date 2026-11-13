@@ -2,9 +2,12 @@
 
 Community apps are immutable HTML artifacts loaded by the
 [SDK host](../../packages/platform-sdk/src/app-host.ts). The builder directory is
-currently a [placeholder](../../apps/builder/README.md); there is no repository
-build/upload command for third-party artifacts. Bundle scripts, styles and data
-images into one HTML file; the child cannot fetch remote assets or APIs.
+currently a [placeholder](../../apps/builder/README.md). The repository provides
+a [small SDK example](../../packages/platform-sdk/examples/hello-community/README.md)
+with a content-addressed build and a disposable local publication/rollback
+journey; it is not a public upload service or production App Studio replacement.
+Bundle scripts, styles and data images into one HTML file; the child cannot
+fetch remote assets or APIs.
 
 ## Manifest
 

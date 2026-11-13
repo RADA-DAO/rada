@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+**/dist-catalog
+**/test-results
+**/playwright-report
+**/coverage
+**/*.log
+.wrangler
+.claude

@@ -160,6 +160,8 @@ jobs:
       - run: npm run e2e
         env:
           E2E_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
+      - name: Rehearse local SDK app publication and rollback
+        run: npm run test:local-platform
   visual:
     runs-on: ubuntu-24.04
     # The same image tools/visual-update.sh uses, so baselines match byte for byte.

@@ -27,6 +27,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set migration administrator password}
       AUTH_PASSWORD: ${AUTH_PASSWORD:?Set separate auth login password}
       SERVICE_PASSWORD: ${SERVICE_PASSWORD:?Set separate service login password}
+      APPS_PASSWORD: ${APPS_PASSWORD:?Set separate app registry login password}
       WALLET_PASSWORD: ${WALLET_PASSWORD:?Set separate wallet login password}
       OPS_PASSWORD: ${OPS_PASSWORD:?Set separate ops login password}
       NOTIFICATIONS_PASSWORD: ${NOTIFICATIONS_PASSWORD:?Set separate notifications login password}
@@ -51,6 +52,8 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set separate staging bot token}
       IDENTITY_AUTH_DATABASE_URL: postgresql://staging_auth:${AUTH_PASSWORD:?Set auth password}@postgres:5432/rada_staging
       IDENTITY_SERVICE_DATABASE_URL: postgresql://staging_service:${SERVICE_PASSWORD:?Set service password}@postgres:5432/rada_staging
+      APPS_SERVICE_DATABASE_URL: postgresql://staging_apps:${APPS_PASSWORD:?Set app registry password}@postgres:5432/rada_staging
+      APP_ARTIFACT_ORIGIN: ${APP_ARTIFACT_ORIGIN:?Set exact staging artifact HTTPS origin}
       WALLET_SERVICE_DATABASE_URL: postgresql://staging_wallet:${WALLET_PASSWORD:?Set wallet password}@postgres:5432/rada_staging
       CLIENT_ERRORS_DATABASE_URL: postgresql://staging_ops:${OPS_PASSWORD:?Set ops password}@postgres:5432/rada_staging
       NOTIFICATIONS_SERVICE_DATABASE_URL: postgresql://staging_notifications:${NOTIFICATIONS_PASSWORD:?Set notifications password}@postgres:5432/rada_staging

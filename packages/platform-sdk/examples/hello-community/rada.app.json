@@ -1,0 +1,8 @@
+{
+  "name": "Hello community",
+  "author": "SDK example",
+  "designRoute": "free-style",
+  "permissions": ["navigation"],
+  "minPlatformVersion": "1.0.0",
+  "category": "apps"
+}

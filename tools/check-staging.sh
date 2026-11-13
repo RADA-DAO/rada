@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 export POSTGRES_PASSWORD=synthetic-admin-password AUTH_PASSWORD=synthetic-auth-password SERVICE_PASSWORD=synthetic-service-password WALLET_PASSWORD=synthetic-wallet-password OPS_PASSWORD=synthetic-ops-password SPLASH_PASSWORD=synthetic-splash-password GOVERNANCE_PASSWORD=synthetic-governance-password RANKINGS_PASSWORD=synthetic-rankings-password RANKINGS_WORKER_PASSWORD=synthetic-rankings-worker-password
+export APPS_PASSWORD=synthetic-apps-password APP_ARTIFACT_ORIGIN=https://artifacts.staging.example.invalid
 export NOTIFICATIONS_PASSWORD=synthetic-notifications-password NOTIFICATIONS_ENABLED=false
 export RANKINGS_WORKER_ENABLED=false
 export TREASURY_PASSWORD=synthetic-treasury-password TREASURY_WORKER_ENABLED=false

@@ -18,7 +18,82 @@ The [Vite configuration](../../apps/miniapp/vite.config.ts) proxies `/api` to
 component catalog, use `CATALOG=true npm run dev:miniapp` and open
 `/catalog.html?theme=guest` (also `light` or `dark`).
 
-## Local database and API
+## One-command synthetic platform
+
+After `npm ci`, start the complete disposable local environment:
+
+```sh
+npm run dev:local
+```
+
+This command needs Node 24, Deno 2.9.7, a local Docker engine and OpenSSL.
+The launcher targets macOS and Linux; on Windows, run it inside WSL2 with a
+local Docker integration.
+Docker Compose and a host `psql` are not needed for this path. It uses the pinned
+PostgreSQL 17 image already declared by local infrastructure. A Docker context
+can be selected for this command only, for example
+`DOCKER_CONTEXT=colima npm run dev:local`; it never changes the global context.
+Remote Docker daemons are rejected.
+
+If Colima's shared automatic port forwarding is unavailable, opt into an
+independent session-owned tunnel:
+
+```sh
+DOCKER_CONTEXT=colima RADA_LOCAL_COLIMA_TUNNEL=true npm run dev:local
+```
+
+This reads `colima ssh-config` into a temporary private file and starts one
+independent SSH process forwarding a new loopback port to the disposable
+container's VM port. It never restarts Colima, changes its shared ControlMaster,
+or edits global SSH/Docker configuration. The tunnel is stopped with the session.
+The flag is rejected with other Docker contexts.
+
+The launcher creates one uniquely labelled disposable database container with a
+random loopback-only port and in-memory data, applies the existing migrations,
+and provisions separate restricted identity/auth/registry logins. Synthetic
+identity 101 is the author; identity 102 is the reviewer/steward. The normal
+server-side Telegram HMAC validator still checks both launches. The browser gets
+a local stand-in host only from this development server; no production frontend
+or authentication policy is changed. No real Telegram/provider requests,
+balances or production database are involved.
+
+- Shell: `http://127.0.0.1:4173`
+- API: `http://127.0.0.1:8000`
+- Immutable artifacts: `https://127.0.0.1:8443`
+
+Before opening a published example interactively, visit
+`https://127.0.0.1:8443/health` and accept this session's self-signed local
+certificate in the browser. HTTPS remains required by the registry and SDK.
+The launcher never modifies the system trust store; the temporary certificate
+and private key are removed on exit. Browser automation may use its isolated
+`ignoreHTTPSErrors` context. Never disable TLS verification globally.
+
+Ports must be free: the launcher refuses to reuse or stop existing listeners.
+It does not read `.env`, and inherited API/database/provider/Vite configuration
+is excluded. Ctrl-C, command failure and normal exit stop only the owned child
+process groups and container, verify the ports are released, and remove the
+session directory. Every run starts with fresh data; this is not a persistent
+backend or a production-like wallet environment.
+
+```sh
+npm run dev:local -- --check
+npm run dev:local -- --exec node path/to/local-check.mjs
+```
+
+`--check` verifies prerequisites and port availability without starting services.
+`--exec` starts the same environment, runs a command without a shell, returns its
+exit status and then cleans up. The command receives `RADA_LOCAL_API_ORIGIN`,
+`RADA_LOCAL_WEB_ORIGIN`, `RADA_LOCAL_ARTIFACT_ORIGIN`,
+`RADA_LOCAL_ARTIFACT_DIR` (parent of the `artifacts/` directory),
+`RADA_LOCAL_CERTIFICATE` and the disposable `RADA_LOCAL_DATABASE_URL`.
+These credentials exist only for that session; never save them in repo files.
+Use the [SDK example](../../packages/platform-sdk/examples/hello-community/README.md)
+for the creation, review, publication and rollback walkthrough.
+
+## Advanced database and API setup
+
+The following low-level commands are retained for individual module testing.
+They are independent of `dev:local`; do not point them at the launcher's database.
 
 ```sh
 cp .env.example .env

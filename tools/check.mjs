@@ -19,6 +19,7 @@ const rootFiles = new Set([
   "CLAUDE.md",
   "LICENSE",
   ".gitignore",
+  ".dockerignore",
   ".env.example",
   ".node-version",
   ".prettierignore",

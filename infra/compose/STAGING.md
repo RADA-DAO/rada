@@ -13,7 +13,7 @@ release directories with mode 0600. Docker access is administrator-equivalent.
 
 Server environment:
 
-- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`, `SPLASH_PASSWORD`, `GOVERNANCE_PASSWORD`: distinct high-entropy
+- `POSTGRES_PASSWORD`, `AUTH_PASSWORD`, `SERVICE_PASSWORD`, `APPS_PASSWORD`, `WALLET_PASSWORD`, `OPS_PASSWORD`, `SPLASH_PASSWORD`, `GOVERNANCE_PASSWORD`: distinct high-entropy
   hexadecimal passwords; runtime logins receive only their respective module role.
 - `TELEGRAM_BOT_TOKEN`: the test bot token, server only; no bot update changes.
 - `STAGING_AUTH_MODE=allowlist`, `STAGING_SYNTHETIC_ONLY=false`.
@@ -82,7 +82,9 @@ Run `sh tools/check-staging.sh` for configuration/build checks and
 `sh tools/test-staging.sh` for disposable database/API verification. CI fixes
 synthetic mode to signed fixtures 101/102 and rejects 103; no real bot is used.
 Caddy validation runs without host ports, ACME or live DNS. These checks never
-start a public proxy. Synthetic seed reruns enforce two fixture identities and
+start a public proxy. Each smoke invocation uses its own unique Compose project;
+EXIT, INT and TERM cleanup removes only that invocation's containers and volumes.
+Synthetic seed reruns enforce two fixture identities and
 no role grants, consents or frog selection. Seeding runs only in explicit synthetic
 mode. Allowlist migrations preserve existing testers and consents; the smoke test
 checks a third synthetic tester and consent survive two migration reruns.
@@ -110,6 +112,30 @@ Governance requires the orchestrator to add a distinct `GOVERNANCE_PASSWORD` to
 identity operator must separately grant `governance.steward`; no grants are seeded.
 Staging membership remains unavailable by platform policy, so creating proposals
 and voting fail closed. No Telegram membership calls run in staging.
+
+## Community app registry
+
+Set a distinct URL-safe `APPS_PASSWORD` and an exact HTTPS
+`APP_ARTIFACT_ORIGIN` (scheme and host only, no path or trailing slash) before
+migration/startup. Both are required in the staging Compose profile. Bootstrap
+idempotently provisions `staging_apps` with only the `apps_service` role and
+`CONNECT`; it receives no direct table privileges, identity-service role or
+administrator rights. Compose derives `APPS_SERVICE_DATABASE_URL` from that
+restricted login. Do not use an owner or migration connection for the registry.
+
+The artifact origin must serve immutable UTF-8 HTML at
+`/artifacts/<sha256>.html`. The registry records the hash and URL; submission does
+not upload a file. Use the SDK example's local rehearsal before configuring a
+staging artifact publisher. Do not point staging at production artifacts or
+publish examples through the deployment workflow. No review grants are seeded;
+a trusted identity operator must grant `apps.reviewer` separately for approved
+testers. Manifest permissions do not grant reviewer authority.
+
+Validate signed `/apps/published` returns an app list and unsigned access is
+rejected; a successful `/health` alone does not verify registry configuration.
+The isolated smoke script also verifies a non-reviewer cannot read the review
+queue and that the app login cannot read/write registry tables directly. Its
+reserved `.invalid` artifact origin makes no external artifact request.
 
 ## Holders ranking projection
 
