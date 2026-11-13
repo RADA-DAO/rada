@@ -848,7 +848,24 @@ test("workspace dots expose three pages and community returns by swipe", async (
         }),
     );
   });
-  expect(generatedPaint).toEqual([]);
+  // The shared matte canvas is the only generated host paint layer.
+  expect(generatedPaint).toEqual(["BODY::before"]);
+  expect(
+    await page.evaluate(() => {
+      const canvas = getComputedStyle(document.body, "::before");
+      return {
+        position: canvas.position,
+        pointerEvents: canvas.pointerEvents,
+        animation: canvas.animationName,
+        inset: [canvas.top, canvas.right, canvas.bottom, canvas.left],
+      };
+    }),
+  ).toEqual({
+    position: "fixed",
+    pointerEvents: "none",
+    animation: "none",
+    inset: ["0px", "0px", "0px", "0px"],
+  });
   const title = banner.getByRole("heading", {
     name: "Community",
     exact: true,
