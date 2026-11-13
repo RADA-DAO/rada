@@ -7,6 +7,17 @@ export const LOCAL_API = "http://127.0.0.1:8000";
 export const LOCAL_WEB = "http://127.0.0.1:4173";
 export const LOCAL_ARTIFACTS = "https://127.0.0.1:8443";
 
+/** Encode a string for an inline script, including the HTML parser boundary.
+ * @param {string} value
+ */
+export function inlineScriptString(value) {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 /** Do not import application credentials or implicit libpq defaults into fixtures.
  * @param {NodeJS.ProcessEnv} source
  */

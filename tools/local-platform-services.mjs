@@ -7,6 +7,7 @@ import {
   LOCAL_API,
   LOCAL_WEB,
   localLaunch,
+  inlineScriptString,
 } from "./local-platform-support.mjs";
 
 /** Serve only immutable digest-named local HTML, never arbitrary paths.
@@ -80,7 +81,7 @@ export async function localWebServer() {
       {
         name: "synthetic-local-host",
         transformIndexHtml(html) {
-          const launch = JSON.stringify(localLaunch());
+          const launch = inlineScriptString(localLaunch());
           const host = `<script>(()=>{const events=new Map(),backs=new Set();const app={initData:${launch},viewportHeight:innerHeight,safeAreaInset:{top:0,right:0,bottom:0,left:0},contentSafeAreaInset:{top:0,right:0,bottom:0,left:0},ready(){},expand(){},onEvent(name,handler){if(!events.has(name))events.set(name,new Set());events.get(name).add(handler)},offEvent(name,handler){events.get(name)?.delete(handler)},BackButton:{show(){},hide(){},onClick(handler){backs.add(handler)},offClick(handler){backs.delete(handler)}}};window.Telegram={WebApp:app};window.radaLocalHost=Object.freeze({emit(name,patch={}){Object.assign(app,patch);for(const handler of events.get(name)??[])handler()},back(){for(const handler of [...backs])handler()},listeners(){return [...events.values()].reduce((count,handlers)=>count+handlers.size,0)+backs.size}})})();</script>`;
           return html.replace(
             '<script src="https://telegram.org/js/telegram-web-app.js"></script>',
