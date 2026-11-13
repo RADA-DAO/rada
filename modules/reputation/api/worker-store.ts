@@ -1,6 +1,6 @@
 import type pg from "pg";
 import type { Category, Evidence, ReputationItem } from "../contract.ts";
-export type JobLane = "interpretation" | "external";
+export type JobLane = "interpretation" | "external" | "source_fact";
 /** Private attributed worker input; never pass subjectId to a provider. */
 export type ReputationJob = {
   itemId: string;

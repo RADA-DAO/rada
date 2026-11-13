@@ -94,7 +94,6 @@ function interruptible<T>(
     );
   });
 }
-/** Explicit bounded coordinator: constructing it performs no I/O or startup work. */
 export class ReputationCoordinator {
   private options: CoordinatorOptions;
   private evaluators = new Map<
@@ -133,6 +132,8 @@ export class ReputationCoordinator {
     job: ReputationJob,
     signal: AbortSignal,
   ): Promise<Plan> {
+    if (job.lane === "source_fact")
+      return { type: "retry", reason: "deterministic_handler_required" };
     if (job.lane === "external") {
       const verifier = job.missionId
         ? this.options.externalVerifiers.get(job.missionId)
@@ -190,7 +191,6 @@ export class ReputationCoordinator {
     if (cached && cached.fingerprint !== fingerprint)
       return { type: "retry", reason: "policy_snapshot_mismatch" };
     if (!cached) {
-      // Never evict: this would reset reserved budgets and non-cooperative slots.
       if (this.evaluators.size >= (this.options.maxCachedEvaluators ?? 16))
         return { type: "retry", reason: "policy_capacity" };
       cached = { fingerprint, evaluator: this.options.evaluatorFactory(rules) };

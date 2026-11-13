@@ -375,3 +375,13 @@ void test("non-cooperative external calls retain their bounded slot after timeou
     "external_capacity",
   ]);
 });
+
+void test("unexpected source facts cannot reach any semantic evaluator", async () => {
+  const f = fixture([job("source", "source_fact")]);
+  const result = await f.coordinator.runNext();
+  assert.equal(result.state, "retry");
+  assert.deepEqual(f.retries, ["deterministic_handler_required"]);
+  assert.equal(f.counts().providers, 0);
+  assert.equal(f.counts().factories, 0);
+  assert.equal(f.commits.length, 0);
+});

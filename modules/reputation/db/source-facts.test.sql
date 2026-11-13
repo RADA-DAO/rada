@@ -1,4 +1,6 @@
 BEGIN;
+SET LOCAL ROLE reputation_operator;
+SELECT reputation.configure_rule('{"rulesHash":"synthetic-source-fact-rule","key":"synthetic-raid","points":"0.1","category":"participation","cap":{"unit":"occurrence","limit":1},"validFrom":"2020-01-01T00:00:00Z","validTo":null}');
 SET LOCAL ROLE reputation_ingress;
 DO $$
 DECLARE result jsonb; again jsonb; s uuid:='a0760000-0000-4000-8000-000000000001'; evidence jsonb:='[{"id":"proof-1","url":"https://example.invalid/comment/1","label":"Observed comment"},{"id":"proof-2","url":"https://example.invalid/comment/2","label":"Observed comment"}]';
@@ -16,10 +18,21 @@ BEGIN
  RAISE EXCEPTION 'source key rebound to different actor';
  EXCEPTION WHEN unique_violation THEN NULL; END;
 END $$;
+SET LOCAL ROLE reputation_worker;
+DO $$
+DECLARE ordinary jsonb; fact jsonb; result jsonb;
+BEGIN
+ ordinary:=reputation.claim_job(ARRAY['interpretation','external'],60);
+ IF ordinary->>'subjectId'='a0760000-0000-4000-8000-000000000001' THEN RAISE EXCEPTION 'semantic worker stole deterministic source fact'; END IF;
+ fact:=reputation.claim_job(ARRAY['source_fact'],60);
+ IF fact IS NULL OR fact->>'lane'<>'source_fact' OR fact->>'subjectId'<>'a0760000-0000-4000-8000-000000000001' THEN RAISE EXCEPTION 'deterministic source fact not claimable'; END IF;
+ result:=reputation.complete_report((fact->>'itemId')::uuid,(fact->>'leaseToken')::uuid,'synthetic-source-fact-rule','synthetic-raid','synthetic-raw-occurrence',fact->>'sourceId');
+ IF result->'item'->>'status'<>'accepted' OR result->'item'->>'points'<>'0.1' OR jsonb_array_length(result->'item'->'evidence')<>2 THEN RAISE EXCEPTION 'deterministic source completion lost rule or proofs'; END IF;
+END $$;
 SET LOCAL ROLE reputation_service;
 SELECT set_config('rada.subject_id','a0760000-0000-4000-8000-000000000001',true);
 DO $$ BEGIN
- IF reputation.summary('all')->>'pendingCount'<>'1' OR reputation.summary('all')->>'totalPoints'<>'0' THEN RAISE EXCEPTION 'ingress changed score or duplicated input'; END IF;
+ IF reputation.summary('all')->>'pendingCount'<>'0' OR reputation.summary('all')->>'totalPoints'<>'0.1' THEN RAISE EXCEPTION 'ingress changed score or duplicated input'; END IF;
  BEGIN
  PERFORM reputation.ingest_fact('a0760000-0000-4000-8000-000000000001','synthetic','forbidden','Synthetic','Forbidden source override','2026-01-01T00:00:00Z','[]');
  RAISE EXCEPTION 'public service acquired source ingress';

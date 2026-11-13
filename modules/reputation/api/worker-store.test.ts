@@ -47,3 +47,20 @@ test("worker provider work is outside adapter queries; leases and retry use role
   assert.ok(calls.every((sql) => !sql.includes("BEGIN")));
   assert.ok(calls.every((sql) => /^SELECT reputation\.[a-z_]+\(/.test(sql)));
 });
+
+test("semantic defaults exclude source facts while deterministic handlers opt in explicitly", async () => {
+  const calls: unknown[][] = [];
+  const pool = {
+    query: (_sql: string, values: unknown[]) => {
+      calls.push(values);
+      return Promise.resolve({ rows: [{ result: null }] });
+    },
+  } as unknown as pg.Pool;
+  const store = new PostgresReputationWorkerStore(pool);
+  await store.claim();
+  await store.claim(["source_fact"], 60);
+  assert.deepEqual(calls, [
+    [["interpretation", "external"], 60],
+    [["source_fact"], 60],
+  ]);
+});
