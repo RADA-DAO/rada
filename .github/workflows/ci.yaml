@@ -8,7 +8,7 @@ permissions:
 jobs:
   checks:
     if: always()
-    needs: [quality, database, dependency-review, e2e, visual]
+    needs: [quality, database, dependency-review, e2e, sdk, visual]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every verification gate
@@ -17,6 +17,7 @@ jobs:
           DATABASE: ${{ needs.database.result }}
           DEPENDENCIES: ${{ needs.dependency-review.result }}
           E2E: ${{ needs.e2e.result }}
+          SDK: ${{ needs.sdk.result }}
           VISUAL: ${{ needs.visual.result }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
@@ -24,6 +25,7 @@ jobs:
           test "$QUALITY" = success
           test "$DATABASE" = success
           test "$E2E" = success
+          test "$SDK" = success
           test "$VISUAL" = success
           if [ "$EVENT_NAME" = pull_request ]; then
             test "$DEPENDENCIES" = success
@@ -161,10 +163,37 @@ jobs:
       - run: npm run e2e
         env:
           E2E_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-diagnostics
+          path: test-results
+          retention-days: 7
+  sdk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.7
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium webkit
       - name: Rehearse local SDK app publication and rollback
         run: npm run test:local-platform
       - name: Verify shared UI and SDK on phone, tablet and desktop
         run: npm run test:ui-sdk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: sdk-diagnostics
+          path: test-results
+          retention-days: 7
   visual:
     runs-on: ubuntu-24.04
     # The same image tools/visual-update.sh uses, so baselines match byte for byte.

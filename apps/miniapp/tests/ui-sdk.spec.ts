@@ -373,11 +373,45 @@ test("native Back, swipe and repeated reopen dispose the app without accumulatin
     if (!screen) throw new Error("Trusted shell viewport required");
     const startX = screen.x + 4;
     const startY = Math.min(screen.y + screen.height / 2, viewport.height - 64);
+    expect(
+      await page.evaluate(
+        ({ x, y }) =>
+          document.elementFromPoint(x, y) === document.querySelector(".screen"),
+        { x: startX, y: startY },
+      ),
+    ).toBe(true);
+    await page.locator(".screen").evaluate((node) => {
+      node.addEventListener(
+        "pointerdown",
+        (event) => {
+          (node as HTMLElement).dataset.uiGutterCaptured = String(
+            node.hasPointerCapture((event as PointerEvent).pointerId),
+          );
+        },
+        { once: true },
+      );
+    });
     await page.mouse.move(startX, startY);
     await page.mouse.down();
+    await expect(page.locator(".screen")).toHaveAttribute(
+      "data-ui-gutter-captured",
+      "true",
+    );
     await page.mouse.move(startX + screen.width * 0.65, startY + 2, {
       steps: 12,
     });
+    await expect
+      .poll(() =>
+        page
+          .locator(".screen-wrap")
+          .evaluate(
+            (node) =>
+              Number.parseFloat(
+                (node as HTMLElement).style.getPropertyValue("--back-x"),
+              ) || 0,
+          ),
+      )
+      .toBeGreaterThan(0);
     await stableHeader();
     await page.mouse.up();
     await expect(page.locator("iframe[sandbox='allow-scripts']")).toHaveCount(

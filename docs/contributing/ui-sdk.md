@@ -78,9 +78,9 @@ production release; do not label browser emulation as real-device verification.
 ## Build cost
 
 The baseline package measured 49,267 bytes initial gzip JS and 42,349 bytes
-Brotli. This UI/SDK pass measures 49,749 / 42,760 bytes, including stable shell
+Brotli. Initial UI validation at `b827a9e` measured 49,749 / 42,760 bytes, including stable shell
 chrome, shared viewport handling and the conditional readable-surface guard.
 The two initial JS ceilings become 50,000 / 43,000 bytes; other budgets stay
-unchanged. Embedded UI-context and dialog support remain in the lazy community
+unchanged. `npm run check:bundle` reports the exact current head. Embedded UI-context and dialog support remain in the lazy community
 app chunk. Removing unused Outfit declarations reduces emitted font bytes;
 canonical card fonts and archived font sources/licenses are preserved.
