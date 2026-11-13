@@ -151,7 +151,7 @@ try {
   }
   for (let index = 0; index < candidate.facts.length; index++) {
     deadline.throwIfAborted();
-    const job = await workerStore.claim(["interpretation"], 60);
+    const job = await workerStore.claim(["source_fact"], 60);
     assert.ok(job, "candidate_job_missing");
     const fact = factsByItem.get(job.itemId);
     assert.ok(fact, "unexpected_other_job_claimed");
@@ -180,7 +180,7 @@ try {
     metrics.committed++;
     metrics.replayChecks++;
   }
-  assert.equal(await workerStore.claim(["interpretation"], 60), null);
+  assert.equal(await workerStore.claim(["source_fact"], 60), null);
   const firstOriginal = originals.entries().next().value;
   if (firstOriginal) {
     const [itemId, input] = firstOriginal;
