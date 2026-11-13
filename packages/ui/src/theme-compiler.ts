@@ -1,19 +1,17 @@
-import { contrastAlpha } from "./contrast-alpha.ts";
+import {
+  blendSurface,
+  contrastAlpha,
+  surfaceContrastGuard,
+} from "./contrast-alpha.ts";
 
-/**
- * The application has at most two authored JPEGPE colours: background and,
- * once Level 2 is open, accent. This compiler preserves those exact HEX values
- * and derives only semantic UI roles (surfaces, readable ink, borders and
- * interaction states). A locked accent receives a neutral control fallback,
- * never a synthetic collectible colour. It never classifies, scores, rerolls
- * or "improves" a collectible colour.
+/** Preserve exact authored background/accent HEX; derive semantic UI roles only.
+ * Locked accents use neutral controls, never synthetic collectible traits.
  */
-
 type RGB = { r: number; g: number; b: number };
 const rgbChannels = ({ r, g, b }: RGB): string => [r, g, b].join(" ");
 type OKLCH = { l: number; c: number; h: number };
 
-export const DEFAULT_THEME_BACKGROUND = "#243B34";
+export const DEFAULT_THEME_BACKGROUND = "#164E42";
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -132,7 +130,7 @@ function oklchToHex(color: OKLCH): string {
 
 function colorWithAlpha(hex: string, alpha: number): string {
   const rgb = hexToRgb(hex);
-  return `rgb(${rgbChannels(rgb)} / ${clamp(alpha, 0, 1).toFixed(3)})`;
+  return `rgb(${rgbChannels(rgb)} / ${String(Number(clamp(alpha, 0, 1).toFixed(3)))})`;
 }
 
 export function relativeLuminance(hex: string): number {
@@ -195,7 +193,7 @@ export function compileTheme(
   const environmentL =
     sourceTone === "light"
       ? clamp(authored.l, 0.68, 0.82)
-      : clamp(authored.l, 0.25, 0.42);
+      : clamp(authored.l, 0.25, 0.56);
   const environmentC = neutral
     ? Math.min(authored.c, 0.018)
     : Math.min(authored.c, maxOklchChroma(environmentL, themeHue) * 0.94);
@@ -270,13 +268,16 @@ export function compileTheme(
   if (contrastRatio(surfacePigment, ink) < 4.5)
     ink = readableInk(surfacePigment);
   const inkRgb = hexToRgb(ink);
-  // Muted ink must read on water as well as the full glass gradient.
+  const checked = surfaceContrastGuard(ink, contrastRatio);
+  const selected = checked(
+    blendSurface(surfacePigment, authoredAccent, tone === "dark" ? 0.24 : 0.16),
+  );
   const muted = colorWithAlpha(
     ink,
     contrastAlpha(
       Object.values(inkRgb),
       [waterTop, waterMid, waterBottom]
-        .concat(surfacePigment, surfaceHighlight, surfaceSoft)
+        .concat(surfacePigment, surfaceHighlight, surfaceSoft, selected)
         .map((hex) => Object.values(hexToRgb(hex))),
       tone === "dark" ? 0.68 : 0.62,
       contrastRatio,
@@ -335,7 +336,7 @@ export function compileTheme(
   );
 
   return {
-    chrome: waterTop,
+    chrome: checked(waterTop),
     tone,
     tokens: {
       // theme-base is always exact; accent-solid is exact once the accent is
@@ -343,12 +344,12 @@ export function compileTheme(
       "--theme-base": authoredBackground,
       "--accent-solid": authoredAccent,
       "--theme-ring": "#000000",
-      "--water-top": waterTop,
-      "--water-mid": waterMid,
-      "--water-bottom": waterBottom,
-      "--environment-top": waterTop,
-      "--environment-mid": waterMid,
-      "--environment-bottom": waterBottom,
+      "--water-top": checked(waterTop),
+      "--water-mid": checked(waterMid),
+      "--water-bottom": checked(waterBottom),
+      "--environment-top": checked(waterTop),
+      "--environment-mid": checked(waterMid),
+      "--environment-bottom": checked(waterBottom),
       "--accent": authoredAccent,
       "--accent-2": accentHighlight,
       "--accent-3": accentShade,
@@ -360,15 +361,15 @@ export function compileTheme(
       "--text-primary": ink,
       "--text-muted": muted,
       "--shadow-rgb": rgbChannels(shadow),
-      "--surface-pigment": surfacePigment,
-      "--surface-highlight": surfaceHighlight,
+      "--surface-pigment": checked(surfacePigment),
+      "--surface-highlight": checked(surfaceHighlight),
       "--surface-shadow": surfaceShadow,
-      "--surface-base": surfacePigment,
-      "--surface-raised": surfaceHighlight,
-      "--surface-soft": surfaceSoft,
-      "--glass-fill": surfacePigment,
-      "--glass-fill-strong": surfaceHighlight,
-      "--glass-fill-soft": surfaceSoft,
+      "--surface-base": checked(surfacePigment),
+      "--surface-raised": checked(surfaceHighlight),
+      "--surface-soft": checked(surfaceSoft),
+      "--glass-fill": checked(surfacePigment),
+      "--glass-fill-strong": checked(surfaceHighlight),
+      "--glass-fill-soft": checked(surfaceSoft),
       "--glass-edge":
         tone === "dark" ? "rgb(255 255 255 / .2)" : "rgb(255 255 255 / .82)",
       "--glass-edge-bottom": edgeBottom,
@@ -382,13 +383,13 @@ export function compileTheme(
       "--control-primary-bg": authoredAccent,
       "--control-primary-ink": accentInk,
       "--control-primary-border": accentBorder,
-      "--control-secondary-bg": surfaceHighlight,
+      "--control-secondary-bg": checked(surfaceHighlight),
       "--control-secondary-ink": ink,
       "--control-secondary-border":
         tone === "dark" ? "rgb(255 255 255 / .2)" : "rgb(255 255 255 / .82)",
-      "--control-selected-bg": accentSoft,
+      "--control-selected-bg": selected,
       "--control-selected-ink": ink,
-      "--control-disabled-bg": surfaceSoft,
+      "--control-disabled-bg": checked(surfaceSoft),
       "--control-disabled-ink": muted,
     },
   };

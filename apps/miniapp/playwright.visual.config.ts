@@ -17,6 +17,7 @@ export default defineConfig({
     locale: "en-US",
     timezoneId: "UTC",
     deviceScaleFactor: 1,
+    trace: "retain-on-failure",
   },
   projects: [
     ...["chromium", "webkit"].flatMap((browserName) => [

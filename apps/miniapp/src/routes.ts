@@ -87,13 +87,12 @@ export function installShellSwipe(
 
 /** Keep bfcache restores live, and dispose resources on a final page departure. */
 export function onPageHide(dispose: () => void): void {
-  window.addEventListener(
-    "pagehide",
-    (event) => {
-      if (!event.persisted) dispose();
-    },
-    { once: true },
-  );
+  const leave = (event: PageTransitionEvent) => {
+    if (event.persisted) return;
+    window.removeEventListener("pagehide", leave);
+    dispose();
+  };
+  window.addEventListener("pagehide", leave);
 }
 
 const workspacePages = ["profile", "launcher", "community"] as const;

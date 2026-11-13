@@ -2,10 +2,12 @@ import { strict as assert } from "node:assert";
 import { createHmac } from "node:crypto";
 import { createServer } from "node:net";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 import {
   LOCAL_TOKEN,
   localEnvironment,
   localLaunch,
+  inlineScriptString,
   requireFreePort,
   requireLocalDocker,
   roleUrl,
@@ -15,6 +17,20 @@ import {
   wantsColimaTunnel,
   validateColimaConfig,
 } from "./local-platform-tunnel.mjs";
+
+void test("inline fixture strings cannot terminate a script or change their value", () => {
+  for (const value of [
+    "</script><script>globalThis.injected=true</script>",
+    'quotes " and \\ slashes / with \u2028 and \u2029',
+    localLaunch(101, 123),
+  ]) {
+    const encoded = inlineScriptString(value);
+    assert.doesNotMatch(encoded, /[<>\u2028\u2029]/);
+    const context = {};
+    assert.equal(runInNewContext(encoded, context), value);
+    assert.equal("injected" in context, false);
+  }
+});
 
 void test("fixture environment excludes provider, database, auth and Vite overrides", () => {
   const env = localEnvironment({

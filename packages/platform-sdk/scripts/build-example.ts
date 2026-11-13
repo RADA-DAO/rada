@@ -31,8 +31,32 @@ export async function buildExample(outputRoot: string, revision: 1 | 2 = 1) {
       },
     },
   ).outputText;
-  const script = `const translations=${JSON.stringify(translations)};const revision=${String(revision)};\n${client}`;
-  const html = `<main><h1 data-copy="title"></h1><p data-copy="description"></p><p id="release"></p><output id="count" aria-live="polite"></output><nav><button id="increment" data-copy="increment"></button><button id="back" data-copy="back"></button></nav></main><style>body{margin:0;font:16px system-ui;background:#eff8f5;color:#153e35}main{box-sizing:border-box;max-width:38rem;margin:auto;padding:24px}h1{font-size:1.75rem}p{line-height:1.5}output{display:block;margin:24px 0;font-variant-numeric:tabular-nums}nav{display:flex;flex-wrap:wrap;gap:12px}button{font:inherit;min-height:44px;padding:10px 16px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit}button:focus-visible{outline:3px solid #22755c;outline-offset:3px}</style><script>${script.replace(/<\/script/gi, "<\\/script")}</script>`;
+  const keyboardSource = (
+    await readFile(new URL("../src/keyboard.ts", import.meta.url), "utf8")
+  )
+    .replace(/^import "\.\/keyboard\.css";\s*/m, "")
+    .replace(/^export /gm, "");
+  const keyboard = ts.transpileModule(keyboardSource, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.None,
+    },
+  }).outputText;
+  const styles = (
+    await Promise.all(
+      [
+        "../../ui/src/primitives.css",
+        "../../ui/src/components.css",
+        "../../ui/src/community.css",
+        "../src/keyboard.css",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
+  if (/@import|url\s*\(/i.test(styles))
+    throw new Error("Community styles must be self-contained");
+  const markup = await readFile(new URL("view.html", source), "utf8");
+  const script = `${keyboard}\nconst translations=${JSON.stringify(translations)};const revision=${String(revision)};\n${client}`;
+  const html = `${markup}<style>${styles}</style><script>${script.replace(/<\/script/gi, "<\\/script")}</script>`;
   const bytes = Buffer.from(html, "utf8");
   if (bytes.length > 1024 * 1024)
     throw new Error("Example artifact exceeds host budget");

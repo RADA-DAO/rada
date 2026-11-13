@@ -49,14 +49,26 @@ await test("canonical foundations preserve the profile vocabulary", () => {
     "--rada-radius-control": "16px 11px 16px 11px",
     "--rada-radius-small": "12px 8px 12px 8px",
     "--rada-control-height": "46px",
+    "--rada-field-height": "48px",
+    "--rada-font-size-body": "1.0625rem",
+    "--rada-font-size-field": "1.0625rem",
+    "--rada-font-size-section": "1.375rem",
+    "--rada-font-size-title": "clamp(1.6875rem, 7vw, 2.1875rem)",
+    "--rada-font-weight-body": "400",
+    "--rada-font-weight-control": "500",
+    "--rada-font-weight-heading": "600",
+    "--rada-shell-width": "900px",
     "--rada-ease-emphasized": "cubic-bezier(.2, .8, .2, 1)",
   };
   for (const [name, value] of Object.entries(expected))
     assert.equal(declarations.get(name), normalize(value));
-  assert.match(declarations.get("--rada-font-body") ?? "", /^Onest,/);
+  assert.match(
+    declarations.get("--rada-font-body") ?? "",
+    /^-apple-system, BlinkMacSystemFont,/,
+  );
   assert.match(
     declarations.get("--rada-font-heading") ?? "",
-    /^Outfit, Onest,/,
+    /^var\(--rada-font-body\)/,
   );
 });
 
@@ -94,4 +106,38 @@ await test("one public entry supplies all recipes with resolvable token referenc
       /\b\d*\.?\d+(?:px|rem|cqw|ms)\b/,
       "recipe dimensions belong to tokens",
     );
+});
+
+await test("the current matte canvas is static and the child foundation has no external assets", async () => {
+  const community = await readFile(new URL("community.css", source), "utf8");
+  assert.doesNotMatch(community, /@import|url\s*\(|https?:|#[0-9a-f]{3,8}\b/i);
+  assert.match(community, /background: transparent/);
+  assert.match(community, /var\(--rada-font-size-body\)/);
+  assert.equal(declarations.get("--rada-environment-highlight-opacity"), ".3");
+  assert.match(
+    declarations.get("--rada-environment-highlight") ?? "",
+    /ellipse at 50% -8%/,
+  );
+});
+
+await test("systemic copy scales with root text size while collectible tokens stay separate", () => {
+  for (const name of ["--rada-font-size-body", "--rada-font-size-field"]) {
+    const value = declarations.get(name) ?? "";
+    assert.match(value, /^1\.0625rem$/);
+    const factor = Number.parseFloat(value);
+    assert.equal(
+      factor * 16,
+      17,
+      "normal root retains the production 17px size",
+    );
+    assert.equal(factor * 20, 21.25, "125% root grows copy once");
+  }
+  assert.equal(declarations.get("--rada-font-size-section"), "1.375rem");
+  assert.match(
+    declarations.get("--rada-font-size-title") ?? "",
+    /^clamp\(1\.6875rem, 7vw, 2\.1875rem\)$/,
+  );
+  const card = tokensCss.split("/* Resolve collectible-local colors")[1];
+  assert.ok(card, "collectible-local geometry remains its own token scope");
+  assert.match(card, /--rada-frog-name-font:/);
 });

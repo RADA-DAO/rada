@@ -182,3 +182,13 @@ These operations use the existing `apps_service` login and migrations 0059–006
 no new environment variables or staging credentials are required. The bridge
 returns `capability_denied` after withdrawal, permission removal or revocation,
 `invalid_request` for invalid scores, and `rate_limited` when a budget is exhausted.
+
+## Shared UI context
+
+Use `rada.member.subscribeContext(listener)` for the sanitized, live UI
+projection and `rada.member.openDialog(dialog)` for an app-scoped modal that
+participates in native Back. Existing `context.get` callers still receive
+`locale`. See the [SDK UI contract](../../packages/platform-sdk/README.md#live-community-ui-context)
+and the [example](../../packages/platform-sdk/examples/hello-community/README.md#shared-ui-and-inputs).
+Theme updates preserve the mounted document and input drafts. Never replace
+this projection with a cached profile document or raw Telegram data.

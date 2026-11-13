@@ -66,20 +66,46 @@
   --rada-font-brand: Unbounded, Onest, sans-serif;
   --rada-line-height-section: 1.24;
   --rada-tracking-section: -0.025em;
-  --rada-font-weight-section: 730;
-  --rada-font-size-tab: 13px;
-  --rada-font-weight-tab: 680;
+  --rada-font-weight-section: 600;
+  --rada-font-size-tab: 0.875rem;
+  --rada-font-weight-tab: 600;
   --rada-radius-tabs: 17px;
   --rada-field-height: 48px;
   --rada-field-padding: 12px 13px;
   --rada-field-textarea-height: 140px;
   --rada-page-gutter: 18px;
-  --rada-environment-fill: linear-gradient(
-    180deg,
-    var(--water-top),
-    var(--water-mid) 50%,
-    var(--water-bottom)
-  );
+  /* Static matte canvas from the current production bridge; no idle shader. */
+  --rada-environment-highlight:
+    radial-gradient(ellipse at 50% -8%, #fff7, transparent 72%),
+    linear-gradient(180deg, transparent 48%, #0003);
+  --rada-environment-highlight-opacity: 0.3;
+  --rada-environment-fill:
+    radial-gradient(
+      circle at 12% 26%,
+      color-mix(in srgb, var(--theme-base) 82%, var(--accent) 18%),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 92% 18%,
+      color-mix(in srgb, var(--accent-2) 18%, transparent),
+      transparent 31%
+    ),
+    radial-gradient(
+      circle at 6% 72%,
+      color-mix(in srgb, var(--accent-3) 14%, transparent),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 62%,
+      color-mix(in srgb, var(--theme-base) 20%, transparent),
+      transparent 35%
+    ),
+    linear-gradient(
+      180deg,
+      var(--water-top),
+      var(--water-mid) 56%,
+      var(--water-bottom)
+    );
   --rada-glass-fill: linear-gradient(
     145deg,
     var(--surface-raised),
@@ -96,17 +122,19 @@
   --rada-row-height: 64px;
   --rada-reading-width: 740px;
   --rada-space: 8px;
-  --rada-font-body: Onest, ui-sans-serif, system-ui, sans-serif;
-  --rada-font-heading: Outfit, Onest, ui-sans-serif, system-ui, sans-serif;
-  --rada-font-size-small: 12px;
-  --rada-font-size-body: 14px;
-  --rada-font-size-field: 16px;
-  --rada-font-size-section: 22px;
-  --rada-font-size-title: clamp(27px, 7vw, 35px);
-  --rada-font-weight-body: 500;
-  --rada-font-weight-control: 720;
-  --rada-font-weight-heading: 750;
-  --rada-line-height-body: 1.5;
+  --rada-font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --rada-font-heading: var(--rada-font-body);
+  --rada-font-size-small: 0.875rem;
+  --rada-font-size-body: 1.0625rem;
+  --rada-font-size-field: 1.0625rem;
+  --rada-font-size-section: 1.375rem;
+  --rada-font-size-title: clamp(1.6875rem, 7vw, 2.1875rem);
+  --rada-font-weight-body: 400;
+  --rada-font-weight-control: 500;
+  --rada-font-weight-heading: 600;
+  --rada-line-height-body: 1.45;
   --rada-line-height-control: 1.35;
   --rada-line-height-heading: 1.13;
   --rada-tracking-heading: -0.035em;
@@ -153,6 +181,7 @@
   --rada-sheet-width: 32rem;
   --rada-collection-column: 9rem;
   --rada-viewport-height: 100dvh;
+  --rada-shell-native-lanes: 144px;
   --rada-shell-wordmark-size: 23px;
   --rada-shell-wordmark-tracking: -0.085em;
   --rada-shell-workspace-min: 220px;
@@ -166,7 +195,7 @@
   --rada-shell-preview-height: 360px;
   --rada-button-padding: 11px 17px;
   --rada-shell-font: var(--rada-font-body);
-  --rada-shell-width: 430px;
+  --rada-shell-width: 900px;
   --rada-shell-control-height: var(--rada-control-height);
   --rada-radius-legacy: 1rem;
   --rada-zero-length: 0px;

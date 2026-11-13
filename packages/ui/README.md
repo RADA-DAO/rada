@@ -68,15 +68,52 @@ surface, including authored colours; neither band is an artwork accent.
 `RADA_DESIGN_TOKEN_NAMES` exports their names, with `DesignTokenName` and
 `DesignTokens` types. `ThemeTokenName` describes the 47
 compiler-owned semantic color roles; `RadaTokenName` covers both groups.
-Foundations include Onest body and Outfit heading stacks, the spacing and type
-scales, offset panel/control/small radii, semantic shadows, motion durations and
-curves, and ordered layers. OFL-licensed Onest, Outfit, Sora and Unbounded ship as separate WOFF2 assets
-with licenses in `src/fonts/`. `fonts.css` declares local URLs, `font-display: swap`
-and per-file `unicode-range`; Vite emits hashed assets without inlining. System
-font fallbacks remain available while fonts load. Onest is the body/control face, Outfit the
-workspace heading face, Unbounded the OS badge, and Sora the collectible name. Reduced motion is honored by the shared recipes.
+Foundations use the current production native system body and heading stacks,
+17 px rem-based copy/fields, 46 px action targets and the released offset radii.
+Unbounded remains the OS wordmark face and Sora the collectible name; their
+OFL-licensed assets and existing card-specific fallback faces remain unchanged.
+Shared body, fields, section headings and title bounds use rem units: body and
+fields remain 17 px at a 16 px root, then grow with the shell's text-size setting.
+The sandbox receives the already computed parent root font size and applies it
+once; it must not multiply the browser's root scale again. Collectible/HUD and
+brand geometry remains in its existing card-local scope. Reduced motion is
+honored by the shared recipes.
 
-The committed subsets were produced from the previously embedded variable WOFF2 fonts using temporary FontTools 4.67.0 (`fonttools[woff]`, not a project dependency): `instantiateVariableFont(font, {"wght": weight})`, then `subset.Subsetter` with U+0020–017F, U+0300–036F, U+0400–045F, U+0490–0491, U+2000–206F, U+20AC, U+20B4 and U+2212, saved with `font.flavor = "woff2"`. Static weights are Onest 500/680/720/730/750/800, Outfit 500/730/750, Sora 800 and Unbounded 500/720. Onest 730/750/800 retain only combining marks and Cyrillic for the Outfit/Sora fallback; those two source faces have no Cyrillic. Other files retain supported glyphs from the full selection, including digits and basic punctuation. Original glyph outlines, layout features and metrics are preserved.
+## Production foundation provenance
+
+The UI-only source reference is `4ezzy/rada-dao-miniapp` at
+`064c32e23c5069d64777e7491a628c13c8d8d77c`: `src/theme-compiler.ts:19`,
+`src/ui/typography-tokens.css:3`, `src/ui/rada-design.css:5–14,24,69,86`,
+`src/apps/desktop/glass-home.css:318–347` and
+`packages/rada-miniapp-bridge/src/design-system.css:57–105`.
+The guest pigment is `#164E42`; the environment uses its static matte highlight,
+with no idle water renderer or perpetual animation. The shared shell can span
+900 px, while each collectible retains its own 4:5 geometry and size cap.
+
+The color derivation starts with the current production compiler. Existing
+stronger muted-ink contrast and the two-band black/white keyboard focus ring
+remain accessibility safeguards. A conditional material guard also moves only
+semantic water/glass stops that cannot support the selected ink to 5:1, using
+the smallest sRGB mix toward its readable pole. For mid-gray, production's water
+mid/bottom are too dark for its glass-selected dark ink: only those failing stops
+move to `#828282`; the already readable top and glass remain unchanged. The
+production `.56` dark-range cap and exact authored background/accent remain;
+the default turquoise water/glass palette is unchanged. Selected rows resolve their
+accent tint against the semantic glass base before painting, then apply the same
+bounded readability guard. Secondary ink also checks that selected surface; this
+avoids unreadable stacked white tint on the matte canvas. These are intentional accessibility
+deviations, rather than reverting every palette to the former darker style.
+Card renderer, material,
+geometry and typography sources are not redesigned by this foundation update.
+
+`community.css` supplies a transparent child document/workspace recipe. A
+self-contained artifact can embed `primitives.css`, `components.css` and
+`community.css` in that order, with the host's bounded semantic/foundation
+context. These stylesheets contain no imports or external URLs. They do not
+install keyboard/viewport listeners or receive credentials. The SDK owns that
+separate context and lifecycle contract.
+
+The committed subsets were produced from the previously embedded variable WOFF2 fonts using temporary FontTools 4.67.0 (`fonttools[woff]`, not a project dependency): `instantiateVariableFont(font, {"wght": weight})`, then `subset.Subsetter` with U+0020–017F, U+0300–036F, U+0400–045F, U+0490–0491, U+2000–206F, U+20AC, U+20B4 and U+2212, saved with `font.flavor = "woff2"`. Loaded weights are Onest 500/680/720/730/750/800, Sora 800 and Unbounded 500/720. The unused legacy Outfit subsets remain archived in the package but have no font-face declarations or initial-load requests. Onest 730/750/800 retain only combining marks and Cyrillic for legacy Outfit and current Sora fallback; those source faces have no Cyrillic. Other files retain supported glyphs from the full selection, including digits and basic punctuation. Original glyph outlines, layout features and metrics are preserved.
 
 The guest palette matches `compileTheme(DEFAULT_THEME_BACKGROUND)` at first paint.
 Colors remain compiler-owned. Collectible geometry and material tokens resolve

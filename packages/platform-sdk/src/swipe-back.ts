@@ -216,6 +216,10 @@ export function installSwipeBack(
       locked: false,
       samples: [{ x: event.clientX, at: event.timeStamp }],
     };
+    // A move can cross the bare shell gutter into an opaque iframe before
+    // horizontal slop resolves. Keep that sequence in the trusted document;
+    // descendants retain native targeting and vertical intent still releases it.
+    if (target === screen) screen.setPointerCapture(event.pointerId);
     options.onActiveChange?.(true);
   }
   function move(event: PointerEvent) {
