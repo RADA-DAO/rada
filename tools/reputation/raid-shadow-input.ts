@@ -196,3 +196,16 @@ export function privateAliases() {
     );
   return { actor, opaque };
 }
+
+/** Known credits may be checked in SQL without declaring incomplete raw coverage green. */
+export function allowKnownRaidSubset(comparison: {
+  problems: readonly string[];
+  differences: readonly unknown[];
+}): boolean {
+  return (
+    comparison.differences.length === 0 &&
+    (comparison.problems.length === 0 ||
+      (comparison.problems.length === 1 &&
+        comparison.problems[0] === "blocked_raw_source"))
+  );
+}

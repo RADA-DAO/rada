@@ -4,7 +4,11 @@ import { createHash } from "node:crypto";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadRaidCapture, privateAliases } from "./raid-shadow-input.ts";
+import {
+  loadRaidCapture,
+  privateAliases,
+  allowKnownRaidSubset,
+} from "./raid-shadow-input.ts";
 void test("same-length capture corruption blocks before source epoch or database access", async () => {
   const directory = await mkdtemp(join(tmpdir(), "raid-capture-test-"));
   try {
@@ -52,5 +56,48 @@ void test("ephemeral actor aliases are stable within a run and isolate actors an
   assert.notEqual(
     aliases.opaque("source", "same"),
     aliases.opaque("evidence", "same"),
+  );
+});
+
+void test("known raid SQL subset permits only coverage gaps while context and every served leaf stay exact", () => {
+  assert.equal(allowKnownRaidSubset({ problems: [], differences: [] }), true);
+  assert.equal(
+    allowKnownRaidSubset({ problems: ["blocked_raw_source"], differences: [] }),
+    true,
+  );
+  assert.equal(
+    allowKnownRaidSubset({
+      problems: ["source_context_mismatch"],
+      differences: [],
+    }),
+    false,
+  );
+  assert.equal(
+    allowKnownRaidSubset({
+      problems: ["blocked_raw_source", "source_context_mismatch"],
+      differences: [],
+    }),
+    false,
+  );
+  assert.equal(
+    allowKnownRaidSubset({
+      problems: ["blocked_raw_source"],
+      differences: ["opaque-leaf-difference"],
+    }),
+    false,
+  );
+  assert.equal(
+    allowKnownRaidSubset({
+      problems: [],
+      differences: ["opaque-leaf-difference"],
+    }),
+    false,
+  );
+  assert.equal(
+    allowKnownRaidSubset({
+      problems: ["duplicate_served_raid_key"],
+      differences: [],
+    }),
+    false,
   );
 });
