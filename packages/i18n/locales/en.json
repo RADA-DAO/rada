@@ -1,4 +1,5 @@
 {
+  "reputation": { "title": "Reputation", "tasksTitle": "Tasks" },
   "common": {
     "loading": "Loading…",
     "retry": "Try again",

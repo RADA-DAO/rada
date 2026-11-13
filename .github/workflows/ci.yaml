@@ -8,7 +8,7 @@ permissions:
 jobs:
   checks:
     if: always()
-    needs: [quality, database, dependency-review, e2e, visual]
+    needs: [quality, database, dependency-review, e2e, visual, reputation]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every verification gate
@@ -18,6 +18,7 @@ jobs:
           DEPENDENCIES: ${{ needs.dependency-review.result }}
           E2E: ${{ needs.e2e.result }}
           VISUAL: ${{ needs.visual.result }}
+          REPUTATION: ${{ needs.reputation.result }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -eu
@@ -25,6 +26,7 @@ jobs:
           test "$DATABASE" = success
           test "$E2E" = success
           test "$VISUAL" = success
+          test "$REPUTATION" = success
           if [ "$EVENT_NAME" = pull_request ]; then
             test "$DEPENDENCIES" = success
           fi
@@ -114,6 +116,62 @@ jobs:
       - run: npm run test:api:db
         env:
           API_TEST_DATABASE_URL: postgresql://postgres:fixture-password@localhost:5432/rada_test
+  reputation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11-bookworm@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826
+        env:
+          POSTGRES_DB: reputation_test_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d reputation_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: reputation_test_ci
+      PGPASSWORD: fixture-password
+      PG_TEST_URL: postgresql://postgres:fixture-password@localhost:5432/reputation_test_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:db
+      - name: Verify actual SQL concurrency and recovery
+        run: node --test tools/reputation-postgres-test.ts
+      - name: Verify durable workers and coordinator against PostgreSQL
+        run: node --test --test-concurrency=1 tools/reputation-worker-test.ts tools/reputation-coordinator-test.ts
+      - name: Verify bounded store load
+        run: node tools/reputation-load.ts
+      - name: Verify 1000 realtime connections and recovery
+        run: |
+          ulimit -n 4096
+          REPUTATION_REALTIME_BURST=500 node tools/reputation-realtime.ts
+      - name: Prepare only synthetic browser missions
+        run: psql -X -v ON_ERROR_STOP=1 -c 'UPDATE reputation.missions SET enabled=false'
+      - run: npm run build:miniapp
+        env:
+          VITE_REPUTATION_ENABLED: "true"
+          VITE_TELEGRAM_APP_LINK: https://t.me/rada_fixture_bot/app
+      - name: Verify mobile and desktop with real reputation API and PostgreSQL
+        run: node tools/reputation-browser.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: reputation-browser
+          path: test-results/reputation
+          retention-days: 7
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04

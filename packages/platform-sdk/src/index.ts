@@ -14,6 +14,8 @@ export type {
   ModuleApi,
   ModuleBody,
   ModuleResponse,
+  ModuleStreamEvent,
+  ModuleStreamOptions,
   OfficialModule,
 } from "./module-api.ts";
 export type { PublishedApp } from "./published-apps.ts";

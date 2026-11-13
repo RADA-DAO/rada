@@ -1,4 +1,8 @@
 import { Tabs, setWorkspaceIndex } from "../../../packages/ui/src/tabs.ts";
+import {
+  REPUTATION_ROUTES,
+  type ReputationRoute,
+} from "../../../modules/reputation/ui/index.ts";
 import type { MessageKey } from "../../../packages/i18n/src/index.ts";
 import { Button, isSheetOpen } from "../../../packages/ui/src/index.ts";
 import {
@@ -28,7 +32,8 @@ type Page =
   | "holders"
   | SplashRoute
   | GovernanceRoute;
-export type Route = "launcher" | "community" | Page;
+// Reputation screens participate in the same back stack as other built-ins.
+export type Route = "launcher" | "community" | Page | ReputationRoute;
 export const home: NavEntry = { key: "launcher" };
 const pages: readonly string[] = [
   "launcher",
@@ -41,6 +46,7 @@ const pages: readonly string[] = [
   "treasury",
   ...SPLASH_ROUTES,
   ...GOVERNANCE_ROUTES,
+  ...REPUTATION_ROUTES,
 ];
 
 /** Screens are stack entries; sheets and running apps sit above them. */

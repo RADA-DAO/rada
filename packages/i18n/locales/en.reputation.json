@@ -1,0 +1,115 @@
+{
+  "tasks": "Tasks",
+  "title": "Reputation",
+  "navigation": "Participation",
+  "available": "Tasks for you",
+  "history": "Your activity",
+  "points": "{{points}} REP",
+  "lifetime": "All time: {{points}} REP",
+  "pendingCount": "Awaiting review: {{count}}",
+  "period": {
+    "label": "History period",
+    "today": "Today",
+    "week": "This week",
+    "previous_week": "Last week",
+    "all": "All time"
+  },
+  "category": {
+    "work": "Work",
+    "content": "Content",
+    "help": "Help",
+    "participation": "Participation"
+  },
+  "status": {
+    "accepted": "Accepted",
+    "pending": "Awaiting review",
+    "excluded": "Excluded",
+    "superseded": "Corrected"
+  },
+  "action": "Open task",
+  "verify": "Check completion",
+  "acknowledge": "Acknowledge",
+  "acknowledgementHint": "This records your acknowledgement.",
+  "checking": "Checking…",
+  "completed": "Completed",
+  "confirmed": "Confirmed. Your REP is up to date.",
+  "pending": "Saved. Awaiting review.",
+  "uncertain": "Confirmation has not arrived. Retry to check the same submission.",
+  "retry": "Retry",
+  "submit": "Submit",
+  "close": "Close",
+  "more": "Show more",
+  "required": "Complete this field.",
+  "loading": "Loading your reputation…",
+  "signIn": "Open from RADA",
+  "signInHint": "Sign in through the RADA bot to see your tasks and reputation.",
+  "empty": {
+    "tasks": "No tasks available",
+    "tasksHint": "You can still report work you have completed.",
+    "history": "No activity in this period",
+    "historyHint": "Confirmed results and submissions awaiting review will appear here."
+  },
+  "item": {
+    "title": "Result",
+    "row": "{{title}} · {{points}} REP",
+    "category": "Category",
+    "occurred": "Completed",
+    "recorded": "Recorded",
+    "rule": "Rule: {{hash}}",
+    "timezone": "Times shown in Kyiv time."
+  },
+  "report": {
+    "open": "Report completed work",
+    "hint": "Describe a concrete result. An attachment is optional; your report will await review.",
+    "title": "What did you complete?",
+    "description": "Describe the result",
+    "occurredAt": "When did you complete it?",
+    "evidence": "Evidence link",
+    "optional": "Optional HTTPS link",
+    "invalidDate": "Choose a valid date that is not in the future.",
+    "invalidUrl": "Enter an HTTPS link without login details."
+  },
+  "appeal": {
+    "open": "Ask for a review",
+    "message": "What should be reviewed?",
+    "hint": "Explain your concern. A review request does not remove existing points.",
+    "history": "Review requests",
+    "empty": "No review requests yet.",
+    "resolved": "Resolved",
+    "saved": "Review request saved.",
+    "statusOpen": "Open"
+  },
+  "error": {
+    "0": "Could not load the latest information. Please retry.",
+    "400": "Check the details and try again.",
+    "401": "Your session expired. Reopen RADA from the bot.",
+    "403": "This action is not available for your account.",
+    "404": "This result or task is no longer available.",
+    "409": "The task changed. Refresh and try again.",
+    "429": "Too many requests. Please wait and retry.",
+    "503": "Reputation is temporarily unavailable. Please retry shortly."
+  },
+  "tasksTitle": "Tasks",
+  "recover": "Check pending submission",
+  "recoveryHint": "A submission is awaiting confirmation. Check it before sending another report.",
+  "reason": {
+    "signed_acknowledgement": "Your acknowledgement was recorded.",
+    "trusted_external_evidence": "Completion was verified.",
+    "awaiting_interpretation": "Your report is awaiting review.",
+    "awaiting_trusted_evidence": "Completion is being checked.",
+    "frozen_rule_accepted": "Your completed work was credited under the applicable rules.",
+    "duplicate_occurrence": "This result was already recorded. It cannot earn points twice.",
+    "configured_cap_reached": "The point limit for this activity and period has been reached."
+  },
+  "share": {
+    "action": "Share summary",
+    "text": "My RADA reputation · {{period}}: {{points}} REP. Awaiting review: {{pending}}.",
+    "shared": "Summary shared.",
+    "copied": "Summary copied.",
+    "error": "Could not share. Please retry."
+  },
+  "award": {
+    "future": "On confirmation: {{points}}",
+    "earned": "Earned: {{points}}"
+  }
+}

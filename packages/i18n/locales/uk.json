@@ -1,4 +1,5 @@
 {
+  "reputation": { "title": "Репутація", "tasksTitle": "Завдання" },
   "common": {
     "loading": "Завантаження…",
     "retry": "Спробувати ще раз",

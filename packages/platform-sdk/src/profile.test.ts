@@ -1,6 +1,47 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { profileAdapter } from "./profile.ts";
+
+await test("verified subject cache is cleared when the launch credential changes", async () => {
+  const original = globalThis.fetch;
+  let credential = "tma synthetic-a";
+  const adapter = profileAdapter("/api/me", () => ({
+    Authorization: credential,
+  }));
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          subject_id: "synthetic-subject-a",
+          profile: { visibility: "private", public: null },
+          membership: { status: "member" },
+        }),
+      ),
+    );
+  try {
+    assert.equal(adapter.ownSubject(), null);
+    await adapter.readOwnProfile();
+    assert.equal(adapter.ownSubject(), "synthetic-subject-a");
+    credential = "tma synthetic-b";
+    assert.equal(adapter.ownSubject(), null);
+    globalThis.fetch = () => {
+      credential = "tma synthetic-c";
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            subject_id: "synthetic-subject-b",
+            profile: { visibility: "private", public: null },
+            membership: { status: "member" },
+          }),
+        ),
+      );
+    };
+    await assert.rejects(adapter.readOwnProfile(), /expired/);
+    assert.equal(adapter.ownSubject(), null);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
 const frog = {
   frog_id: "00000000-0000-4000-8000-000000000011",
   username: "Fixture",

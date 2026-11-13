@@ -1,0 +1,66 @@
+/* Tasks are the actionable surface; history stays a compact ledger. */
+.rada-reputation-workspace {
+  display: grid;
+  gap: var(--rada-space-5);
+}
+.rada-reputation-workspace > .rada-text:empty {
+  display: none;
+}
+.rada-reputation-summary {
+  padding-block: var(--rada-space-3) var(--rada-space-5);
+  border-bottom: var(--rada-rule);
+}
+.rada-reputation-summary .rada-text {
+  margin: 0;
+}
+.rada-reputation-summary .rada-text + .rada-text {
+  margin-top: var(--rada-space-2);
+}
+.rada-reputation-total {
+  color: var(--text-primary);
+  font: 730 var(--rada-font-size-title)/1.15 var(--rada-font-heading);
+  font-variant-numeric: tabular-nums;
+}
+.rada-reputation-task {
+  margin-block: var(--rada-space-3);
+  transition: opacity var(--rada-duration-fast) var(--rada-ease-standard);
+}
+.rada-reputation-task .rada-section-title {
+  margin-top: 0;
+}
+.rada-reputation-task .rada-actions {
+  margin-top: var(--rada-space-4);
+}
+.rada-reputation-task[data-status="checking"] {
+  opacity: 1;
+}
+.rada-reputation-task[data-status="completed"] {
+  background: var(--surface-soft);
+}
+.rada-reputation-view .rada-button {
+  transition:
+    transform var(--rada-duration-fast) var(--rada-ease-standard),
+    background var(--rada-duration-fast) var(--rada-ease-standard);
+}
+.rada-reputation-view .rada-button:active {
+  transform: translateY(var(--rada-border-width));
+}
+.rada-reputation-view .rada-tabs {
+  flex-wrap: wrap;
+}
+.rada-reputation-view .rada-facts-value .rada-reputation-date {
+  margin: 0;
+}
+.rada-reputation-view .rada-list-item .rada-button {
+  text-align: start;
+  justify-content: start;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rada-reputation-task,
+  .rada-reputation-view .rada-button {
+    transition: none;
+  }
+  .rada-reputation-view .rada-button:active {
+    transform: none;
+  }
+}

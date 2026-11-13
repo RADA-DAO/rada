@@ -1,4 +1,8 @@
 import {
+  registerReputationRoutes,
+  type ReputationStore,
+} from "../../../modules/reputation/index.ts";
+import {
   registerTreasuryRoutes,
   type TreasuryStore,
 } from "../../../modules/treasury/index.ts";
@@ -72,6 +76,7 @@ export function createApp(
   artwork?: ArtworkStore,
   notifications?: NotificationStore,
   treasury?: TreasuryStore,
+  reputation?: ReputationStore,
 ) {
   const policy =
     typeof access === "boolean"
@@ -122,6 +127,7 @@ export function createApp(
   if (notifications)
     registerNotificationRoutes(app, notifications, authenticated);
   if (treasury) registerTreasuryRoutes(app, treasury, authenticated);
+  if (reputation) registerReputationRoutes(app, reputation, authenticated);
   if (rankings) registerRankingRoutes(app, rankings);
   if (governance) registerGovernanceRoutes(app, governance, authenticated);
   app.get("/health", (c) => c.json({ status: "ok" }));

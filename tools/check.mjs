@@ -20,6 +20,7 @@ const rootFiles = new Set([
   "LICENSE",
   ".gitignore",
   ".dockerignore",
+  ".gitleaksignore",
   ".env.example",
   ".node-version",
   ".prettierignore",

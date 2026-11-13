@@ -49,7 +49,13 @@ export function profileAdapter(
   profileUrl: string,
   authHeaders: () => { Authorization: string } | null,
 ) {
+  let subject: { id: string; credential: string } | null = null;
   return {
+    /** Verified profile identity for scoped local state; never a launch credential. */
+    ownSubject: () =>
+      subject?.credential === authHeaders()?.Authorization
+        ? (subject?.id ?? null)
+        : null,
     async readOwnFrogs(signal?: AbortSignal): Promise<OwnFrog[]> {
       const headers = authHeaders();
       if (!headers) throw new Error("expired");
@@ -130,6 +136,7 @@ export function profileAdapter(
         throw new Error("unavailable");
     },
     async readOwnProfile() {
+      subject = null;
       const headers = authHeaders();
       if (!headers) return null;
       const response = await fetch(profileUrl, {
@@ -171,6 +178,9 @@ export function profileAdapter(
         )
       )
         throw new Error("unavailable");
+      if (headers.Authorization !== authHeaders()?.Authorization)
+        throw new Error("expired");
+      subject = { id: value.subject_id, credential: headers.Authorization };
       return value as OwnProfile;
     },
   };
