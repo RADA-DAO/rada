@@ -1,9 +1,15 @@
+import { readModuleStream, type ModuleStreamOptions } from "./module-stream.ts";
+export type {
+  ModuleStreamEvent,
+  ModuleStreamOptions,
+} from "./module-stream.ts";
 /** Official app modules whose screens are built into the shell. */
 export const OFFICIAL_MODULES = [
   "splash",
   "governance",
   "notifications",
   "treasury",
+  "reputation",
 ] as const;
 export type OfficialModule = (typeof OFFICIAL_MODULES)[number];
 
@@ -30,7 +36,44 @@ export type ModuleApi = {
     path: string,
     options?: { body?: ModuleBody; auth?: boolean; signal?: AbortSignal },
   ): Promise<ModuleResponse>;
+  stream?(path: string, options: ModuleStreamOptions): Promise<void>;
 };
+
+function reputationQuery(path: string, query: string): boolean {
+  if (!query || query.length > 1024 || /[#%+]/.test(query)) return false;
+  const allowed =
+    path === "/v1/reputation/overview"
+      ? ["view", "period", "cursor"]
+      : path === "/v1/reputation/summary"
+        ? ["period"]
+        : path === "/v1/reputation/items"
+          ? ["period", "cursor"]
+          : path === "/v1/reputation/missions"
+            ? ["cursor"]
+            : ["/v1/reputation/changes", "/v1/reputation/stream"].includes(path)
+              ? ["after"]
+              : [];
+  const seen = new Set<string>();
+  return query.split("&").every((pair) => {
+    const [key, value, ...extra] = pair.split("=");
+    if (
+      !key ||
+      !value ||
+      extra.length ||
+      !allowed.includes(key) ||
+      seen.has(key)
+    )
+      return false;
+    seen.add(key);
+    return key === "view"
+      ? /^(tasks|history)$/.test(value)
+      : key === "period"
+        ? /^(today|week|previous_week|all)$/.test(value)
+        : key === "after"
+          ? /^(0|[1-9][0-9]{0,19})$/.test(value)
+          : /^[A-Za-z0-9_.~-]{1,512}$/.test(value);
+  });
+}
 
 const segment = /^[A-Za-z0-9_.~%-]+$/;
 /** Module paths without traversal or fragments; governance permits explicit cursors. */
@@ -40,6 +83,7 @@ export function modulePath(module: OfficialModule, path: string): string {
     extra.length ||
     (query !== undefined &&
       !(
+        (module === "reputation" && reputationQuery(pathname ?? "", query)) ||
         (module === "treasury" &&
           /^\/v1\/treasury\/(transactions|config\/history)$/.test(
             pathname ?? "",
@@ -84,6 +128,38 @@ export function moduleApiAdapter(
       const url = (path: string) => `${apiBase}${modulePath(module, path)}`;
       return {
         url,
+        async stream(path, options) {
+          if (
+            module !== "reputation" ||
+            path.split("?")[0] !== "/v1/reputation/stream"
+          )
+            throw new Error("invalid_request");
+          const credential = authHeaders()?.Authorization;
+          if (!credential) throw new Error("expired");
+          const response = await fetch(url(path), {
+            headers: { Authorization: credential, Accept: "text/event-stream" },
+            credentials: "omit",
+            cache: "no-store",
+            signal: options.signal ?? null,
+          });
+          if (
+            !response.ok ||
+            !response.body ||
+            !response.headers
+              .get("content-type")
+              ?.startsWith("text/event-stream")
+          ) {
+            await response.body?.cancel();
+            throw new Error(
+              response.status === 401 ? "expired" : "unavailable",
+            );
+          }
+          await readModuleStream(
+            response.body,
+            options,
+            () => authHeaders()?.Authorization === credential,
+          );
+        },
         async request(method, path, options = {}) {
           const target = url(path);
           const auth = options.auth ?? true;
@@ -110,6 +186,8 @@ export function moduleApiAdapter(
             signal: options.signal ?? null,
           });
           const parsed: unknown = await response.json().catch(() => null);
+          if (auth && headers.Authorization !== authHeaders()?.Authorization)
+            throw new Error("expired");
           return {
             status: response.status,
             body: parsed,

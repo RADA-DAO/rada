@@ -75,6 +75,7 @@ export default defineConfig({
           collection: "/apps/miniapp/src/collection.ts",
           holders: "/apps/miniapp/src/desktop-screens.ts",
           splash: "/apps/miniapp/src/desktop-screens.ts",
+          reputation: "/modules/reputation/ui/screen.ts",
         };
         const files = Object.fromEntries(
           Object.entries(sources).flatMap(([name, source]) => {

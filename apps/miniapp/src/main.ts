@@ -187,7 +187,7 @@ async function loadProfile(initial = false) {
   }
   if (stale()) return;
   if (initial) {
-    if (isWorkspace(route)) render();
+    if (isWorkspace(route) || isBuiltInRoute(route)) render();
     return;
   }
   if (platform.authenticatedLaunch && ["private", "public"].includes(profile)) {

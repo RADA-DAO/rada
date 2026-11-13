@@ -42,6 +42,10 @@ export type ReputationItem = {
   missionId: string | null;
 };
 export type Page<T> = { items: T[]; nextCursor: string | null };
+export type Overview = {
+  summary: Summary;
+  page: Page<Mission> | Page<ReputationItem>;
+};
 export type CommandResult = {
   version: 1;
   requestId: string;
@@ -82,11 +86,27 @@ export type AppealInput = { requestId: string; message: string };
 
 /** All reads are scoped to the authenticated actor; actor is never request JSON. */
 export interface ReputationStore {
+  overview?(
+    actor: string,
+    view: "tasks" | "history",
+    period: Period,
+    cursor: string | null,
+  ): Promise<Overview>;
+  appealCommand?(actor: string, requestId: string): Promise<Appeal | null>;
+  onChange?(actor: string, listener: () => void): () => void;
   summary(actor: string, period: Period): Promise<Summary>;
   missions(actor: string, cursor: string | null): Promise<Page<Mission>>;
-  items(actor: string, period: Period, cursor: string | null): Promise<Page<ReputationItem>>;
+  items(
+    actor: string,
+    period: Period,
+    cursor: string | null,
+  ): Promise<Page<ReputationItem>>;
   item(actor: string, id: string): Promise<ReputationItem | null>;
-  verify(actor: string, missionId: string, input: VerifyInput): Promise<CommandResult>;
+  verify(
+    actor: string,
+    missionId: string,
+    input: VerifyInput,
+  ): Promise<CommandResult>;
   report(actor: string, input: ReportInput): Promise<CommandResult>;
   command(actor: string, requestId: string): Promise<CommandResult | null>;
   changes(actor: string, after: string): Promise<Changes>;

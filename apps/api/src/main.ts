@@ -1,3 +1,4 @@
+import { PostgresReputationStore } from "../../../modules/reputation/index.ts";
 import {
   PostgresTreasuryStore,
   startTreasuryScheduler,
@@ -195,6 +196,13 @@ if (import.meta.main) {
     ? new pg.Pool({ connectionString: notificationUrl })
     : undefined;
   const notificationSettings = notificationConfig(Deno.env.toObject());
+  const reputationUrl = Deno.env.get("REPUTATION_SERVICE_DATABASE_URL");
+  const reputation = reputationUrl
+    ? new PostgresReputationStore(
+        auth,
+        new pg.Pool({ connectionString: reputationUrl, max: 10 }),
+      )
+    : undefined;
   const app = createApp(
     token,
     new PostgresIdentityStore(auth, service),
@@ -225,6 +233,7 @@ if (import.meta.main) {
       ? new NotificationStore(auth, notificationPool)
       : undefined,
     treasuryPool ? new PostgresTreasuryStore(auth, treasuryPool) : undefined,
+    reputation,
   );
   if (
     rankingsWorkerUrl &&

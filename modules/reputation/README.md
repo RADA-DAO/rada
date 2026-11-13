@@ -10,20 +10,21 @@ No missions or rewards are installed in production by the module migrations.
 `contract.ts` is the common frontend, backend and bot contract. API base is
 `/v1/reputation`. Responses are JSON objects, with these fixed envelopes:
 
-| Method and path | Result |
-| --- | --- |
-| GET `/summary?period=today|week|previous_week|all` | `{summary: Summary}` |
-| GET `/missions?cursor=...` | `Page<Mission>` |
-| GET `/items?period=...&cursor=...` | `Page<ReputationItem>` |
-| GET `/items/:id` | `{item: ReputationItem}` |
-| POST `/missions/:id/verify` | `CommandResult` (200 completed, 202 checking) |
-| POST `/reports` | `CommandResult` (202 pending interpretation) |
-| GET `/commands/:requestId` | `CommandResult`, 404 if absent |
-| GET `/changes?after=revision` | `Changes` |
-| GET `/stream?after=revision` | authenticated SSE; event `changes`, data `Changes` |
-| POST `/items/:id/appeals` | `{appeal: Appeal}` |
-| GET `/items/:id/appeals` | `{appeals: Appeal[]}` |
+| Method and path                    | Result                                             |
+| ---------------------------------- | -------------------------------------------------- |
+| GET `/summary?period=...`          | `{summary: Summary}`                               |
+| GET `/missions?cursor=...`         | `Page<Mission>`                                    |
+| GET `/items?period=...&cursor=...` | `Page<ReputationItem>`                             |
+| GET `/items/:id`                   | `{item: ReputationItem}`                           |
+| POST `/missions/:id/verify`        | `CommandResult` (200 completed, 202 checking)      |
+| POST `/reports`                    | `CommandResult` (202 pending interpretation)       |
+| GET `/commands/:requestId`         | `CommandResult`, 404 if absent                     |
+| GET `/changes?after=revision`      | `Changes`                                          |
+| GET `/stream?after=revision`       | authenticated SSE; event `changes`, data `Changes` |
+| POST `/items/:id/appeals`          | `{appeal: Appeal}`                                 |
+| GET `/items/:id/appeals`           | `{appeals: Appeal[]}`                              |
 
+Periods are `today`, `week`, `previous_week`, and `all`.
 GET authenticates ordinary launches; POST uses the privileged launch policy.
 The authenticated actor comes exclusively from the platform identity adapter.
 JSON validation rejects unknown fields. Read pages have a bounded default of
