@@ -109,7 +109,12 @@ try {
     ],
     {
       stdio: "inherit",
-      env: { ...process.env, VITE_API_ORIGIN: "http://127.0.0.1:8000" },
+      env: {
+        ...process.env,
+        VITE_API_ORIGIN: "http://127.0.0.1:8000",
+        // Only this legacy browser artifact exposes internal SDK screens.
+        RADA_DEVELOPER_SURFACE: "true",
+      },
     },
   );
   process.exitCode = await new Promise((resolve) =>

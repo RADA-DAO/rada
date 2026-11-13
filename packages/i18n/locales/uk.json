@@ -63,7 +63,10 @@
     "me": "Я",
     "action": "ДІЯ",
     "us": "МИ",
-    "community": "Спільнота"
+    "community": "Спільнота",
+    "myProfile": "Мій профіль",
+    "leaderboard": "Лідерборд",
+    "comingSoon": "Незабаром"
   },
   "review": {
     "title": "Перевірка апок",

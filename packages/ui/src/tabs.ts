@@ -1,7 +1,13 @@
 import { Button } from "./button.ts";
 import { element } from "./dom.ts";
 
-export type Tab = { id: string; label: string; onSelect: () => void };
+export type Tab = {
+  id: string;
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+  status?: string;
+};
 
 /** Primary navigation between top-level screens. */
 export function Tabs(options: {
@@ -9,15 +15,22 @@ export function Tabs(options: {
   tabs: Tab[];
   selected: string;
   dots?: boolean;
+  workspace?: boolean;
 }): HTMLElement {
   const nav = element("nav", "rada-tabs");
   if (options.dots) nav.classList.add("rada-page-dots");
+  if (options.workspace) nav.classList.add("rada-workspace-nav");
   nav.setAttribute("aria-label", options.label);
   for (const tab of options.tabs) {
     const button = Button(tab.label, {
       variant: "ghost",
       onClick: tab.onSelect,
+      disabled: tab.disabled ?? false,
     });
+    if (tab.status) {
+      const status = element("small", "rada-tab-status", tab.status);
+      button.append(status);
+    }
     if (options.dots) {
       button.setAttribute("aria-label", tab.label);
       button.textContent = "";

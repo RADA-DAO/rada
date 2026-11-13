@@ -212,6 +212,7 @@ function walk(directory) {
         "node_modules",
         ".env",
         "dist",
+        "dist-product-surface",
         "playwright-report",
         "test-results",
       ].includes(entry.name)

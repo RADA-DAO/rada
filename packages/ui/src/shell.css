@@ -184,6 +184,29 @@ body::before {
   font-weight: var(--rada-font-weight-heading);
   letter-spacing: normal;
 }
+.screen > .rada-workspace-nav {
+  flex-shrink: 0;
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(100%, var(--rada-sheet-width));
+  gap: var(--rada-space-1);
+  margin: 0 auto;
+  padding: var(--rada-space-2) var(--rada-space-2)
+    calc(var(--rada-space-2) + var(--app-safe-bottom, var(--rada-zero-length)));
+}
+.rada-workspace-nav .rada-button {
+  min-width: var(--rada-os-dot-target);
+  min-height: var(--rada-os-dot-target);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  flex-direction: column;
+  gap: var(--rada-space-1);
+}
+.rada-tab-status {
+  font-size: var(--rada-font-size-small);
+  font-weight: normal;
+}
 .screen > .rada-page-dots {
   position: relative;
   flex-shrink: 0;

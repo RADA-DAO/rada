@@ -1,5 +1,7 @@
 import { createChunkLoader } from "./chunk-loader.ts";
 import {
+  AppGrid,
+  AppTile,
   Group,
   LauncherBrowser,
   ErrorState,
@@ -23,7 +25,27 @@ export function createLauncherDesktop(options: {
   platform: ReturnType<typeof initializePlatform>;
   navigation: Navigation;
   render(): void;
+  developerSurface: boolean;
 }) {
+  // Public product tiles keep the caller's order and never touch desktop data.
+  if (!options.developerSurface) {
+    return {
+      async load() {},
+      dispose() {},
+      opened() {},
+      content(items: LauncherItem[]) {
+        const root = Group();
+        root.classList.add("rada-desktop");
+        root.append(
+          AppGrid({
+            label: t(options.locale(), "home.gridLabel"),
+            tiles: items.map((item) => AppTile(item)),
+          }),
+        );
+        return root;
+      },
+    };
+  }
   const loadEditor = createChunkLoader(
     () => import("./desktop-screens.ts"),
     "launcher-editor",

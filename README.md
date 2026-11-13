@@ -8,6 +8,10 @@ RADA is an open platform for community applications and participation.
 The project is in early development. Local synthetic development and isolated
 staging rehearsals are supported; this is not a production migration.
 
+The default [product surface](docs/contributing/product-surface.md) contains
+SPLASH, Treasury, Tasks and Cryptonos, plus My profile. The leaderboard is disabled.
+The SDK rehearsal below explicitly opens the internal developer surface.
+
 ## Development
 
 Requirements: Node.js 24 (see `.node-version`), npm, Deno 2.9.7, Docker Compose v2.

@@ -2,7 +2,11 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   // These suites own separate disposable-platform launchers and CI steps.
-  testIgnore: ["sdk-example.spec.ts", "ui-sdk.spec.ts"],
+  testIgnore: [
+    "sdk-example.spec.ts",
+    "ui-sdk.spec.ts",
+    "product-surface.spec.ts",
+  ],
   fullyParallel: false,
   workers: 1,
   reporter: "list",

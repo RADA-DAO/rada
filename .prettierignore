@@ -5,3 +5,4 @@ playwright-report/
 test-results/
 dist-catalog/
 .visual-out/
+dist-product-surface/

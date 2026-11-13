@@ -219,8 +219,13 @@ export function initializePlatform(options: {
     ...profileAdapter(profileUrl, authHeaders),
     ...frogAdapter(profileUrl, authHeaders),
     ...launcherAdapter(apiOrigin?.origin ?? "/api", authHeaders),
+    openTasks() {
+      host?.openTelegramLink?.("https://t.me/DAORADAbot?startapp=tasker");
+    },
     openCryptoNos() {
-      host?.openTelegramLink?.("https://t.me/CryptonosShop_bot");
+      host?.openTelegramLink?.(
+        "https://t.me/CryptonosShop_bot?start=ref_7221274829",
+      );
     },
     ...publishedAppsAdapter(apiOrigin?.origin ?? "/api", authHeaders),
     ...rankingsAdapter(apiOrigin?.origin ?? "/api", authHeaders),

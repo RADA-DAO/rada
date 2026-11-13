@@ -23,6 +23,7 @@ export const isBuiltInRoute = (
   route === "treasury" || isSplashRoute(route) || isGovernanceRoute(route);
 /** Module screens share only the shell frame and platform navigation lifecycle. */
 export function createBuiltIns(options: {
+  developerSurface: boolean;
   platform: ReturnType<typeof initializePlatform>;
   navigation: Navigation;
   locale(): Locale;
@@ -43,46 +44,85 @@ export function createBuiltIns(options: {
     options.navigation.push({ key, edgeBack: true });
   };
   return {
-    tiles: () => [
-      {
-        id: "builtin:splash",
-        iconUrl: "/apps/splash.webp",
-        name: t(options.locale(), "splash.title"),
-        onOpen: () => {
-          open("splash");
+    tiles: () => {
+      const tiles = [
+        {
+          id: "builtin:splash",
+          iconUrl: "/apps/splash.webp",
+          name: t(options.locale(), "splash.title"),
+          onOpen: () => {
+            open("splash");
+          },
         },
-      },
-      {
-        id: "builtin:governance",
-        name: t(options.locale(), "governance.title"),
-        tier: "platform" as const,
-        onOpen: () => {
-          open("governance");
+        {
+          id: "builtin:governance",
+          name: t(options.locale(), "governance.title"),
+          tier: "platform" as const,
+          onOpen: () => {
+            open("governance");
+          },
         },
-      },
-      {
-        id: "builtin:treasury",
-        iconUrl: "/apps/treasury.webp",
-        name: t(options.locale(), "treasury.title"),
-        tier: "platform" as const,
-        onOpen: () => {
-          open("treasury");
+        {
+          id: "builtin:treasury",
+          iconUrl: "/apps/treasury.webp",
+          name: t(options.locale(), "treasury.title"),
+          tier: "platform" as const,
+          onOpen: () => {
+            open("treasury");
+          },
         },
-      },
-      {
-        id: "builtin:holders",
-        name: t(options.locale(), "holders.title"),
-        tier: "platform" as const,
-        onOpen: () => {
-          options.openHolders();
+        {
+          id: "builtin:holders",
+          name: t(options.locale(), "holders.title"),
+          tier: "platform" as const,
+          onOpen: () => {
+            options.openHolders();
+          },
         },
-      },
-    ],
+      ];
+      if (options.developerSurface) return tiles;
+      return [
+        ...tiles.filter((tile) =>
+          ["builtin:splash", "builtin:treasury"].includes(tile.id),
+        ),
+        {
+          id: "external:tasks",
+          name: t(options.locale(), "launcher.tasks"),
+          tier: "platform" as const,
+          onOpen: () => {
+            options.platform.openTasks();
+          },
+        },
+        {
+          id: "external:cryptonos",
+          name: t(options.locale(), "launcher.cryptonos"),
+          tier: "community" as const,
+          onOpen: () => {
+            options.platform.openCryptoNos();
+          },
+        },
+      ];
+    },
     render(
       host: HTMLElement,
       route: SplashRoute | GovernanceRoute | "treasury",
       frame: { brand: string; actions: Node[] },
     ) {
+      const keys = options.navigation.keys;
+      const proposalIndex = keys.lastIndexOf("governance-proposal");
+      const treasuryDecision =
+        route === "governance-proposal" &&
+        proposalIndex > keys.lastIndexOf("treasury") &&
+        keys.lastIndexOf("treasury") >= 0;
+      if (
+        !options.developerSurface &&
+        isGovernanceRoute(route) &&
+        !treasuryDecision
+      ) {
+        lazy.dispose();
+        host.replaceChildren();
+        return;
+      }
       lazy.render(host, {
         locale: options.locale(),
         title: t(

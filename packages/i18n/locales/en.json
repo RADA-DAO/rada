@@ -61,7 +61,10 @@
     "me": "Profile",
     "action": "Apps",
     "us": "Community",
-    "community": "Community"
+    "community": "Community",
+    "myProfile": "My profile",
+    "leaderboard": "Leaderboard",
+    "comingSoon": "Soon"
   },
   "review": {
     "title": "App review",

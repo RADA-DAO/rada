@@ -44,8 +44,28 @@ const pages: readonly string[] = [
 ];
 
 /** Screens are stack entries; sheets and running apps sit above them. */
-export function createRoutes() {
+export function createRoutes(developerSurface = false) {
   const navigation = createNavigation(home);
+  const allowed = (key: string, replacing = false) => {
+    if (developerSurface) return true;
+    if (key === "governance-proposal") {
+      const ancestors = replacing
+        ? navigation.keys.slice(0, -1)
+        : navigation.keys;
+      return ancestors.includes("treasury");
+    }
+    return !["community", "review", "holders", ...GOVERNANCE_ROUTES].includes(
+      key,
+    );
+  };
+  const push = navigation.push.bind(navigation);
+  const replace = navigation.replace.bind(navigation);
+  navigation.push = (entry) => {
+    if (allowed(entry.key)) push(entry);
+  };
+  navigation.replace = (entry) => {
+    if (allowed(entry.key, true)) replace(entry);
+  };
   let frogId: string | null = null;
   return {
     navigation,
@@ -57,7 +77,8 @@ export function createRoutes() {
     current: (): Route =>
       [...navigation.keys]
         .reverse()
-        .find((key): key is Route => pages.includes(key)) ?? "launcher",
+        .find((key): key is Route => pages.includes(key) && allowed(key)) ??
+      "launcher",
     open(next: "profile" | "community" | "review" | "holders" | "collection") {
       navigation.push({ key: next, edgeBack: true });
     },
@@ -101,6 +122,7 @@ export const isWorkspace = (route: string) =>
 export function createWorkspace(
   screen: HTMLElement,
   options: {
+    developerSurface: boolean;
     navigation: Navigation;
     route(): Route;
     text(key: MessageKey): string;
@@ -108,8 +130,11 @@ export function createWorkspace(
     profile(): void;
   },
 ) {
+  const visiblePages = options.developerSurface
+    ? workspacePages
+    : (["profile", "launcher"] as const);
   const select = (index: number) => {
-    const next = workspacePages[index];
+    const next = visiblePages[index];
     if (!next) return;
     if (next !== options.route()) options.navigation.push({ key: next });
     if (next === "profile") options.profile();
@@ -124,7 +149,8 @@ export function createWorkspace(
       options.navigation.top.key === options.route() &&
       !isSheetOpen() &&
       options.enabled(),
-    index: () => workspacePages.findIndex((page) => page === options.route()),
+    index: () => visiblePages.findIndex((page) => page === options.route()),
+    lastIndex: () => visiblePages.length - 1,
     select,
     track: () => track,
     settled() {
@@ -161,14 +187,14 @@ export function createWorkspace(
     },
     render(draw: (host: HTMLElement, route: Route) => void) {
       if (!panels.length) {
-        panels = workspacePages.map(() => {
+        panels = visiblePages.map(() => {
           const panel = document.createElement("div");
           panel.className = "rada-workspace-page";
           return panel;
         });
         track.replaceChildren(...panels);
       }
-      workspacePages.forEach((page, index) => {
+      visiblePages.forEach((page, index) => {
         const panel = panels[index];
         if (!panel) return;
         panel.inert = page !== options.route();
@@ -179,7 +205,7 @@ export function createWorkspace(
       });
       setWorkspaceIndex(
         track,
-        workspacePages.findIndex((page) => page === options.route()),
+        visiblePages.findIndex((page) => page === options.route()),
       );
       screen.replaceChildren(track, this.nav());
     },
@@ -187,20 +213,36 @@ export function createWorkspace(
       Tabs({
         label: options.text("shell.navigation"),
         selected: options.route(),
-        dots: true,
-        tabs: workspacePages.map((id, index) => ({
-          id,
-          label: options.text(
-            id === "profile"
-              ? "shell.me"
-              : id === "launcher"
-                ? "shell.action"
-                : "shell.us",
-          ),
-          onSelect: () => {
-            select(index);
-          },
-        })),
+        dots: options.developerSurface,
+        workspace: !options.developerSurface,
+        tabs: [
+          ...visiblePages.map((id, index) => ({
+            id,
+            label: options.text(
+              id === "profile"
+                ? options.developerSurface
+                  ? "shell.me"
+                  : "shell.myProfile"
+                : id === "launcher"
+                  ? "shell.action"
+                  : "shell.us",
+            ),
+            onSelect: () => {
+              select(index);
+            },
+          })),
+          ...(options.developerSurface
+            ? []
+            : [
+                {
+                  id: "leaderboard",
+                  label: options.text("shell.leaderboard"),
+                  status: options.text("shell.comingSoon"),
+                  disabled: true,
+                  onSelect() {},
+                },
+              ]),
+        ],
       }),
   };
 }

@@ -11,6 +11,7 @@ export function workspaceSwipe(
     >;
     enabled(): boolean;
     index(): number;
+    lastIndex?(): number;
     select(index: number): void;
     track(): HTMLElement;
     settled(): void;
@@ -95,7 +96,7 @@ export function workspaceSwipe(
     offset = options.physics.rubberBandSwipeOffset(
       dx,
       width,
-      next >= 0 && next <= 2,
+      next >= 0 && next <= (options.lastIndex?.() ?? 2),
     );
     options
       .track()
@@ -121,7 +122,7 @@ export function workspaceSwipe(
         width,
         velocityX: velocity,
         axis: g.axis,
-        hasTarget: next >= 0 && next <= 2,
+        hasTarget: next >= 0 && next <= (options.lastIndex?.() ?? 2),
       });
     const target = commit ? Math.sign(dx) * width : 0;
     const duration = options.physics.swipeSettleDurationMs({

@@ -36,6 +36,8 @@ export function createHome(options: {
   navigation: Navigation;
   locale(): Locale;
   authenticated: boolean;
+  /** Registry apps and desktop customization are explicit developer tools. */
+  developerSurface: boolean;
   read(signal: AbortSignal): Promise<PublishedApp[]>;
   /** A local URL for an approved icon, or nothing when it cannot be used. */
   loadIcon(url: string, signal: AbortSignal): Promise<string | undefined>;
@@ -54,8 +56,10 @@ export function createHome(options: {
     onOpen(): void;
   }[];
 }) {
+  const developerSurface = options.developerSurface;
   const desktop = createLauncherDesktop({
     ...options,
+    developerSurface,
     render() {
       if (!running && options.navigation.top.key === "launcher")
         options.render();
@@ -99,7 +103,7 @@ export function createHome(options: {
   }
 
   async function load() {
-    if (!options.authenticated) return;
+    if (!developerSurface || !options.authenticated) return;
     const id = ++generation;
     dropIcons();
     status = "loading";
@@ -184,6 +188,7 @@ export function createHome(options: {
     },
     content(): Node[] {
       if (status === "guest") return [];
+      if (!developerSurface) return [tiles()];
       const content: Node[] = [];
       if (failed) {
         const retry = failed;
