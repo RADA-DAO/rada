@@ -24,7 +24,10 @@ BEGIN
  ELSIF r.cap_unit<>'occurrence' THEN
  lo:=date_trunc(CASE WHEN r.cap_unit='kyiv_day' THEN 'day' ELSE 'week' END,i.occurred_at AT TIME ZONE 'Europe/Kyiv') AT TIME ZONE 'Europe/Kyiv';
  hi:=((lo AT TIME ZONE 'Europe/Kyiv')+CASE WHEN r.cap_unit='kyiv_day' THEN interval '1 day' ELSE interval '7 days' END) AT TIME ZONE 'Europe/Kyiv';
- IF (SELECT count(*) FROM reputation.report_awards WHERE subject_id=i.subject_id AND rule_key=key AND occurred_at>=lo AND occurred_at<hi)>=r.cap_limit THEN
+ -- Corrections may free active capacity; the immutable semantic journal still
+ -- prevents a corrected occurrence from being awarded again.
+ IF (SELECT count(*) FROM reputation.report_awards a JOIN reputation.items current_item ON (current_item.id=a.item_id)
+ WHERE a.subject_id=i.subject_id AND a.rule_key=key AND a.occurred_at>=lo AND a.occurred_at<hi AND current_item.status='accepted')>=r.cap_limit THEN
  target_status:='excluded'; target_reason:='configured_cap_reached'; target_units:=0;
  END IF;
  END IF;
