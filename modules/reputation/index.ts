@@ -11,3 +11,15 @@ export type {
   FrozenRuleSnapshot,
   ReportClassification,
 } from "./api/worker-store.ts";
+export {
+  ReputationCoordinator,
+  runNext,
+  runBoundedBatch,
+} from "./worker/coordinator.ts";
+export type {
+  CoordinatorOptions,
+  CoordinatorOutcome,
+  CoordinatorObservation,
+  BatchLimits,
+  ExternalVerifier,
+} from "./worker/coordinator.ts";
