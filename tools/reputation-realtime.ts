@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
-import { createHmac, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { performance, monitorEventLoopDelay } from "node:perf_hooks";
 import { setTimeout as pause } from "node:timers/promises";
 import { createPostgresFixtureRuntime } from "./reputation/postgres-fixture.ts";
 import { browserServer } from "./reputation/browser-server.ts";
-import { readModuleStream } from "../packages/platform-sdk/src/module-stream.ts";
+import {
+  realtimeState,
+  realtimeClient,
+  exactTotal,
+  type Write,
+} from "./reputation/realtime-client.ts";
 import type {
   Changes,
   CommandResult,
@@ -45,35 +50,9 @@ type Runtime = Awaited<ReturnType<typeof createPostgresFixtureRuntime>>;
 type Server = Awaited<ReturnType<typeof browserServer>>;
 let runtime: Runtime | undefined;
 let server: Server | undefined;
-type Observation = {
-  actorIndex: number;
-  revision: string;
-  received: number;
-  recordedToEventMs: number;
-};
-type Write = {
-  actorIndex: number;
-  requestId: string;
-  mission: Mission;
-  start: number;
-  acknowledged: number;
-  scheduleLag: number;
-  receipt: CommandResult | null;
-};
-type Stream = {
-  actorIndex: number;
-  controller: AbortController;
-  cursor: string;
-  done: Promise<void>;
-  intentional: boolean;
-};
-const streams: Stream[] = [];
-const currentStreams = new Map<number, Stream>();
-const observed = new Map<string, Observation>();
-const writes: Write[] = [];
-const streamFailures: string[] = [];
-let currentConnections = 0;
-let peakConnections = 0;
+const state = realtimeState();
+const { streams, currentStreams, observed, writes, streamFailures } = state;
+let client: ReturnType<typeof realtimeClient> | undefined;
 let connectionsAtWriteStart = 0;
 let reconnectRecovered = false;
 let unknownResponseRecovered = false;
@@ -90,21 +69,6 @@ const actors = Array.from({ length: actorCount }, (_, index) =>
   String(base + BigInt(index)),
 );
 const outsideActor = String(base + BigInt(actorCount) + 1n);
-const secret = createHmac("sha256", "WebAppData")
-  .update("synthetic-fixture-bot-token")
-  .digest();
-function authorization(actor: string): string {
-  const data = new URLSearchParams({
-    auth_date: String(Math.floor(Date.now() / 1000)),
-    user: JSON.stringify({ id: Number(actor) }),
-  });
-  const check = [...data.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
-  data.set("hash", createHmac("sha256", secret).update(check).digest("hex"));
-  return `tma ${data.toString()}`;
-}
 async function bounded(
   count: number,
   concurrency: number,
@@ -124,135 +88,6 @@ async function bounded(
   const rejected = settled.find((result) => result.status === "rejected");
   if (rejected?.status === "rejected") throw rejected.reason;
 }
-function actorAt(index: number): string {
-  const actor = actors[index];
-  assert.ok(actor);
-  return actor;
-}
-async function http(
-  actor: string,
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
-  assert.ok(server);
-  const headers = new Headers(init.headers);
-  headers.set("authorization", authorization(actor));
-  return await fetch(`${server.origin}/api/v1/reputation${path}`, {
-    ...init,
-    headers,
-    signal: abort.signal,
-  });
-}
-async function json<T>(
-  actor: string,
-  path: string,
-  status = 200,
-  init: RequestInit = {},
-): Promise<T> {
-  const response = await http(actor, path, init);
-  assert.equal(response.status, status, `${path} HTTP status`);
-  return (await response.json()) as T;
-}
-async function closeStream(stream: Stream): Promise<void> {
-  stream.intentional = true;
-  stream.controller.abort();
-  await stream.done;
-  if (currentStreams.get(stream.actorIndex) === stream)
-    currentStreams.delete(stream.actorIndex);
-}
-async function openStream(
-  actorIndex: number,
-  after = "0",
-  lastEventHeader = false,
-): Promise<Stream> {
-  assert.ok(server);
-  const controller = new AbortController();
-  const signal = AbortSignal.any([abort.signal, controller.signal]);
-  const response = await fetch(
-    `${server.origin}/api/v1/reputation/stream${lastEventHeader ? "" : `?after=${after}`}`,
-    {
-      headers: {
-        authorization: authorization(actorAt(actorIndex)),
-        ...(lastEventHeader ? { "Last-Event-ID": after } : {}),
-      },
-      signal,
-    },
-  );
-  if (response.status !== 200) {
-    await response.body?.cancel();
-    throw new Error(`stream_http_${String(response.status)}`);
-  }
-  assert.match(
-    response.headers.get("content-type") ?? "",
-    /text\/event-stream/,
-  );
-  assert.ok(response.body);
-  const stream: Stream = {
-    actorIndex,
-    controller,
-    cursor: after,
-    done: Promise.resolve(),
-    intentional: false,
-  };
-  streams.push(stream);
-  currentStreams.set(actorIndex, stream);
-  currentConnections++;
-  peakConnections = Math.max(peakConnections, currentConnections);
-  stream.done = readModuleStream(
-    response.body,
-    {
-      signal,
-      onEvent(event) {
-        assert.equal(event.event, "changes");
-        assert.ok(event.data && typeof event.data === "object");
-        const delta = event.data as Changes;
-        assert.equal(delta.version, 1);
-        assert.equal(delta.resetRequired, false);
-        assert.ok(Array.isArray(delta.changes));
-        assert.equal(event.id, delta.nextCursor);
-        for (const change of delta.changes) {
-          assert.ok(
-            BigInt(change.revision) > BigInt(stream.cursor),
-            "stream revisions must advance",
-          );
-          assert.equal(change.type, "item");
-          assert.ok(
-            !observed.has(change.itemId),
-            "item emitted twice or leaked to another actor",
-          );
-          const recordedToEventMs = Date.now() - Date.parse(change.recordedAt);
-          assert.ok(Number.isFinite(recordedToEventMs));
-          observed.set(change.itemId, {
-            actorIndex,
-            revision: change.revision,
-            received: performance.now(),
-            recordedToEventMs,
-          });
-          stream.cursor = change.revision;
-        }
-        assert.ok(BigInt(delta.nextCursor) >= BigInt(stream.cursor));
-        stream.cursor = delta.nextCursor;
-      },
-    },
-    () => true,
-  )
-    .then(
-      () => {
-        if (!stream.intentional && !abort.signal.aborted)
-          streamFailures.push("unexpected_stream_eof");
-      },
-      (error: unknown) => {
-        if (!stream.intentional && !abort.signal.aborted)
-          streamFailures.push(
-            error instanceof Error ? error.message : "stream_read_error",
-          );
-      },
-    )
-    .finally(() => {
-      currentConnections--;
-    });
-  return stream;
-}
 async function until(predicate: () => boolean): Promise<void> {
   const end = Math.min(started + seconds * 1000, performance.now() + 15000);
   while (!predicate()) {
@@ -265,58 +100,12 @@ async function until(predicate: () => boolean): Promise<void> {
     await pause(10, undefined, { signal: abort.signal });
   }
 }
-function prepareWrite(actorIndex: number, mission: Mission): Write {
-  const write: Write = {
-    actorIndex,
-    mission,
-    requestId: randomUUID(),
-    start: 0,
-    acknowledged: 0,
-    scheduleLag: 0,
-    receipt: null,
-  };
-  writes.push(write);
-  return write;
-}
-async function send(write: Write, discard = false): Promise<void> {
-  write.start = performance.now();
-  const response = await http(
-    actorAt(write.actorIndex),
-    `/missions/${write.mission.id}/verify`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        requestId: write.requestId,
-        missionVersion: write.mission.version,
-      }),
-    },
-  );
-  write.acknowledged = performance.now();
-  assert.equal(response.status, 200);
-  if (discard) {
-    // The HTTP acknowledgement is deliberately discarded after the server committed.
-    await response.body?.cancel();
-    write.receipt = await json<CommandResult>(
-      actorAt(write.actorIndex),
-      `/commands/${write.requestId}`,
-    );
-  } else write.receipt = (await response.json()) as CommandResult;
-  assert.equal(write.receipt.requestId, write.requestId);
-  assert.equal(write.receipt.state, "completed");
-  assert.equal(write.receipt.item.status, "accepted");
-  assert.equal(write.receipt.item.points, "0.125");
-}
-const exactTotal = (count: number) => {
-  const units = BigInt(count) * 1250n;
-  const fraction = String(units % 10000n)
-    .padStart(4, "0")
-    .replace(/0+$/, "");
-  return `${String(units / 10000n)}${fraction ? `.${fraction}` : ""}`;
-};
+
 try {
   runtime = await createPostgresFixtureRuntime(process.env.PG_TEST_URL, 16);
   server = await browserServer(runtime);
+  client = realtimeClient(server.origin, actors, abort.signal, state);
+  const { actorAt, json, closeStream, openStream, prepareWrite, send } = client;
   const activeRuntime = runtime;
   await bounded(actorCount, 16, async (index) => {
     await activeRuntime.subject(actorAt(index));
@@ -340,9 +129,9 @@ try {
     const changes = await json<Changes>(actorAt(index), "/changes?after=0");
     assert.deepEqual(changes.changes, []);
   });
-  assert.equal(currentConnections, actorCount);
+  assert.equal(state.currentConnections, actorCount);
   assert.equal(currentStreams.size, actorCount);
-  connectionsAtWriteStart = currentConnections;
+  connectionsAtWriteStart = state.currentConnections;
   const pacedStart = performance.now();
   const paced: Promise<PromiseSettledResult<void>>[] = [];
   for (let index = 0; index < pacedWrites; index++) {
@@ -369,7 +158,7 @@ try {
   if (pacedRejected?.status === "rejected") throw pacedRejected.reason;
   pacedDurationMs = performance.now() - pacedStart;
   await until(() => observed.size === writes.length);
-  assert.equal(currentConnections, actorCount);
+  assert.equal(state.currentConnections, actorCount);
   if (burstWrites) {
     const burstStart = performance.now();
     await bounded(burstWrites, burstWrites, async (index) => {
@@ -379,13 +168,13 @@ try {
     });
     burstDurationMs = performance.now() - burstStart;
     await until(() => observed.size === writes.length);
-    assert.equal(currentConnections, actorCount);
+    assert.equal(state.currentConnections, actorCount);
   }
   const reconnecting = currentStreams.get(0);
   assert.ok(reconnecting);
   const savedCursor = reconnecting.cursor;
   await closeStream(reconnecting);
-  assert.equal(currentConnections, actorCount - 1);
+  assert.equal(state.currentConnections, actorCount - 1);
   const offlineMission = missions[pacedWrites + burstWrites];
   assert.ok(offlineMission);
   const offline = prepareWrite(0, offlineMission);
@@ -416,7 +205,7 @@ try {
   assert.deepEqual(replayed, unknown.receipt);
   unknownResponseRecovered = true;
   await until(() => observed.size === writes.length);
-  assert.equal(currentConnections, actorCount);
+  assert.equal(state.currentConnections, actorCount);
   assert.deepEqual(streamFailures, []);
   const byActor = new Map<number, Write[]>();
   for (const write of writes) {
@@ -481,7 +270,7 @@ try {
 } finally {
   clearTimeout(deadline);
   abort.abort();
-  await Promise.allSettled(streams.map(closeStream));
+  if (client) await Promise.allSettled(streams.map(client.closeStream));
   try {
     await server?.close();
     serverClosed = !!server;
@@ -540,7 +329,7 @@ try {
       ),
     };
   };
-  if (currentConnections !== 0) {
+  if (state.currentConnections !== 0) {
     failure ??= "readers_not_closed";
     process.exitCode = 1;
   }
@@ -553,8 +342,8 @@ try {
       burstWrites,
       offeredPacedWritesPerSecond: 100,
       connectionsAtWriteStart,
-      peakConnections,
-      finalConnections: currentConnections,
+      peakConnections: state.peakConnections,
+      finalConnections: state.currentConnections,
       totalStreamInstances: streams.length,
       successfulWrites: writes.filter((write) => write.receipt !== null).length,
       deliveredItems: observed.size,
