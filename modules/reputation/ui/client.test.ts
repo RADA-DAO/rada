@@ -6,6 +6,7 @@ import type {
 } from "../../../packages/platform-sdk/src/index.ts";
 import type { CommandResult, Mission, Summary } from "../contract.ts";
 import { reputationClient } from "./client.ts";
+import { createAppealActions } from "./appeals.ts";
 import { commandActions, type Pending } from "./commands.ts";
 import { ReadGuard, ReputationError, command, summary } from "./model.ts";
 import { recoveryStore } from "./recovery.ts";
@@ -236,7 +237,7 @@ await test("actor change while a command is in flight cannot repaint or remove i
     reportMissing: () => {},
     busy: new Set(),
   });
-  const button = Button("Synthetic action");
+  const button = Button(mission.title);
   const work = actions.verify(mission, button);
   assert.equal(button.disabled, true);
   assert.equal(button.textContent, "checking");
@@ -246,4 +247,119 @@ await test("actor change while a command is in flight cannot repaint or remove i
   assert.equal(painted, 0);
   assert.equal(recovery.list().length, 1);
   assert.deepEqual(recoveryStore("actor-b", storage).list(), []);
+});
+
+await test("overview reads a summary and page in one response", async () => {
+  const calls: string[] = [];
+  const client = reputationClient(
+    api((_method, path) => {
+      calls.push(path);
+      return Promise.resolve(
+        response({
+          summary: baseSummary,
+          page: { items: [], nextCursor: null },
+        }),
+      );
+    }),
+    new AbortController().signal,
+  );
+  const result = await client.overview("history", "week");
+  assert.equal(result.summary.revision, "10");
+  assert.deepEqual(result.data.items, []);
+  assert.deepEqual(calls, ["/v1/reputation/overview?view=history&period=week"]);
+});
+await test("appeal reload recovery reads the exact receipt without another mutation", async () => {
+  const storage = memory();
+  const saved = recoveryStore("actor-a", storage);
+  saved.add({ kind: "appeal", itemId: "synthetic-item", requestId });
+  const calls: string[] = [];
+  let accepted = 0;
+  const client = reputationClient(
+    api((method, path) => {
+      calls.push(`${method} ${path}`);
+      return Promise.resolve(
+        response({
+          appeal: {
+            id: "synthetic-appeal",
+            itemId: "synthetic-item",
+            message: "Synthetic review",
+            status: "open",
+            resolution: null,
+            createdAt: stamp,
+          },
+        }),
+      );
+    }),
+    new AbortController().signal,
+  );
+  const actions = createAppealActions(
+    {
+      text: (key) => key,
+      navigation: { push() {}, drop() {} } as never,
+      signal: new AbortController().signal,
+      error: () => "error",
+      notice() {},
+    },
+    client,
+    recoveryStore("actor-a", storage),
+    new Map(),
+    () => true,
+    () => {
+      accepted++;
+    },
+  );
+  await actions.recover();
+  assert.equal(accepted, 1);
+  assert.deepEqual(calls, [`GET /v1/reputation/appeals/commands/${requestId}`]);
+  assert.equal(recoveryStore("actor-a", storage).list().length, 0);
+});
+await test("authoritative missing report resumes its original ID; network failure keeps recovery pending", async () => {
+  const saved = recoveryStore("actor-a", memory());
+  saved.add({ kind: "report", requestId });
+  let resumed = "";
+  const client = reputationClient(
+    api(() => Promise.resolve(response(null, 404))),
+    new AbortController().signal,
+  );
+  const actions = commandActions(client, saved, new Map(), {
+    text: (key) => key,
+    active: () => true,
+    receipt() {},
+    notice() {},
+    error: () => "error",
+    draw() {},
+    reportRecovered() {},
+    reportMissing: (id) => {
+      resumed = id;
+    },
+    busy: new Set(),
+  });
+  await actions.recoverCommands();
+  assert.equal(resumed, requestId);
+  assert.equal(saved.list().length, 1);
+});
+
+await test("unavailable command recovery never invents a report retry identity", async () => {
+  const saved = recoveryStore("actor-a", memory());
+  saved.add({ kind: "report", requestId });
+  let resumed = false;
+  const client = reputationClient(
+    api(() => Promise.resolve(response(null, 503))),
+    new AbortController().signal,
+  );
+  await commandActions(client, saved, new Map(), {
+    text: (key) => key,
+    active: () => true,
+    receipt() {},
+    notice() {},
+    error: () => "error",
+    draw() {},
+    reportRecovered() {},
+    reportMissing: () => {
+      resumed = true;
+    },
+    busy: new Set(),
+  }).recoverCommands();
+  assert.equal(resumed, false);
+  assert.equal(saved.list()[0]?.requestId, requestId);
 });

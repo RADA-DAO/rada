@@ -37,6 +37,44 @@ export function reputationClient(api: ModuleApi, signal: AbortSignal) {
     return response.body;
   }
   return {
+    overview: async (
+      view: "tasks" | "history",
+      period: Period,
+      cursor?: string | null,
+    ) => {
+      const value = await read(
+        `/overview?view=${view}&period=${period}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+      );
+      return {
+        summary: summary(envelope(value, "summary")),
+        data:
+          view === "tasks"
+            ? page(envelope(value, "page"), mission)
+            : page(envelope(value, "page"), item),
+        appeals: [],
+      };
+    },
+    detail: async (id: string, period: Period) => {
+      const [value, data, history] = await Promise.all([
+        read(`/summary?period=${period}`),
+        read(`/items/${encodeURIComponent(id)}`),
+        read(`/items/${encodeURIComponent(id)}/appeals`),
+      ]);
+      const list = envelope(history, "appeals");
+      if (!Array.isArray(list)) throw new ReputationError();
+      return {
+        summary: summary(envelope(value, "summary")),
+        data: item(envelope(data, "item")),
+        appeals: list.map(appeal),
+      };
+    },
+    appealCommand: async (requestId: string) =>
+      appeal(
+        envelope(
+          await read(`/appeals/commands/${encodeURIComponent(requestId)}`),
+          "appeal",
+        ),
+      ),
     summary: async (period: Period) =>
       summary(envelope(await read(`/summary?period=${period}`), "summary")),
     missions: async (cursor?: string | null) =>

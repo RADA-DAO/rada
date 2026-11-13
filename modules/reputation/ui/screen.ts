@@ -22,12 +22,7 @@ import type {
   Summary,
 } from "../contract.ts";
 import { reputationClient } from "./client.ts";
-import {
-  appealForm,
-  reportForm,
-  type Draft,
-  type Translator,
-} from "./forms.ts";
+import { reportForm, type Draft, type Translator } from "./forms.ts";
 import { ReadGuard, ReputationError, receiptIsCurrent } from "./model.ts";
 import { recoveryStore } from "./recovery.ts";
 import {
@@ -38,6 +33,8 @@ import {
   replaceContent,
 } from "./views.ts";
 import { commandActions, type Pending } from "./commands.ts";
+import { createAppealActions } from "./appeals.ts";
+import { shareButton } from "./share.ts";
 import { subscribeChanges } from "./updates.ts";
 import type { ReputationRoute } from "./index.ts";
 
@@ -133,7 +130,7 @@ export function createReputation(options: ReputationOptions) {
       let cursor: string | null = null;
       let streamStarted = false;
       let stopUpdates: (() => void) | undefined;
-      let loadingMore = false;
+
       const busy = new Set<string>();
       function errorText(error: unknown) {
         const status = error instanceof ReputationError ? error.status : 0;
@@ -146,14 +143,32 @@ export function createReputation(options: ReputationOptions) {
         navigation: options.navigation,
         signal,
         error: errorText,
+        notice: (message: string) => {
+          notice.textContent = message;
+        },
       };
+      const appealActions = createAppealActions(
+        ctx,
+        client,
+        recovery,
+        appeals,
+        active,
+        (result) => {
+          guard.invalidate();
+          if (detail?.id === result.itemId)
+            appealList = [
+              result,
+              ...appealList.filter((entry) => entry.id !== result.id),
+            ];
+          notice.textContent = text("appeal.saved");
+          draw();
+        },
+      );
       const commands = commandActions(client, recovery, pending, {
         text,
         active,
         receipt,
-        notice: (message) => {
-          notice.textContent = message;
-        },
+        notice: ctx.notice,
         error: errorText,
         draw,
         reportRecovered: () => {
@@ -180,7 +195,10 @@ export function createReputation(options: ReputationOptions) {
         if (current && BigInt(value.revision) < BigInt(current.revision))
           return;
         current = value;
-        replace(summaryHost, [summaryView({ text, locale, points }, value)]);
+        replace(summaryHost, [
+          summaryView({ text, locale, points }, value),
+          shareButton(text, value, ctx.notice),
+        ]);
         summaryHost.classList.add("rada-reputation-summary");
       }
       function draw() {
@@ -210,6 +228,7 @@ export function createReputation(options: ReputationOptions) {
               onClick: () => {
                 if (lostReport && !report.body && !report.requestId) {
                   void commands.recoverCommands();
+                  void appealActions.recover();
                   return;
                 }
                 reportForm(ctx, add, report, (body, recover) =>
@@ -250,19 +269,7 @@ export function createReputation(options: ReputationOptions) {
           const detailId = detail.id;
           const appeal = Button(text("appeal.open"), {
             onClick: () => {
-              const draft = appeals.get(detailId) ?? { attempted: false };
-              appeals.set(detailId, draft);
-              appealForm(ctx, appeal, draft, async (body) => {
-                const result = await client.appeal(detailId, body);
-                if (!active()) return;
-                appealList = [
-                  result,
-                  ...appealList.filter((entry) => entry.id !== result.id),
-                ];
-                appeals.delete(detailId);
-                notice.textContent = text("appeal.saved");
-                draw();
-              });
+              void appealActions.open(detailId, appeal);
             },
           });
           appeal.dataset.focusKey = `appeal:${detail.id}`;
@@ -276,7 +283,6 @@ export function createReputation(options: ReputationOptions) {
         return cursor
           ? [
               Button(text("more"), {
-                disabled: loadingMore,
                 onClick: () => void load(true),
               }),
             ]
@@ -315,21 +321,18 @@ export function createReputation(options: ReputationOptions) {
         if (!active()) return;
         const ticket = guard.begin();
         const requestedPeriod = route === "tasks" ? "today" : period;
-        loadingMore = append;
         try {
-          const [value, data, history] = await Promise.all([
-            client.summary(requestedPeriod),
-            route === "tasks"
-              ? client.missions(append ? cursor : null)
-              : route === "reputation"
-                ? client.items(requestedPeriod, append ? cursor : null)
-                : selected
-                  ? client.item(selected)
-                  : Promise.reject(new ReputationError(404)),
-            route === "reputation-item" && selected
-              ? client.appeals(selected)
-              : Promise.resolve([]),
-          ]);
+          const result =
+            route === "reputation-item"
+              ? selected
+                ? await client.detail(selected, requestedPeriod)
+                : await Promise.reject(new ReputationError(404))
+              : await client.overview(
+                  route === "tasks" ? "tasks" : "history",
+                  requestedPeriod,
+                  append ? cursor : null,
+                );
+          const { summary: value, data, appeals: history } = result;
           if (!active() || !guard.accept(ticket, value)) return;
           drawSummary(value);
           if (route === "tasks" && "items" in data) {
@@ -350,6 +353,7 @@ export function createReputation(options: ReputationOptions) {
           if (!streamStarted) {
             streamStarted = true;
             void commands.recoverCommands();
+            void appealActions.recover();
             stopUpdates = subscribeChanges(
               options.api,
               client,
@@ -372,8 +376,6 @@ export function createReputation(options: ReputationOptions) {
                 onRetry: () => void load(),
               }),
             ]);
-        } finally {
-          loadingMore = false;
         }
       }
       stop = () => {

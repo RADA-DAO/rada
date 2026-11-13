@@ -99,6 +99,7 @@ export function commandActions(
     },
     async recoverCommands() {
       for (const entry of recovery.list()) {
+        if (entry.kind === "appeal") continue;
         try {
           const result = await client.command(entry.requestId);
           if (!options.active()) return;

@@ -14,15 +14,16 @@ export type Translator = (
   values?: Record<string, string | number>,
 ) => string;
 export type Draft<T> = { body?: T; attempted: boolean; requestId?: string };
-type Context = {
+export type FormContext = {
   text: Translator;
   navigation: Navigation;
   signal: AbortSignal;
   error(error: unknown): string;
+  notice(message: string): void;
 };
 /** Inputs freeze once sent: an uncertain retry must preserve both ID and payload. */
 export function reportForm(
-  ctx: Context,
+  ctx: FormContext,
   opener: HTMLElement,
   draft: Draft<ReportInput>,
   send: (body: ReportInput, recover: boolean) => Promise<void>,
@@ -110,7 +111,7 @@ export function reportForm(
   );
 }
 export function appealForm(
-  ctx: Context,
+  ctx: FormContext,
   opener: HTMLElement,
   draft: Draft<AppealInput>,
   send: (body: AppealInput) => Promise<void>,
@@ -147,7 +148,7 @@ export function appealForm(
   );
 }
 function show<T>(
-  ctx: Context,
+  ctx: FormContext,
   opener: HTMLElement,
   title: string,
   children: Node[],

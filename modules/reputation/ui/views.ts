@@ -196,8 +196,9 @@ export function itemView(
         Text(
           [
             "signed_acknowledgement",
-            "external_verification",
-            "pending_interpretation",
+            "trusted_external_evidence",
+            "awaiting_interpretation",
+            "awaiting_trusted_evidence",
           ].includes(detail.reason)
             ? ctx.text(`reason.${detail.reason}`)
             : detail.reason,

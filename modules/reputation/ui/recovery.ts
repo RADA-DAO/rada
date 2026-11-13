@@ -6,7 +6,8 @@ export type PendingCommand =
       missionId: string;
       missionVersion: number;
     }
-  | { requestId: string; kind: "report" };
+  | { requestId: string; kind: "report" }
+  | { requestId: string; kind: "appeal"; itemId: string };
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem" | "removeItem">;
 const key = (actor: string) =>
   `rada:reputation:pending:${encodeURIComponent(actor)}`;
@@ -24,6 +25,10 @@ export function recoveryStore(actor: string | null, storage?: Storage) {
               typeof v.requestId === "string" &&
               /^[0-9a-f-]{36}$/i.test(v.requestId) &&
               (v.kind === "report" ||
+                (v.kind === "appeal" &&
+                  typeof v.itemId === "string" &&
+                  v.itemId.length > 0 &&
+                  v.itemId.length <= 200) ||
                 (v.kind === "verify" &&
                   typeof v.missionId === "string" &&
                   v.missionId.length > 0 &&

@@ -10,6 +10,7 @@ import type { ModuleApi } from "../../../packages/platform-sdk/src/index.ts";
 import { reputationClient } from "./client.ts";
 import { subscribeChanges } from "./updates.ts";
 import { historyView, itemView, replaceContent, taskView } from "./views.ts";
+import { share, shareText } from "./share.ts";
 import { receiptIsCurrent } from "./model.ts";
 import type { ReputationItem, Summary } from "../contract.ts";
 Object.defineProperty(globalThis, "HTMLButtonElement", {
@@ -23,7 +24,7 @@ const ctx = {
 };
 await test("tasks and history expose useful empty states and four period actions", () => {
   const tasks = Group(
-    taskView(ctx, [], Button("Report"), {
+    taskView(ctx, [], Button(ctx.text("report.open")), {
       busy: new Set(),
       retry: () => false,
       verify: () => {},
@@ -63,7 +64,7 @@ await test("detail keeps evidence and appeals accessible without raw rule hash o
     ],
     missionId: null,
   };
-  const host = Group(itemView(ctx, item, [], Button("Ask for review")));
+  const host = Group(itemView(ctx, item, [], Button(ctx.text("appeal.open"))));
   assert.match(host.textContent, /reason.signed_acknowledgement/);
   assert.equal(host.textContent.includes("opaque-rule"), false);
   assert.equal(fake(host).querySelectorAll("a").length, 0);
@@ -71,17 +72,17 @@ await test("detail keeps evidence and appeals accessible without raw rule hash o
   assert.match(host.textContent, /appeal.empty/);
 });
 await test("refresh restores the same focused item and completed task falls back to heading", () => {
-  const before = Button("Before");
+  const before = Button(ctx.text("before"));
   before.dataset.focusKey = "item:synthetic";
   const target = Group([before]);
-  const screen = Screen({ title: "Synthetic", children: [target] });
+  const screen = Screen({ title: ctx.text("title"), children: [target] });
   fakeDocument.body.append(fake(screen));
   before.focus();
-  const after = Button("After");
+  const after = Button(ctx.text("after"));
   after.dataset.focusKey = "item:synthetic";
   replaceContent(target, [after], screen);
   assert.equal(fakeDocument.activeElement, fake(after));
-  const completed = Button("Completed", { disabled: true });
+  const completed = Button(ctx.text("completed"), { disabled: true });
   completed.dataset.focusKey = "item:synthetic";
   replaceContent(target, [completed], screen);
   assert.equal(fakeDocument.activeElement.tagName, "h1");
@@ -137,7 +138,9 @@ await test("stream reset adopts lower durable cursor; late events after disposal
     },
     stream: (path, options) => {
       streamPath = path;
-      emit = options.onEvent;
+      emit = (event) => {
+        options.onEvent(event);
+      };
       return new Promise((resolve) => {
         options.signal?.addEventListener(
           "abort",
@@ -175,4 +178,47 @@ await test("stream reset adopts lower durable cursor; late events after disposal
     },
   });
   assert.equal(painted, 1);
+});
+
+await test("sharing uses exact summary points and supports native, clipboard and cancellation", async () => {
+  let native = "";
+  let copied = "";
+  const message = shareText(
+    (key, values) => (key === "share.text" ? JSON.stringify(values) : key),
+    { period: "week", totalPoints: "12.5001", pendingCount: 2 } as Summary,
+  );
+  assert.deepEqual(JSON.parse(message), {
+    period: "period.week",
+    points: "12.5001",
+    pending: 2,
+  });
+  assert.equal(
+    await share(message, {
+      share: (data) => {
+        native = data.text;
+        return Promise.resolve();
+      },
+    }),
+    "shared",
+  );
+  assert.equal(native, message);
+  assert.equal(
+    await share(message, {
+      clipboard: {
+        writeText: (value) => {
+          copied = value;
+          return Promise.resolve();
+        },
+      },
+    }),
+    "copied",
+  );
+  assert.equal(copied, message);
+  assert.equal(
+    await share(message, {
+      share: () => Promise.reject(new DOMException("cancelled", "AbortError")),
+    }),
+    "cancelled",
+  );
+  await assert.rejects(share(message, {}));
 });
