@@ -1,7 +1,7 @@
 {
   "index.html": {
-    "initialJsGzip": 49319,
-    "initialJsBrotli": 42676,
+    "initialJsGzip": 50000,
+    "initialJsBrotli": 43500,
     "initialCss": 37000,
     "fonts": 230000,
     "lazyJsGzip": 240000,

@@ -48,6 +48,9 @@
 .rada-reputation-view .rada-tabs {
   flex-wrap: wrap;
 }
+.rada-reputation-view .rada-facts-value .rada-reputation-date {
+  margin: 0;
+}
 .rada-reputation-view .rada-list-item .rada-button {
   text-align: start;
   justify-content: start;

@@ -1,4 +1,4 @@
-import { readModuleStream, type ModuleStreamOptions } from "./module-stream.ts";
+import type { ModuleStreamOptions } from "./module-stream.ts";
 export type {
   ModuleStreamEvent,
   ModuleStreamOptions,
@@ -135,31 +135,9 @@ export function moduleApiAdapter(
             path.split("?")[0] !== "/v1/reputation/stream"
           )
             throw new Error("invalid_request");
-          const credential = authHeaders()?.Authorization;
-          if (!credential) throw new Error("expired");
-          const response = await fetch(url(path), {
-            headers: { Authorization: credential, Accept: "text/event-stream" },
-            credentials: "omit",
-            cache: "no-store",
-            signal: options.signal ?? null,
-          });
-          if (
-            !response.ok ||
-            !response.body ||
-            !response.headers
-              .get("content-type")
-              ?.startsWith("text/event-stream")
-          ) {
-            await response.body?.cancel();
-            throw new Error(
-              response.status === 401 ? "expired" : "unavailable",
-            );
-          }
-          await readModuleStream(
-            response.body,
-            options,
-            () => authHeaders()?.Authorization === credential,
-          );
+          const target = url(path);
+          const { openModuleStream } = await import("./module-stream.ts");
+          await openModuleStream(target, options, authHeaders);
         },
         async request(method, path, options = {}) {
           const target = url(path);

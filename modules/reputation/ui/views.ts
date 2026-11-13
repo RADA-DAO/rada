@@ -33,7 +33,14 @@ export function summaryView(ctx: Context, value: Summary) {
   return Group([
     Text(ctx.text(`period.${value.period}`)),
     total,
-    Text(ctx.text("lifetime", { points: value.lifetimePoints })),
+    Text(
+      ctx.text("lifetime", {
+        points: value.lifetimePoints.replace(
+          ".",
+          ctx.locale === "uk" ? "," : ".",
+        ),
+      }),
+    ),
     ...(value.pendingCount
       ? [Text(ctx.text("pendingCount", { count: value.pendingCount }))]
       : []),
@@ -156,7 +163,10 @@ export function historyView(
               const button = Button(
                 ctx.text("item.row", {
                   title: entry.title,
-                  points: entry.points,
+                  points: entry.points.replace(
+                    ".",
+                    ctx.locale === "uk" ? "," : ".",
+                  ),
                 }),
                 {
                   variant: "ghost",
@@ -202,6 +212,9 @@ export function itemView(
             "trusted_external_evidence",
             "awaiting_interpretation",
             "awaiting_trusted_evidence",
+            "frozen_rule_accepted",
+            "duplicate_occurrence",
+            "configured_cap_reached",
           ].includes(detail.reason)
             ? ctx.text(`reason.${detail.reason}`)
             : detail.reason,
@@ -283,5 +296,6 @@ export function dateTime(locale: Locale, instant: string) {
     }).format(value),
   );
   stamp.title = value.toISOString();
+  stamp.classList.add("rada-reputation-date");
   return stamp;
 }

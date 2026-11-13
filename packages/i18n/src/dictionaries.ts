@@ -1,6 +1,4 @@
 import enApps from "../locales/en.apps.json" with { type: "json" };
-import enReputation from "../locales/en.reputation.json" with { type: "json" };
-import ukReputation from "../locales/uk.reputation.json" with { type: "json" };
 import ukApps from "../locales/uk.apps.json" with { type: "json" };
 import enTreasury from "../locales/en.treasury.json" with { type: "json" };
 import ukTreasury from "../locales/uk.treasury.json" with { type: "json" };
@@ -14,7 +12,6 @@ import enSplash from "../locales/en.splash.json" with { type: "json" };
 import ukSplash from "../locales/uk.splash.json" with { type: "json" };
 
 export const en = {
-  reputation: enReputation,
   ...enBase,
   appReport: enApps,
   launcher: enApps.launcher,
@@ -24,7 +21,6 @@ export const en = {
   notifications: enNotifications,
 };
 export const uk = {
-  reputation: ukReputation,
   ...ukBase,
   appReport: ukApps,
   launcher: ukApps.launcher,

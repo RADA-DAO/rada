@@ -3,8 +3,13 @@ import { mkdir } from "node:fs/promises";
 import { chromium, webkit, expect } from "@playwright/test";
 import { createPostgresFixtureRuntime } from "./reputation/postgres-fixture.ts";
 import { browserServer } from "./reputation/browser-server.ts";
+import { reportReloadRecovery } from "./reputation/browser-recovery.ts";
 import { launch } from "../apps/miniapp/tests/home-fixture.ts";
 import { signedLaunch } from "../apps/miniapp/tests/telegram-fixture.ts";
+import { createTranslator } from "../packages/i18n/src/index.ts";
+import en from "../packages/i18n/locales/en.reputation.json" with { type: "json" };
+import uk from "../packages/i18n/locales/uk.reputation.json" with { type: "json" };
+const translate = createTranslator({ en, uk });
 
 assert.ok(process.env.PG_TEST_URL, "Disposable PG_TEST_URL required");
 const runtime = await createPostgresFixtureRuntime(process.env.PG_TEST_URL);
@@ -28,13 +33,28 @@ try {
   ] as const) {
     const browser = await type.launch({ headless: true });
     try {
-      for (const width of [390, 1280]) {
+      for (const { width, locale } of [
+        { width: 390, locale: "en" },
+        { width: 1280, locale: "en" },
+        { width: 390, locale: "uk" },
+      ] as const) {
+        const text = (key: Parameters<typeof translate>[1]) =>
+          translate(locale, key);
         const context = await browser.newContext({
           baseURL: server.origin,
           viewport: { width, height: 844 },
-          locale: "en-US",
+          locale,
         });
         const page = await context.newPage();
+        await page.addInitScript(() => {
+          Object.defineProperty(navigator, "share", {
+            configurable: true,
+            value: (data: { text: string }) => {
+              Object.assign(window, { syntheticShare: data.text });
+              return Promise.resolve();
+            },
+          });
+        });
         const errors: string[] = [];
         page.on("pageerror", (error) => errors.push(error.message));
         try {
@@ -54,26 +74,27 @@ try {
           );
           await launch(page, signedLaunch());
           await page
-            .getByRole("button", { name: "Tasks", exact: true })
+            .getByRole("button", { name: text("tasks"), exact: true })
             .click();
           await expect(
-            page.getByRole("heading", { name: "Tasks", exact: true }),
+            page.getByRole("heading", { name: text("tasks"), exact: true }),
           ).toBeVisible();
+          await expect(page.locator(".rada-reputation-task")).toHaveCount(2);
           const before = await runtime.store.summary("101", "today");
           const acknowledgement = page.getByRole("button", {
-            name: "Acknowledge",
+            name: text("acknowledge"),
             exact: true,
           });
           if (await acknowledgement.count()) {
             const started = Date.now();
             await acknowledgement.click();
             await expect(
-              page.getByText("Confirmed. Your REP is up to date.", {
+              page.getByText(text("confirmed"), {
                 exact: true,
               }),
             ).toBeVisible();
             await expect(page.locator(".rada-reputation-total")).toHaveText(
-              "0.25 REP",
+              locale === "uk" ? "0,25 REP" : "0.25 REP",
             );
             assert.ok(
               Date.now() - started < 3000,
@@ -82,8 +103,22 @@ try {
           } else assert.equal(before.totalPoints, "0.25");
           const after = await runtime.store.summary("101", "today");
           assert.equal(after.totalPoints, "0.25");
+          await page
+            .getByRole("button", { name: text("share.action"), exact: true })
+            .click();
+          const shared = await page.evaluate(
+            () =>
+              (window as unknown as { syntheticShare: string }).syntheticShare,
+          );
+          assert.ok(
+            shared.includes("0.25") &&
+              !shared.includes("auth_date") &&
+              !shared.includes(mission.id),
+          );
+          if (width === 390 && locale === "en")
+            await reportReloadRecovery(page, runtime.store, engine);
           await page.screenshot({
-            path: `${output}/${engine}-${String(width)}-tasks.png`,
+            path: `${output}/${engine}-${locale}-${String(width)}-tasks.png`,
             fullPage: true,
           });
           assert.equal(
@@ -93,41 +128,71 @@ try {
             false,
           );
           await page
-            .getByRole("button", { name: "Reputation", exact: true })
+            .getByRole("button", { name: text("title"), exact: true })
             .click();
           await expect(
-            page.getByRole("heading", { name: "Reputation", exact: true }),
+            page.getByRole("heading", { name: text("title"), exact: true }),
           ).toBeVisible();
           await page
             .getByRole("button", {
-              name: /Synthetic acknowledgement · 0.25 REP/,
+              name: text("period.previous_week"),
+              exact: true,
+            })
+            .click();
+          await expect(page.locator(".rada-reputation-total")).toHaveText(
+            "0 REP",
+          );
+          await page
+            .getByRole("button", { name: text("period.today"), exact: true })
+            .click();
+          await expect(page.locator(".rada-reputation-total")).toHaveText(
+            locale === "uk" ? "0,25 REP" : "0.25 REP",
+          );
+          await page.screenshot({
+            path: `${output}/${engine}-${locale}-${String(width)}-history.png`,
+            fullPage: true,
+          });
+          await page
+            .getByRole("button", {
+              name: /Synthetic acknowledgement · 0[,.]25 REP/,
             })
             .click();
           await page
-            .getByRole("button", { name: "Ask for a review", exact: true })
+            .getByRole("button", { name: text("appeal.open"), exact: true })
             .click();
           const dialog = page.getByRole("dialog");
           await dialog
-            .getByLabel("What should be reviewed?", { exact: true })
-            .fill(`Synthetic ${engine} ${String(width)} review`);
+            .getByLabel(text("appeal.message"), { exact: true })
+            .fill(`Synthetic ${engine} ${locale} ${String(width)} review`);
           await dialog
-            .getByRole("button", { name: "Submit", exact: true })
+            .getByRole("button", { name: text("submit"), exact: true })
             .click();
           await expect(dialog).toHaveCount(0);
           await expect(
-            page.getByText(`Synthetic ${engine} ${String(width)} review`, {
-              exact: true,
-            }),
+            page.getByText(
+              `Synthetic ${engine} ${locale} ${String(width)} review`,
+              {
+                exact: true,
+              },
+            ),
           ).toBeVisible();
           assert.equal(
             (await runtime.store.summary("101", "today")).totalPoints,
             "0.25",
           );
           await page.screenshot({
-            path: `${output}/${engine}-${String(width)}-detail.png`,
+            path: `${output}/${engine}-${locale}-${String(width)}-detail.png`,
             fullPage: true,
           });
           assert.deepEqual(errors, []);
+        } catch (error) {
+          await page
+            .screenshot({
+              path: `${output}/${engine}-${locale}-${String(width)}-failure.png`,
+              fullPage: true,
+            })
+            .catch(() => undefined);
+          throw error;
         } finally {
           await context.close();
         }

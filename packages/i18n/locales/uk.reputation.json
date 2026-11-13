@@ -96,7 +96,10 @@
     "signed_acknowledgement": "Твоє підтвердження ознайомлення записано.",
     "trusted_external_evidence": "Виконання підтверджено.",
     "awaiting_interpretation": "Твій звіт очікує розгляду.",
-    "awaiting_trusted_evidence": "Виконання перевіряється."
+    "awaiting_trusted_evidence": "Виконання перевіряється.",
+    "frozen_rule_accepted": "Виконану роботу зараховано за чинними правилами.",
+    "duplicate_occurrence": "Цей результат уже записано. Повторно отримати за нього бали не можна.",
+    "configured_cap_reached": "Ліміт балів за цю активність у цьому періоді вже досягнуто."
   },
   "share": {
     "action": "Поділитися підсумком",

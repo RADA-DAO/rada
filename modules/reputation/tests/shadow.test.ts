@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   compareShadow,
+  compareShadowRoster,
+  type RosterShadow,
   type ShadowSnapshot,
 } from "../../../tools/reputation-shadow.ts";
 function fixture(): ShadowSnapshot {
@@ -29,6 +31,8 @@ function fixture(): ShadowSnapshot {
     rows: [
       {
         key: "excluded-a",
+        category: "work",
+        evidenceKeys: ["synthetic-source:1"],
         points: "0",
         status: "excluded",
         occurredAt: "2026-10-25T01:30:00Z",
@@ -56,6 +60,36 @@ void test("shadow parity requires identical cutoff/rules and includes explicit z
   right.cutoff = left.cutoff;
   right.rulesHash = "another-formula";
   assert.throws(() => compareShadow(left, right), /incomparable rulesHash/);
+});
+
+void test("full roster parity refuses a missing zero member and detects category/evidence changes", () => {
+  const a = fixture(),
+    zero = fixture();
+  zero.subjectAlias = "synthetic-zero";
+  zero.rows = [];
+  const roster = [a.subjectAlias, zero.subjectAlias];
+  const left: RosterShadow = {
+    version: 1,
+    cutoff: a.cutoff,
+    rulesHash: a.rulesHash,
+    roster,
+    members: [a, zero],
+  };
+  const right = structuredClone(left);
+  assert.equal(compareShadowRoster(roster, left, right).equal, true);
+  right.members.pop();
+  assert.throws(
+    () => compareShadowRoster(roster, left, right),
+    /missing or duplicated participant/,
+  );
+  right.members.push(zero);
+  const changed = right.members[0]?.rows[0];
+  assert.ok(changed);
+  changed.evidenceKeys = ["synthetic-source:2"];
+  assert.equal(compareShadowRoster(roster, left, right).equal, false);
+  const invalid = fixture();
+  invalid.summary.totalPoints = "0.1";
+  assert.throws(() => compareShadow(a, invalid), /category totals/);
 });
 void test("partial, zero-omitting and silently excluded snapshots are rejected", () => {
   const full = fixture();

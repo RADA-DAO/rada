@@ -96,7 +96,10 @@
     "signed_acknowledgement": "Your acknowledgement was recorded.",
     "trusted_external_evidence": "Completion was verified.",
     "awaiting_interpretation": "Your report is awaiting review.",
-    "awaiting_trusted_evidence": "Completion is being checked."
+    "awaiting_trusted_evidence": "Completion is being checked.",
+    "frozen_rule_accepted": "Your completed work was credited under the applicable rules.",
+    "duplicate_occurrence": "This result was already recorded. It cannot earn points twice.",
+    "configured_cap_reached": "The point limit for this activity and period has been reached."
   },
   "share": {
     "action": "Share summary",

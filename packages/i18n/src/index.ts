@@ -19,9 +19,14 @@ type Values = Record<string, string | number>;
 type Messages = typeof en;
 const dictionaries: Record<Locale, Messages> = { en, uk };
 
-function resolve(locale: Locale, key: MessageKey, values: Values): string {
+function resolve(
+  messages: object,
+  locale: Locale,
+  key: string,
+  values: Values,
+): string {
   const path = key.split(".");
-  let message: unknown = dictionaries[locale];
+  let message: unknown = messages;
   for (const part of path) message = (message as Record<string, unknown>)[part];
   if (message && typeof message === "object" && "other" in message) {
     const count = Number(values.count ?? 0);
@@ -39,5 +44,13 @@ export function t(
   key: MessageKey,
   values: Values = {},
 ): string {
-  return resolve(locale, key, values);
+  return resolve(dictionaries[locale], locale, key, values);
+}
+
+/** Module-owned messages can travel with a lazy screen instead of the shell. */
+export function createTranslator<T extends object>(
+  messages: Record<Locale, T>,
+) {
+  return (locale: Locale, key: MessagePath<T>, values: Values = {}) =>
+    resolve(messages[locale], locale, key, values);
 }

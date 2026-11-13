@@ -16,6 +16,17 @@ export {
   runNext,
   runBoundedBatch,
 } from "./worker/coordinator.ts";
+export { BoundedEvaluator } from "./worker/evaluator.ts";
+export type {
+  ClassificationProvider,
+  EvaluationBudget,
+} from "./worker/evaluator.ts";
+export { membershipVerifier, telegramReadClient } from "./worker/membership.ts";
+export type {
+  MembershipConfig,
+  MembershipResult,
+  TelegramReadClient,
+} from "./worker/membership.ts";
 export type {
   CoordinatorOptions,
   CoordinatorOutcome,

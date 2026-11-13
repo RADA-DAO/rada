@@ -9,8 +9,11 @@ import {
   Tabs,
   Text,
 } from "../../../packages/ui/src/index.ts";
-import { t, type MessageKey } from "../../../packages/i18n/src/index.ts";
-import { titleKeys, type ReputationOptions } from "./context.ts";
+import {
+  titleKeys,
+  reputationText,
+  type ReputationOptions,
+} from "./context.ts";
 import type {
   Appeal,
   AppealInput,
@@ -99,7 +102,7 @@ export function createReputation(options: ReputationOptions) {
       const client = reputationClient(options.api, signal);
       const locale = options.locale();
       const text: Translator = (key, values) =>
-        t(locale, `reputation.${key}` as MessageKey, values);
+        reputationText(locale, key, values);
       const active = () =>
         !signal.aborted && (options.actorKey?.() ?? null) === identity;
       const content = Group();
